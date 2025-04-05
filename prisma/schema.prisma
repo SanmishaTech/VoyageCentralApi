@@ -34,4 +34,41 @@ model Package {
   updatedAt       DateTime @updatedAt
 
   @@map("packages")
+  Subscription Subscription[]
+  Agency Agency[]
+}
+
+model Agency {
+  id                   Int       @id @default(autoincrement())
+  businessName         String    // Business name
+  address              String    // Multiline address
+  currentSubscriptionId Int?     // Foreign key to the Subscription table
+  currentSubscription  Subscription? @relation("CurrentSubscription", fields: [currentSubscriptionId], references: [id])
+  logo                 String?   // Logo (file path or URL)
+  letterHead           String?   // Letterhead attachment (file path or URL)
+  contactPersonName    String    // Contact person name
+  contactPersonEmail   String    // Contact person email
+  contactPersonPhone   String    // Contact person phone
+  gstin                String    // GSTIN
+  subscriptions        Subscription[] @relation("AgencySubscriptions") // One-to-many relationship with subscriptions
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@map("agencies") // Map the table name to "agencies"
+  Package Package[]
+}
+
+model Subscription {
+  id              Int       @id @default(autoincrement())
+  agencyId        Int       // Foreign key to the Agency table
+  agency          Agency    @relation("AgencySubscriptions", fields: [agencyId], references: [id])
+  packageId       Int       // Foreign key to the Package table
+  package         Package   @relation(fields: [packageId], references: [id])
+  startDate       DateTime  // Subscription start date
+  endDate         DateTime  // Subscription end date
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("subscriptions") // Map the table name to "subscriptions"
+  Agency Agency[] @relation("CurrentSubscription")
 }
