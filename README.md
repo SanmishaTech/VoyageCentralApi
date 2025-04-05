@@ -1,25 +1,25 @@
-# node-star
+# voyageCentralApi
 
 A simple Node.js REST API project built with Express, Prisma, and JWT.
 
 ## Features
 
-*   User authentication and authorization
-*   User management (CRUD operations)
-*   Password reset functionality
-*   Role-based access control (RBAC)
-*   API documentation with Swagger
+- User authentication and authorization
+- User management (CRUD operations)
+- Password reset functionality
+- Role-based access control (RBAC)
+- API documentation with Swagger
 
 ## Technologies Used
 
-*   Node.js
-*   Express.js
-*   Prisma (ORM)
-*   JSON Web Tokens (JWT)
-*   Bcrypt
-*   Joi
-*   Swagger
-*   MySQL
+- Node.js
+- Express.js
+- Prisma (ORM)
+- JSON Web Tokens (JWT)
+- Bcrypt
+- Joi
+- Swagger
+- MySQL
 
 ## Installation
 
@@ -41,13 +41,13 @@ A simple Node.js REST API project built with Express, Prisma, and JWT.
     npm install
     ```
 
-4.  Create a `.env` file in the root directory.  See `.env` file example below.
+4.  Create a `.env` file in the root directory. See `.env` file example below.
 
-5.  Configure the `.env` file with your database connection string, JWT secret, and email settings.  Example:
+5.  Configure the `.env` file with your database connection string, JWT secret, and email settings. Example:
 
     ```
     PORT=3000
-    DATABASE_URL="mysql://root:your_password@localhost:3306/node_star"
+    DATABASE_URL="mysql://root:your_password@localhost:3306/voyageCentral"
     JWT_SECRET="your_jwt_secret"
     EMAIL_TRANSPORTER="smtp" # Options: smtp, mailtrap, sendgrid
     EMAIL_HOST="smtp.example.com"
@@ -96,26 +96,26 @@ API documentation is available at `http://localhost:3000/api-docs` when the serv
 
 The following environment variables are required:
 
-*   `PORT`: The port the server will listen on (default: 3000).
-*   `DATABASE_URL`: The connection string to your MySQL database.
-*   `JWT_SECRET`: A secret key used to sign JWTs.
-*   `EMAIL_TRANSPORTER`: The email transporter to use (options: smtp, mailtrap, sendgrid).
-*   `EMAIL_HOST`: The host for your email server (required if `EMAIL_TRANSPORTER` is `smtp`).
-*   `EMAIL_PORT`: The port for your email server (required if `EMAIL_TRANSPORTER` is `smtp`).
-*   `EMAIL_USER`: The username for your email account (required if `EMAIL_TRANSPORTER` is `smtp` or `mailtrap`).
-*   `EMAIL_PASSWORD`: The password for your email account (required if `EMAIL_TRANSPORTER` is `smtp` or `mailtrap`).
-*   `EMAIL_FROM`: The email address used as the sender.
-*   `SENDGRID_API_KEY`: The API key for SendGrid (required if `EMAIL_TRANSPORTER` is `sendgrid`).
-*   `MAILTRAP_HOST`: The host for Mailtrap (required if `EMAIL_TRANSPORTER` is `mailtrap`).
-*   `MAILTRAP_PORT`: The port for Mailtrap (required if `EMAIL_TRANSPORTER` is `mailtrap`).
-*   `MAILTRAP_USER`: The username for Mailtrap (required if `EMAIL_TRANSPORTER` is `mailtrap`).
-*   `MAILTRAP_PASSWORD`: The password for Mailtrap (required if `EMAIL_TRANSPORTER` is `mailtrap`).
-*   `ALLOW_REGISTRATION`:  Boolean value to enable or disable user registration (default: true).
-*   `DEFAULT_USER_ROLE`:  The default role assigned to newly registered users (default: 'user').
+- `PORT`: The port the server will listen on (default: 3000).
+- `DATABASE_URL`: The connection string to your MySQL database.
+- `JWT_SECRET`: A secret key used to sign JWTs.
+- `EMAIL_TRANSPORTER`: The email transporter to use (options: smtp, mailtrap, sendgrid).
+- `EMAIL_HOST`: The host for your email server (required if `EMAIL_TRANSPORTER` is `smtp`).
+- `EMAIL_PORT`: The port for your email server (required if `EMAIL_TRANSPORTER` is `smtp`).
+- `EMAIL_USER`: The username for your email account (required if `EMAIL_TRANSPORTER` is `smtp` or `mailtrap`).
+- `EMAIL_PASSWORD`: The password for your email account (required if `EMAIL_TRANSPORTER` is `smtp` or `mailtrap`).
+- `EMAIL_FROM`: The email address used as the sender.
+- `SENDGRID_API_KEY`: The API key for SendGrid (required if `EMAIL_TRANSPORTER` is `sendgrid`).
+- `MAILTRAP_HOST`: The host for Mailtrap (required if `EMAIL_TRANSPORTER` is `mailtrap`).
+- `MAILTRAP_PORT`: The port for Mailtrap (required if `EMAIL_TRANSPORTER` is `mailtrap`).
+- `MAILTRAP_USER`: The username for Mailtrap (required if `EMAIL_TRANSPORTER` is `mailtrap`).
+- `MAILTRAP_PASSWORD`: The password for Mailtrap (required if `EMAIL_TRANSPORTER` is `mailtrap`).
+- `ALLOW_REGISTRATION`: Boolean value to enable or disable user registration (default: true).
+- `DEFAULT_USER_ROLE`: The default role assigned to newly registered users (default: 'user').
 
 ## Database
 
-This project uses Prisma as an ORM to interact with a MySQL database.  Ensure you have a MySQL server running and update the `DATABASE_URL` in the `.env` file accordingly.
+This project uses Prisma as an ORM to interact with a MySQL database. Ensure you have a MySQL server running and update the `DATABASE_URL` in the `.env` file accordingly.
 
 ## Contributing
 

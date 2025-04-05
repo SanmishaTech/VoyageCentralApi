@@ -22,3 +22,16 @@ model User {
 
   @@map("users")
 }
+
+model Package {
+  id              Int      @id @default(autoincrement())
+  packageName     String   @map("packages")
+  numberOfBranches Int
+  usersPerBranch  Int
+  periodInMonths  Int
+  cost            Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("packages")
+}
