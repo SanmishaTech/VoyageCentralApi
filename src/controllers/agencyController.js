@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 const Joi = require("joi"); // Import Joi for validation
 const validateRequest = require("../utils/validation"); // Utility function for validation
 const createError = require("http-errors"); // For consistent error handling
+const bcrypt = require("bcrypt");
 
 // Get all agencies with pagination, sorting, and search
 const getAgencies = async (req, res) => {
@@ -65,34 +66,31 @@ const createAgency = async (req, res, next) => {
       "string.empty": "Address Line 1 is required.",
       "any.required": "Address Line 1 is required.",
     }),
-    state1: Joi.string().required().messages({
-      "string.empty": "State 1 is required.",
-      "any.required": "State 1 is required.",
+    state: Joi.string().required().messages({
+      "string.empty": "State is required.",
+      "any.required": "State is required.",
     }),
-    city1: Joi.string().required().messages({
-      "string.empty": "City 1 is required.",
-      "any.required": "City 1 is required.",
+    city: Joi.string().required().messages({
+      "string.empty": "City is required.",
+      "any.required": "City is required.",
     }),
-    pincode1: Joi.string().required().messages({
-      "string.empty": "Pincode 1 is required.",
-      "any.required": "Pincode 1 is required.",
+    pincode: Joi.string().required().messages({
+      "string.empty": "Pincode is required.",
+      "any.required": "Pincode is required.",
     }),
     addressLine2: Joi.string().optional(),
-    state2: Joi.string().optional(),
-    city2: Joi.string().optional(),
-    pincode2: Joi.string().optional(),
     contactPersonName: Joi.string().required().messages({
       "string.empty": "Contact person name is required.",
       "any.required": "Contact person name is required.",
+    }),
+    contactPersonPhone: Joi.string().required().messages({
+      "string.empty": "Contact person phone is required.",
+      "any.required": "Contact person phone is required.",
     }),
     contactPersonEmail: Joi.string().email().required().messages({
       "string.empty": "Contact person email is required.",
       "any.required": "Contact person email is required.",
       "string.email": "Contact person email must be a valid email address.",
-    }),
-    contactPersonPhone: Joi.string().required().messages({
-      "string.empty": "Contact person phone is required.",
-      "any.required": "Contact person phone is required.",
     }),
     gstin: Joi.string().required().messages({
       "string.empty": "GSTIN is required.",
@@ -101,9 +99,33 @@ const createAgency = async (req, res, next) => {
     letterHead: Joi.string().optional().messages({
       "string.empty": "Letterhead must be a valid file path or URL.",
     }),
-    currentSubscriptionId: Joi.number().optional(),
     logo: Joi.string().optional().messages({
       "string.empty": "Logo must be a valid file path or URL.",
+    }),
+    packageId: Joi.number().integer().required().messages({
+      "number.base": "Package ID must be a number.",
+      "any.required": "Package ID is required.",
+    }),
+    startDate: Joi.date().required().messages({
+      "date.base": "Start date must be a valid date.",
+      "any.required": "Start date is required.",
+    }),
+    endDate: Joi.date().required().messages({
+      "date.base": "End date must be a valid date.",
+      "any.required": "End date is required.",
+    }),
+    name: Joi.string().required().messages({
+      "string.empty": "User name is required.",
+      "any.required": "User name is required.",
+    }),
+    email: Joi.string().email().required().messages({
+      "string.empty": "User email is required.",
+      "any.required": "User email is required.",
+      "string.email": "User email must be a valid email address.",
+    }),
+    password: Joi.string().required().messages({
+      "string.empty": "User password is required.",
+      "any.required": "User password is required.",
     }),
   });
 
@@ -116,45 +138,83 @@ const createAgency = async (req, res, next) => {
   const {
     businessName,
     addressLine1,
-    state1,
-    city1,
-    pincode1,
+    state,
+    city,
+    pincode,
     addressLine2,
-    state2,
-    city2,
-    pincode2,
     contactPersonName,
-    contactPersonEmail,
     contactPersonPhone,
+    contactPersonEmail, // Added here
     gstin,
     letterHead,
-    currentSubscriptionId,
     logo,
+    packageId,
+    startDate,
+    endDate,
+    name,
+    email,
+    password,
   } = req.body;
 
   try {
+    // Create the agency first to get its ID
     const newAgency = await prisma.agency.create({
       data: {
         businessName,
         addressLine1,
-        state1,
-        city1,
-        pincode1,
+        state,
+        city,
+        pincode,
         addressLine2,
-        state2,
-        city2,
-        pincode2,
         contactPersonName,
-        contactPersonEmail,
         contactPersonPhone,
+        contactPersonEmail, // Added here
         gstin,
         letterHead,
-        currentSubscriptionId,
         logo,
       },
     });
 
-    res.status(201).json(newAgency);
+    // Use a transaction to create the subscription and user
+    const [newSubscription, newUser] = await prisma.$transaction([
+      // Create the subscription and link it to the agency using agencyId
+      prisma.subscription.create({
+        data: {
+          package: {
+            connect: { id: packageId }, // Link the subscription to the package using packageId
+          },
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          agency: {
+            connect: { id: newAgency.id }, // Link the subscription to the agency using agencyId
+          },
+        },
+      }),
+      // Create the user and link it to the agency using agencyId
+      prisma.user.create({
+        data: {
+          name,
+          email,
+          password: await bcrypt.hash(password, 10), // Hash the password
+          role: "branch_admin", // Default role
+          agency: {
+            connect: { id: newAgency.id }, // Link the user to the agency using agencyId
+          },
+        },
+      }),
+    ]);
+
+    // Update the agency with the current subscription ID
+    await prisma.agency.update({
+      where: { id: newAgency.id },
+      data: { currentSubscriptionId: newSubscription.id },
+    });
+
+    res.status(201).json({
+      agency: newAgency,
+      subscription: newSubscription,
+      user: newUser,
+    });
   } catch (error) {
     next(error); // Pass the error to the centralized error handler
   }

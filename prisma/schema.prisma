@@ -9,6 +9,8 @@ datasource db {
 
 model User {
   id                 Int       @id @default(autoincrement())
+  agencyId           Int?      // Foreign key to the Agency table
+  branchId           Int?      // Foreign key to the Branch table (if applicable)
   name               String
   email              String    @unique
   password           String
@@ -17,8 +19,6 @@ model User {
   lastLogin          DateTime?
   resetToken         String?   // Add this line
   resetTokenExpires  DateTime? // Add this line
-  agencyId           Int?      // Foreign key to the Agency table
-  branchId           Int?      // Foreign key to the Branch table (if applicable)
   agency             Agency?   @relation(fields: [agencyId], references: [id])
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -43,16 +43,13 @@ model Package {
 
 model Agency {
   id                   Int       @id @default(autoincrement())
+  currentSubscriptionId Int?     // Foreign key to the Subscription table
   businessName         String    // Business name
   addressLine1         String    // Address Line 1
-  state1               String    // State 1
-  city1                String    // City 1
-  pincode1             String    // Pincode 1
   addressLine2         String?   // Address Line 2 (optional)
-  state2               String?   // State 2 (optional)
-  city2                String?   // City 2 (optional)
-  pincode2             String?   // Pincode 2 (optional)
-  currentSubscriptionId Int?     // Foreign key to the Subscription table
+  state                String?    
+  city                 String?    
+  pincode              String?    
   currentSubscription  Subscription? @relation("CurrentSubscription", fields: [currentSubscriptionId], references: [id])
   logo                 String?   // Logo (file path or URL)
   letterHead           String?   // Letterhead attachment (file path or URL)
@@ -66,7 +63,7 @@ model Agency {
   updatedAt            DateTime  @updatedAt
 
   @@map("agencies") // Map the table name to "agencies"
-  Package Package[]
+  Package Package[] 
 }
 
 model Subscription {

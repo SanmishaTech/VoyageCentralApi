@@ -132,42 +132,79 @@ router.get("/", auth, acl("agencies.read"), getAgencies);
  *             properties:
  *               businessName:
  *                 type: string
+ *                 description: Name of the agency
  *               addressLine1:
  *                 type: string
- *               state1:
+ *                 description: Address Line 1 of the agency
+ *               state:
  *                 type: string
- *               city1:
+ *                 description: State where the agency is located
+ *               city:
  *                 type: string
- *               pincode1:
+ *                 description: City where the agency is located
+ *               pincode:
  *                 type: string
+ *                 description: Pincode of the agency's location
  *               addressLine2:
  *                 type: string
- *               state2:
- *                 type: string
- *               city2:
- *                 type: string
- *               pincode2:
- *                 type: string
+ *                 description: Address Line 2 of the agency (optional)
  *               contactPersonName:
  *                 type: string
- *               contactPersonEmail:
- *                 type: string
+ *                 description: Name of the contact person
  *               contactPersonPhone:
  *                 type: string
+ *                 description: Phone number of the contact person
+ *               contactPersonEmail:
+ *                 type: string
+ *                 format: email
+ *                 description: Email of the contact person
  *               gstin:
  *                 type: string
+ *                 description: GSTIN of the agency
  *               letterHead:
  *                 type: string
- *                 description: Letterhead attachment (file path or URL)
- *               currentSubscriptionId:
- *                 type: integer
- *                 description: ID of the current subscription
+ *                 description: Letterhead attachment (file path or URL) (optional)
  *               logo:
  *                 type: string
- *                 description: Logo (file path or URL)
+ *                 description: Logo of the agency (file path or URL) (optional)
+ *               packageId:
+ *                 type: integer
+ *                 description: ID of the package associated with the subscription
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Start date of the subscription
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 description: End date of the subscription
+ *               name:
+ *                 type: string
+ *                 description: Name of the user to be created
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email of the user to be created
+ *               password:
+ *                 type: string
+ *                 description: Password of the user to be created
  *     responses:
  *       201:
  *         description: Agency created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 agency:
+ *                   type: object
+ *                   description: Details of the created agency
+ *                 subscription:
+ *                   type: object
+ *                   description: Details of the created subscription
+ *                 user:
+ *                   type: object
+ *                   description: Details of the created user
  *       400:
  *         description: Bad request
  *       500:
