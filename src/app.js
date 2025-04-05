@@ -9,6 +9,7 @@ const userRoutes = require("./routes/users");
 const authRoutes = require("./routes/auth");
 const profileRoutes = require("./routes/profile");
 const packageRoutes = require("./routes/package");
+const agencyRoutes = require("./routes/agency");
 const { errorHandler } = require("./utils/errorHandler");
 const swaggerRouter = require("./swagger");
 const config = require("./config/config");
@@ -31,6 +32,7 @@ app.use("/roles", roleRoutes);
 app.use("/users", userRoutes);
 app.use("/profile", profileRoutes);
 app.use("/packages", packageRoutes);
+app.use("/agencies", agencyRoutes);
 app.use(swaggerRouter); // Add this line to include Swagger documentation
 
 app.use((req, res, next) => {

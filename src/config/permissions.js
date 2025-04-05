@@ -7,4 +7,7 @@ module.exports = {
   "packages.read": ["super_admin"], // Permission to read packages
   "packages.write": ["super_admin"], // Permission to create or update packages
   "packages.delete": ["super_admin"], // Permission to delete packages
+  "agencies.read": ["super_admin"],
+  "agencies.write": ["super_admin"],
+  "agencies.delete": ["super_admin"],
 };

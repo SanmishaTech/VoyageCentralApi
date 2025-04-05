@@ -1,8 +1,8 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const Joi = require('joi'); // Import Joi for validation
-const { validateRequest } = require('../utils/validation'); // Utility function for validation
-const createError = require('http-errors'); // For consistent error handling
+const Joi = require("joi"); // Import Joi for validation
+const validateRequest = require("../utils/validation"); // Utility function for validation
+const createError = require("http-errors"); // For consistent error handling
 
 // Get all packages with pagination, sorting, and search
 const getPackages = async (req, res) => {
@@ -55,28 +55,28 @@ const createPackage = async (req, res, next) => {
   // Define Joi schema for package validation
   const schema = Joi.object({
     packageName: Joi.string().required().messages({
-      'string.empty': 'Package name is required.',
-      'any.required': 'Package name is required.',
+      "string.empty": "Package name is required.",
+      "any.required": "Package name is required.",
     }),
     numberOfBranches: Joi.number().integer().min(1).required().messages({
-      'number.base': 'Number of branches must be a number.',
-      'number.min': 'Number of branches must be at least 1.',
-      'any.required': 'Number of branches is required.',
+      "number.base": "Number of branches must be a number.",
+      "number.min": "Number of branches must be at least 1.",
+      "any.required": "Number of branches is required.",
     }),
     usersPerBranch: Joi.number().integer().min(1).required().messages({
-      'number.base': 'Users per branch must be a number.',
-      'number.min': 'Users per branch must be at least 1.',
-      'any.required': 'Users per branch is required.',
+      "number.base": "Users per branch must be a number.",
+      "number.min": "Users per branch must be at least 1.",
+      "any.required": "Users per branch is required.",
     }),
     periodInMonths: Joi.number().integer().min(1).required().messages({
-      'number.base': 'Period in months must be a number.',
-      'number.min': 'Period in months must be at least 1.',
-      'any.required': 'Period in months is required.',
+      "number.base": "Period in months must be a number.",
+      "number.min": "Period in months must be at least 1.",
+      "any.required": "Period in months is required.",
     }),
     cost: Joi.number().min(0).required().messages({
-      'number.base': 'Cost must be a number.',
-      'number.min': 'Cost must be at least 0.',
-      'any.required': 'Cost is required.',
+      "number.base": "Cost must be a number.",
+      "number.min": "Cost must be at least 0.",
+      "any.required": "Cost is required.",
     }),
   });
 
@@ -86,7 +86,13 @@ const createPackage = async (req, res, next) => {
     return res.status(400).json({ errors: validationErrors });
   }
 
-  const { packageName, numberOfBranches, usersPerBranch, periodInMonths, cost } = req.body;
+  const {
+    packageName,
+    numberOfBranches,
+    usersPerBranch,
+    periodInMonths,
+    cost,
+  } = req.body;
 
   try {
     const newPackage = await prisma.package.create({
@@ -131,28 +137,28 @@ const updatePackage = async (req, res, next) => {
   // Define Joi schema for package validation
   const schema = Joi.object({
     packageName: Joi.string().required().messages({
-      'string.empty': 'Package name is required.',
-      'any.required': 'Package name is required.',
+      "string.empty": "Package name is required.",
+      "any.required": "Package name is required.",
     }),
     numberOfBranches: Joi.number().integer().min(1).required().messages({
-      'number.base': 'Number of branches must be a number.',
-      'number.min': 'Number of branches must be at least 1.',
-      'any.required': 'Number of branches is required.',
+      "number.base": "Number of branches must be a number.",
+      "number.min": "Number of branches must be at least 1.",
+      "any.required": "Number of branches is required.",
     }),
     usersPerBranch: Joi.number().integer().min(1).required().messages({
-      'number.base': 'Users per branch must be a number.',
-      'number.min': 'Users per branch must be at least 1.',
-      'any.required': 'Users per branch is required.',
+      "number.base": "Users per branch must be a number.",
+      "number.min": "Users per branch must be at least 1.",
+      "any.required": "Users per branch is required.",
     }),
     periodInMonths: Joi.number().integer().min(1).required().messages({
-      'number.base': 'Period in months must be a number.',
-      'number.min': 'Period in months must be at least 1.',
-      'any.required': 'Period in months is required.',
+      "number.base": "Period in months must be a number.",
+      "number.min": "Period in months must be at least 1.",
+      "any.required": "Period in months is required.",
     }),
     cost: Joi.number().min(0).required().messages({
-      'number.base': 'Cost must be a number.',
-      'number.min': 'Cost must be at least 0.',
-      'any.required': 'Cost is required.',
+      "number.base": "Cost must be a number.",
+      "number.min": "Cost must be at least 0.",
+      "any.required": "Cost is required.",
     }),
   });
 
@@ -163,7 +169,13 @@ const updatePackage = async (req, res, next) => {
   }
 
   const { id } = req.params;
-  const { packageName, numberOfBranches, usersPerBranch, periodInMonths, cost } = req.body;
+  const {
+    packageName,
+    numberOfBranches,
+    usersPerBranch,
+    periodInMonths,
+    cost,
+  } = req.body;
 
   try {
     const updatedPackage = await prisma.package.update({
@@ -179,8 +191,8 @@ const updatePackage = async (req, res, next) => {
 
     res.status(200).json(updatedPackage);
   } catch (error) {
-    if (error.code === 'P2025') {
-      return next(createError(404, 'Package not found'));
+    if (error.code === "P2025") {
+      return next(createError(404, "Package not found"));
     }
     next(error);
   }

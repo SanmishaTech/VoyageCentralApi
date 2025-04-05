@@ -17,6 +17,9 @@ model User {
   lastLogin          DateTime?
   resetToken         String?   // Add this line
   resetTokenExpires  DateTime? // Add this line
+  agencyId           Int?      // Foreign key to the Agency table
+  branchId           Int?      // Foreign key to the Branch table (if applicable)
+  agency             Agency?   @relation(fields: [agencyId], references: [id])
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -41,7 +44,14 @@ model Package {
 model Agency {
   id                   Int       @id @default(autoincrement())
   businessName         String    // Business name
-  address              String    // Multiline address
+  addressLine1         String    // Address Line 1
+  state1               String    // State 1
+  city1                String    // City 1
+  pincode1             String    // Pincode 1
+  addressLine2         String?   // Address Line 2 (optional)
+  state2               String?   // State 2 (optional)
+  city2                String?   // City 2 (optional)
+  pincode2             String?   // Pincode 2 (optional)
   currentSubscriptionId Int?     // Foreign key to the Subscription table
   currentSubscription  Subscription? @relation("CurrentSubscription", fields: [currentSubscriptionId], references: [id])
   logo                 String?   // Logo (file path or URL)
@@ -51,6 +61,7 @@ model Agency {
   contactPersonPhone   String    // Contact person phone
   gstin                String    // GSTIN
   subscriptions        Subscription[] @relation("AgencySubscriptions") // One-to-many relationship with subscriptions
+  users                User[]         @relation // One-to-many relationship with users
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
