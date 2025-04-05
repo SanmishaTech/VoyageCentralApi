@@ -32,7 +32,7 @@ const getPackages = async (req, res) => {
     const totalPackages = await prisma.package.count({ where: whereClause });
 
     res.status(200).json({
-      data: packages,
+      packages: packages,
       meta: {
         total: totalPackages,
         page: parseInt(page, 10),
