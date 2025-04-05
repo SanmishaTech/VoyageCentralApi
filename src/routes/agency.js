@@ -136,6 +136,9 @@ router.get("/", auth, acl("agencies.read"), getAgencies);
  *               addressLine1:
  *                 type: string
  *                 description: Address Line 1 of the agency
+ *               addressLine2:
+ *                 type: string
+ *                 description: Address Line 2 of the agency (optional)
  *               state:
  *                 type: string
  *                 description: State where the agency is located
@@ -145,9 +148,6 @@ router.get("/", auth, acl("agencies.read"), getAgencies);
  *               pincode:
  *                 type: string
  *                 description: Pincode of the agency's location
- *               addressLine2:
- *                 type: string
- *                 description: Address Line 2 of the agency (optional)
  *               contactPersonName:
  *                 type: string
  *                 description: Name of the contact person

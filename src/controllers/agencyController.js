@@ -29,17 +29,31 @@ const getAgencies = async (req, res) => {
   };
 
   try {
-    const agencies = await prisma.agency.findMany({
-      where: whereClause,
-      skip,
-      take,
-      orderBy,
-    });
-
-    const totalAgencies = await prisma.agency.count({ where: whereClause });
+    // Fetch agencies with pagination, sorting, and related data
+    const [agencies, totalAgencies] = await prisma.$transaction([
+      prisma.agency.findMany({
+        skip,
+        take,
+        orderBy,
+        where: whereClause,
+        include: {
+          currentSubscription: {
+            select: {
+              id: true,
+              startDate: true,
+              endDate: true,
+              createdAt: true,
+              updatedAt: true,
+              package: true, // Include the package details from the packageId
+            },
+          },
+        },
+      }),
+      prisma.agency.count({ where: whereClause }), // Get the total count for pagination
+    ]);
 
     res.status(200).json({
-      agencies: agencies,
+      data: agencies,
       meta: {
         total: totalAgencies,
         page: parseInt(page, 10),
@@ -66,6 +80,7 @@ const createAgency = async (req, res, next) => {
       "string.empty": "Address Line 1 is required.",
       "any.required": "Address Line 1 is required.",
     }),
+    addressLine2: Joi.string().optional(),
     state: Joi.string().required().messages({
       "string.empty": "State is required.",
       "any.required": "State is required.",
@@ -78,7 +93,6 @@ const createAgency = async (req, res, next) => {
       "string.empty": "Pincode is required.",
       "any.required": "Pincode is required.",
     }),
-    addressLine2: Joi.string().optional(),
     contactPersonName: Joi.string().required().messages({
       "string.empty": "Contact person name is required.",
       "any.required": "Contact person name is required.",
@@ -92,10 +106,12 @@ const createAgency = async (req, res, next) => {
       "any.required": "Contact person email is required.",
       "string.email": "Contact person email must be a valid email address.",
     }),
-    gstin: Joi.string().required().messages({
-      "string.empty": "GSTIN is required.",
-      "any.required": "GSTIN is required.",
-    }),
+    gstin: Joi.string()
+      .optional()
+      .pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/)
+      .messages({
+        "string.pattern.base": "GSTIN must be in the format 07ABCDE1234F2Z5.",
+      }),
     letterHead: Joi.string().optional().messages({
       "string.empty": "Letterhead must be a valid file path or URL.",
     }),
@@ -138,13 +154,13 @@ const createAgency = async (req, res, next) => {
   const {
     businessName,
     addressLine1,
+    addressLine2,
     state,
     city,
     pincode,
-    addressLine2,
     contactPersonName,
     contactPersonPhone,
-    contactPersonEmail, // Added here
+    contactPersonEmail,
     gstin,
     letterHead,
     logo,
@@ -157,26 +173,49 @@ const createAgency = async (req, res, next) => {
   } = req.body;
 
   try {
-    // Create the agency first to get its ID
-    const newAgency = await prisma.agency.create({
-      data: {
-        businessName,
-        addressLine1,
-        state,
-        city,
-        pincode,
-        addressLine2,
-        contactPersonName,
-        contactPersonPhone,
-        contactPersonEmail, // Added here
-        gstin,
-        letterHead,
-        logo,
-      },
+    // Check if the package exists
+    const existingPackage = await prisma.package.findUnique({
+      where: { id: packageId },
     });
 
-    // Use a transaction to create the subscription and user
-    const [newSubscription, newUser] = await prisma.$transaction([
+    if (!existingPackage) {
+      return res.status(400).json({
+        errors: {
+          message: "Package does not exist with the provided packageId.",
+        },
+      });
+    }
+
+    // Check if a user with the same email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        errors: { message: "User already exists with this email." },
+      });
+    }
+
+    // Use a transaction to create the agency, subscription, and user
+    const [newAgency, newSubscription, newUser] = await prisma.$transaction([
+      // Create the agency
+      prisma.agency.create({
+        data: {
+          businessName,
+          addressLine1,
+          addressLine2,
+          state,
+          city,
+          pincode,
+          contactPersonName,
+          contactPersonPhone,
+          contactPersonEmail,
+          gstin,
+          letterHead,
+          logo,
+        },
+      }),
       // Create the subscription and link it to the agency using agencyId
       prisma.subscription.create({
         data: {
@@ -202,13 +241,12 @@ const createAgency = async (req, res, next) => {
           },
         },
       }),
+      // Update the agency with the current subscription ID
+      prisma.agency.update({
+        where: { id: newAgency.id },
+        data: { currentSubscriptionId: newSubscription.id },
+      }),
     ]);
-
-    // Update the agency with the current subscription ID
-    await prisma.agency.update({
-      where: { id: newAgency.id },
-      data: { currentSubscriptionId: newSubscription.id },
-    });
 
     res.status(201).json({
       agency: newAgency,
@@ -282,10 +320,12 @@ const updateAgency = async (req, res, next) => {
       "string.empty": "Contact person phone is required.",
       "any.required": "Contact person phone is required.",
     }),
-    gstin: Joi.string().required().messages({
-      "string.empty": "GSTIN is required.",
-      "any.required": "GSTIN is required.",
-    }),
+    gstin: Joi.string()
+      .optional()
+      .pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/)
+      .messages({
+        "string.pattern.base": "GSTIN must be in the format 07ABCDE1234F2Z5.",
+      }),
     letterHead: Joi.string().optional().messages({
       "string.empty": "Letterhead must be a valid file path or URL.",
     }),
