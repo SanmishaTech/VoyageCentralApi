@@ -302,6 +302,39 @@ const getAgencyById = async (req, res) => {
   try {
     const agency = await prisma.agency.findUnique({
       where: { id: parseInt(id, 10) },
+      include: {
+        users: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            branchId: true,
+            role: true,
+            active: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        subscriptions: {
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            createdAt: true,
+            updatedAt: true,
+            package: {
+              select: {
+                id: true,
+                packageName: true,
+                numberOfBranches: true,
+                usersPerBranch: true,
+                periodInMonths: true,
+                cost: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!agency) {
