@@ -125,12 +125,16 @@ const createAgency = async (req, res, next) => {
       .messages({
         "string.pattern.base": "GSTIN must be in the format 07ABCDE1234F2Z5.",
       }),
-    letterHead: Joi.string().optional().messages({
-      "string.empty": "Letterhead must be a valid file path or URL.",
-    }),
-    logo: Joi.string().optional().messages({
-      "string.empty": "Logo must be a valid file path or URL.",
-    }),
+    letterHead: Joi.string()
+      .allow("", null) // Allow empty string or null
+      .messages({
+        "string.empty": "Letterhead must be a valid file path or URL.",
+      }),
+    logo: Joi.string()
+      .allow("", null) // Allow empty string or null
+      .messages({
+        "string.empty": "Logo must be a valid file path or URL.",
+      }),
     subscription: Joi.object({
       packageId: Joi.number()
         .integer()
