@@ -1,13 +1,14 @@
-const validateRequest = (schema, req) => {
-  const { error } = schema.validate(req.body, { abortEarly: false });
-  if (error) {
+const validateRequest = async (schema, req) => {
+  try {
+    await schema.validateAsync(req.body, { abortEarly: false });
+    return null; // No validation errors
+  } catch (error) {
     const errors = error.details.reduce((acc, curr) => {
       acc[curr.context.key] = curr.message;
       return acc;
     }, {});
-    return errors;
+    return errors; // Return validation errors
   }
-  return null;
 };
 
 module.exports = validateRequest;

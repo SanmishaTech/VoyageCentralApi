@@ -4,6 +4,7 @@ const Joi = require("joi"); // Import Joi for validation
 const validateRequest = require("../utils/validation"); // Utility function for validation
 const createError = require("http-errors"); // For consistent error handling
 const bcrypt = require("bcrypt");
+const dayjs = require("dayjs"); // Import dayjs
 
 // Get all agencies with pagination, sorting, and search
 const getAgencies = async (req, res) => {
@@ -188,8 +189,11 @@ const createAgency = async (req, res, next) => {
   });
 
   try {
-    // Validate request body using Joi
-    await schema.validateAsync(req.body);
+    // Use validateRequest utility function
+    const validationErrors = await validateRequest(schema, req);
+    if (validationErrors) {
+      return res.status(400).json({ errors: validationErrors });
+    }
 
     const {
       businessName,
@@ -239,25 +243,16 @@ const createAgency = async (req, res, next) => {
       });
     }
 
-    // Calculate endDate based on periodInMonths
-    const startDate = new Date(subscription.startDate);
-    let endDate = new Date(startDate);
-
-    // Add the periodInMonths to the start date
-    const newMonth = endDate.getMonth() + packageData.periodInMonths; // Add months
-    endDate.setMonth(newMonth); // Set the new month
-
-    // Handle overflow of months (e.g., if newMonth > 11)
-    if (endDate.getMonth() !== newMonth % 12) {
-      endDate.setDate(0); // Set to the last day of the previous month
-    }
+    // Calculate endDate using dayjs
+    const startDate = dayjs(subscription.startDate);
+    const endDate = startDate.add(packageData.periodInMonths, "month");
 
     // Create the subscription
     const newSubscription = await prisma.subscription.create({
       data: {
         packageId: subscription.packageId,
-        startDate: startDate,
-        endDate: endDate,
+        startDate: startDate.toDate(), // Convert dayjs object to JavaScript Date
+        endDate: endDate.toDate(), // Convert dayjs object to JavaScript Date
         agencyId: newAgency.id, // Link to the newly created agency
       },
     });
@@ -288,9 +283,6 @@ const createAgency = async (req, res, next) => {
       user: newUser,
     });
   } catch (error) {
-    if (error.isJoi) {
-      return res.status(400).json({ errors: { message: error.message } });
-    }
     next(error); // Pass the error to the centralized error handler
   }
 };

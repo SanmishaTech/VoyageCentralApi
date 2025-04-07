@@ -1,16 +1,18 @@
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-const Joi = require('joi');
-const prisma = require('../config/db');
-const emailService = require('../services/emailService');
-const validateRequest = require('../utils/validation');
-const config = require('../config/config');
-const jwtConfig = require('../config/jwt');
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const { v4: uuidv4 } = require("uuid");
+const Joi = require("joi");
+const prisma = require("../config/db");
+const emailService = require("../services/emailService");
+const validateRequest = require("../utils/validation");
+const config = require("../config/config");
+const jwtConfig = require("../config/jwt");
 
 const register = async (req, res, next) => {
-  if (process.env.ALLOW_REGISTRATION !== 'true') {
-    return res.status(403).json({ errors: { message: 'Registration is disabled' } });
+  if (process.env.ALLOW_REGISTRATION !== "true") {
+    return res
+      .status(403)
+      .json({ errors: { message: "Registration is disabled" } });
   }
 
   const schema = Joi.object({
@@ -34,8 +36,10 @@ const register = async (req, res, next) => {
     });
     res.status(201).json(user);
   } catch (error) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ errors: { message: 'Email already exists' } });
+    if (error.code === "P2002") {
+      return res
+        .status(400)
+        .json({ errors: { message: "Email already exists" } });
     }
     next(error);
   }
@@ -52,15 +56,73 @@ const login = async (req, res, next) => {
 
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
+
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ errors: { message: 'Invalid email or password' } });
+      return res
+        .status(401)
+        .json({ errors: { message: "Invalid email or password" } });
     }
 
     if (!user.active) {
-      return res.status(403).json({ errors: { message: 'Account is inactive' } });
+      return res
+        .status(403)
+        .json({ errors: { message: "Account is inactive" } });
     }
 
-    // Update lastLogin timestamp using primary key (id)
+    // Check if the user is a super_admin
+    if (user.role === "super_admin") {
+      // Update lastLogin timestamp
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLogin: new Date() },
+      });
+
+      const token = jwt.sign({ userId: user.id }, jwtConfig.secret, {
+        expiresIn: jwtConfig.expiresIn,
+      });
+
+      return res.json({
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          lastLogin: user.lastLogin,
+        },
+      });
+    }
+
+    // If the user is not a super_admin, check their agency
+    const agency = await prisma.agency.findFirst({
+      where: {
+        users: {
+          some: { id: user.id }, // Check if the user belongs to an agency
+        },
+      },
+      include: {
+        currentSubscription: true, // Include the current subscription details
+      },
+    });
+
+    if (!agency) {
+      return res
+        .status(500)
+        .json({ errors: { message: "User does not belong to any agency" } });
+    }
+
+    // Check the subscription details
+    const currentSubscription = agency.currentSubscription;
+    if (
+      !currentSubscription ||
+      new Date(currentSubscription.endDate) < new Date()
+    ) {
+      return res
+        .status(403)
+        .json({ errors: { message: "Subscription expired" } });
+    }
+
+    // Update lastLogin timestamp
     await prisma.user.update({
       where: { id: user.id },
       data: { lastLogin: new Date() },
@@ -78,6 +140,15 @@ const login = async (req, res, next) => {
         email: user.email,
         role: user.role,
         lastLogin: user.lastLogin,
+        agency: {
+          id: agency.id,
+          name: agency.businessName,
+        },
+        subscription: {
+          id: currentSubscription.id,
+          startDate: currentSubscription.startDate,
+          endDate: currentSubscription.endDate,
+        },
       },
     });
   } catch (error) {
@@ -97,7 +168,7 @@ const forgotPassword = async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       return setTimeout(() => {
-        res.status(404).json({ errors: { message: 'User not found' } });
+        res.status(404).json({ errors: { message: "User not found" } });
       }, 3000);
     }
 
@@ -116,9 +187,14 @@ const forgotPassword = async (req, res, next) => {
       resetLink,
       appName: config.appName,
     };
-    await emailService.sendEmail(email, 'Password Reset Request', 'passwordReset', templateData);
+    await emailService.sendEmail(
+      email,
+      "Password Reset Request",
+      "passwordReset",
+      templateData
+    );
 
-    res.json({ message: 'Password reset link sent' });
+    res.json({ message: "Password reset link sent" });
   } catch (error) {
     next(error);
   }
@@ -143,7 +219,9 @@ const resetPassword = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(400).json({ errors: { message: 'Invalid or expired token' } });
+      return res
+        .status(400)
+        .json({ errors: { message: "Invalid or expired token" } });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -156,12 +234,15 @@ const resetPassword = async (req, res, next) => {
       },
     });
 
-    res.json({ message: 'Password reset successful' });
+    res.json({ message: "Password reset successful" });
   } catch (error) {
     next(error);
   }
 };
 
 module.exports = {
-  register, login, forgotPassword, resetPassword,
+  register,
+  login,
+  forgotPassword,
+  resetPassword,
 };
