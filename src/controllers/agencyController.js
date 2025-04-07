@@ -30,27 +30,39 @@ const getAgencies = async (req, res) => {
 
   try {
     // Fetch agencies with pagination, sorting, and related data
-    const [agencies, totalAgencies] = await prisma.$transaction([
-      prisma.agency.findMany({
-        skip,
-        take,
-        orderBy,
-        where: whereClause,
-        include: {
-          currentSubscription: {
-            select: {
-              id: true,
-              startDate: true,
-              endDate: true,
-              createdAt: true,
-              updatedAt: true,
-              package: true, // Include the package details from the packageId
-            },
+    const agencies = await prisma.agency.findMany({
+      skip,
+      take,
+      orderBy,
+      where: whereClause,
+      include: {
+        currentSubscription: {
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            createdAt: true,
+            updatedAt: true,
+            package: true, // Include the package details from the packageId
           },
         },
-      }),
-      prisma.agency.count({ where: whereClause }), // Get the total count for pagination
-    ]);
+        users: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            branchId: true,
+            role: true,
+            active: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    // Get the total count for pagination
+    const totalAgencies = await prisma.agency.count({ where: whereClause });
 
     res.status(200).json({
       data: agencies,
@@ -107,7 +119,7 @@ const createAgency = async (req, res, next) => {
       "string.email": "Contact person email must be a valid email address.",
     }),
     gstin: Joi.string()
-      .optional()
+      .allow("", null) // Allow empty string or null
       .pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/)
       .messages({
         "string.pattern.base": "GSTIN must be in the format 07ABCDE1234F2Z5.",
@@ -118,67 +130,108 @@ const createAgency = async (req, res, next) => {
     logo: Joi.string().optional().messages({
       "string.empty": "Logo must be a valid file path or URL.",
     }),
-    packageId: Joi.number().integer().required().messages({
-      "number.base": "Package ID must be a number.",
-      "any.required": "Package ID is required.",
-    }),
-    startDate: Joi.date().required().messages({
-      "date.base": "Start date must be a valid date.",
-      "any.required": "Start date is required.",
-    }),
-    endDate: Joi.date().required().messages({
-      "date.base": "End date must be a valid date.",
-      "any.required": "End date is required.",
-    }),
-    name: Joi.string().required().messages({
-      "string.empty": "User name is required.",
-      "any.required": "User name is required.",
-    }),
-    email: Joi.string().email().required().messages({
-      "string.empty": "User email is required.",
-      "any.required": "User email is required.",
-      "string.email": "User email must be a valid email address.",
-    }),
-    password: Joi.string().required().messages({
-      "string.empty": "User password is required.",
-      "any.required": "User password is required.",
-    }),
+    subscription: Joi.object({
+      packageId: Joi.number()
+        .integer()
+        .required()
+        .external(async (value) => {
+          // Check if the package exists
+          const existingPackage = await prisma.package.findUnique({
+            where: { id: value },
+          });
+
+          if (!existingPackage) {
+            throw new Error(
+              "Package does not exist with the provided packageId."
+            );
+          }
+          return value;
+        })
+        .messages({
+          "number.base": "Package ID must be a number.",
+          "any.required": "Package ID is required.",
+        }),
+      startDate: Joi.date().required().messages({
+        "date.base": "Start date must be a valid date.",
+        "any.required": "Start date is required.",
+      }),
+    }).required(),
+    user: Joi.object({
+      name: Joi.string().required().messages({
+        "string.empty": "User name is required.",
+        "any.required": "User name is required.",
+      }),
+      email: Joi.string()
+        .email()
+        .required()
+        .external(async (value) => {
+          // Check if a user with the same email already exists
+          const existingUser = await prisma.user.findUnique({
+            where: { email: value },
+          });
+
+          if (existingUser) {
+            throw new Error("User already exists with this email.");
+          }
+          return value;
+        })
+        .messages({
+          "string.empty": "User email is required.",
+          "any.required": "User email is required.",
+          "string.email": "User email must be a valid email address.",
+        }),
+      password: Joi.string().required().messages({
+        "string.empty": "User password is required.",
+        "any.required": "User password is required.",
+      }),
+    }).required(),
   });
 
-  // Validate request body using the utility function
-  const validationErrors = validateRequest(schema, req);
-  if (validationErrors) {
-    return res.status(400).json({ errors: validationErrors });
-  }
-
-  const {
-    businessName,
-    addressLine1,
-    addressLine2,
-    state,
-    city,
-    pincode,
-    contactPersonName,
-    contactPersonPhone,
-    contactPersonEmail,
-    gstin,
-    letterHead,
-    logo,
-    packageId,
-    startDate,
-    endDate,
-    name,
-    email,
-    password,
-  } = req.body;
-
   try {
-    // Check if the package exists
-    const existingPackage = await prisma.package.findUnique({
-      where: { id: packageId },
+    // Validate request body using Joi
+    await schema.validateAsync(req.body);
+
+    const {
+      businessName,
+      addressLine1,
+      addressLine2,
+      state,
+      city,
+      pincode,
+      contactPersonName,
+      contactPersonPhone,
+      contactPersonEmail,
+      gstin,
+      letterHead,
+      logo,
+      subscription, // Extract subscription object
+      user, // Extract user object
+    } = req.body;
+
+    // Create the agency first to get its ID
+    const newAgency = await prisma.agency.create({
+      data: {
+        businessName,
+        addressLine1,
+        addressLine2,
+        state,
+        city,
+        pincode,
+        contactPersonName,
+        contactPersonPhone,
+        contactPersonEmail,
+        gstin,
+        letterHead,
+        logo,
+      },
     });
 
-    if (!existingPackage) {
+    // Get package data to calculate endDate
+    const packageData = await prisma.package.findUnique({
+      where: { id: subscription.packageId },
+    });
+
+    if (!packageData) {
       return res.status(400).json({
         errors: {
           message: "Package does not exist with the provided packageId.",
@@ -186,67 +239,48 @@ const createAgency = async (req, res, next) => {
       });
     }
 
-    // Check if a user with the same email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    // Calculate endDate based on periodInMonths
+    const startDate = new Date(subscription.startDate);
+    let endDate = new Date(startDate);
 
-    if (existingUser) {
-      return res.status(400).json({
-        errors: { message: "User already exists with this email." },
-      });
+    // Add the periodInMonths to the start date
+    const newMonth = endDate.getMonth() + packageData.periodInMonths; // Add months
+    endDate.setMonth(newMonth); // Set the new month
+
+    // Handle overflow of months (e.g., if newMonth > 11)
+    if (endDate.getMonth() !== newMonth % 12) {
+      endDate.setDate(0); // Set to the last day of the previous month
     }
 
-    // Use a transaction to create the agency, subscription, and user
-    const [newAgency, newSubscription, newUser] = await prisma.$transaction([
-      // Create the agency
-      prisma.agency.create({
-        data: {
-          businessName,
-          addressLine1,
-          addressLine2,
-          state,
-          city,
-          pincode,
-          contactPersonName,
-          contactPersonPhone,
-          contactPersonEmail,
-          gstin,
-          letterHead,
-          logo,
-        },
-      }),
-      // Create the subscription and link it to the agency using agencyId
-      prisma.subscription.create({
-        data: {
-          package: {
-            connect: { id: packageId }, // Link the subscription to the package using packageId
-          },
-          startDate: new Date(startDate),
-          endDate: new Date(endDate),
-          agency: {
-            connect: { id: newAgency.id }, // Link the subscription to the agency using agencyId
-          },
-        },
-      }),
-      // Create the user and link it to the agency using agencyId
-      prisma.user.create({
-        data: {
-          name,
-          email,
-          password: await bcrypt.hash(password, 10), // Hash the password
-          role: "branch_admin", // Default role
-          agency: {
-            connect: { id: newAgency.id }, // Link the user to the agency using agencyId
-          },
-        },
-      }),
-      // Update the agency with the current subscription ID
-      prisma.agency.update({
-        where: { id: newAgency.id },
-        data: { currentSubscriptionId: newSubscription.id },
-      }),
-    ]);
+    // Create the subscription
+    const newSubscription = await prisma.subscription.create({
+      data: {
+        packageId: subscription.packageId,
+        startDate: startDate,
+        endDate: endDate,
+        agencyId: newAgency.id, // Link to the newly created agency
+      },
+    });
+
+    // Hash the user password
+    const hashedPassword = await bcrypt.hash(user.password, 10);
+
+    // Create the user
+    const newUser = await prisma.user.create({
+      data: {
+        name: user.name,
+        email: user.email,
+        password: hashedPassword,
+        role: "branch_admin", // Default role
+        agencyId: newAgency.id, // Link to the newly created agency
+      },
+    });
+
+    // Update the agency with the latest subscription ID
+    await prisma.agency.update({
+      where: { id: newAgency.id },
+      data: { currentSubscriptionId: newSubscription.id },
+    });
 
     res.status(201).json({
       agency: newAgency,
@@ -254,6 +288,9 @@ const createAgency = async (req, res, next) => {
       user: newUser,
     });
   } catch (error) {
+    if (error.isJoi) {
+      return res.status(400).json({ errors: { message: error.message } });
+    }
     next(error); // Pass the error to the centralized error handler
   }
 };

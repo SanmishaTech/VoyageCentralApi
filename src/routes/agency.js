@@ -31,7 +31,7 @@ const acl = require("../middleware/acl");
  * @swagger
  * /agencies:
  *   get:
- *     summary: Get all agencies
+ *     summary: Get all agencies with pagination, sorting, and search
  *     tags: [Agencies]
  *     security:
  *       - bearerAuth: []
@@ -40,76 +40,56 @@ const acl = require("../middleware/acl");
  *         name: page
  *         schema:
  *           type: integer
- *           default: 1
- *         description: Page number for pagination
+ *         description: Page number for pagination (default is 1)
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *           default: 10
- *         description: Number of agencies per page
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search term for agency name or contact person
+ *         description: Number of records per page (default is 10)
  *       - in: query
  *         name: sortBy
  *         schema:
  *           type: string
- *           default: id
- *         description: Field to sort by
+ *         description: Field to sort by (default is "id")
  *       - in: query
  *         name: order
  *         schema:
  *           type: string
  *           enum: [asc, desc]
- *           default: asc
- *         description: Sort order
+ *         description: Sort order (default is "asc")
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term for filtering agencies
  *     responses:
  *       200:
- *         description: List of all agencies
+ *         description: List of agencies
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 agencies:
+ *                 data:
  *                   type: array
  *                   items:
  *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       businessName:
- *                         type: string
- *                       addressLine1:
- *                         type: string
- *                       state1:
- *                         type: string
- *                       city1:
- *                         type: string
- *                       pincode1:
- *                         type: string
- *                       contactPersonName:
- *                         type: string
- *                       contactPersonEmail:
- *                         type: string
- *                       contactPersonPhone:
- *                         type: string
- *                       gstin:
- *                         type: string
+ *                     description: Agency details
  *                 meta:
  *                   type: object
  *                   properties:
  *                     total:
  *                       type: integer
+ *                       description: Total number of agencies
  *                     page:
  *                       type: integer
+ *                       description: Current page number
  *                     limit:
  *                       type: integer
+ *                       description: Number of records per page
  *                     totalPages:
  *                       type: integer
+ *                       description: Total number of pages
  *       500:
  *         description: Failed to fetch agencies
  */
@@ -160,34 +140,38 @@ router.get("/", auth, acl("agencies.read"), getAgencies);
  *                 description: Email of the contact person
  *               gstin:
  *                 type: string
- *                 description: GSTIN of the agency
+ *                 description: GSTIN of the agency (optional, must follow the format 07ABCDE1234F2Z5)
  *               letterHead:
  *                 type: string
  *                 description: Letterhead attachment (file path or URL) (optional)
  *               logo:
  *                 type: string
  *                 description: Logo of the agency (file path or URL) (optional)
- *               packageId:
- *                 type: integer
- *                 description: ID of the package associated with the subscription
- *               startDate:
- *                 type: string
- *                 format: date
- *                 description: Start date of the subscription
- *               endDate:
- *                 type: string
- *                 format: date
- *                 description: End date of the subscription
- *               name:
- *                 type: string
- *                 description: Name of the user to be created
- *               email:
- *                 type: string
- *                 format: email
- *                 description: Email of the user to be created
- *               password:
- *                 type: string
- *                 description: Password of the user to be created
+ *               subscription:
+ *                 type: object
+ *                 description: Subscription details
+ *                 properties:
+ *                   packageId:
+ *                     type: integer
+ *                     description: ID of the package associated with the subscription
+ *                   startDate:
+ *                     type: string
+ *                     format: date
+ *                     description: Start date of the subscription
+ *               user:
+ *                 type: object
+ *                 description: User details for the agency
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                     description: Name of the user
+ *                   email:
+ *                     type: string
+ *                     format: email
+ *                     description: Email of the user
+ *                   password:
+ *                     type: string
+ *                     description: Password of the user
  *     responses:
  *       201:
  *         description: Agency created successfully
@@ -216,7 +200,7 @@ router.post("/", auth, acl("agencies.write"), createAgency);
  * @swagger
  * /agencies/{id}:
  *   get:
- *     summary: Get agency by ID
+ *     summary: Get an agency by ID
  *     tags: [Agencies]
  *     security:
  *       - bearerAuth: []
@@ -230,6 +214,11 @@ router.post("/", auth, acl("agencies.write"), createAgency);
  *     responses:
  *       200:
  *         description: Agency details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               description: Details of the agency
  *       404:
  *         description: Agency not found
  *       500:
@@ -241,7 +230,7 @@ router.get("/:id", auth, acl("agencies.read"), getAgencyById);
  * @swagger
  * /agencies/{id}:
  *   put:
- *     summary: Update agency by ID
+ *     summary: Update an agency
  *     tags: [Agencies]
  *     security:
  *       - bearerAuth: []
@@ -261,33 +250,61 @@ router.get("/:id", auth, acl("agencies.read"), getAgencyById);
  *             properties:
  *               businessName:
  *                 type: string
+ *                 description: Name of the agency
  *               addressLine1:
  *                 type: string
- *               state1:
- *                 type: string
- *               city1:
- *                 type: string
- *               pincode1:
- *                 type: string
+ *                 description: Address Line 1 of the agency
  *               addressLine2:
  *                 type: string
+ *                 description: Address Line 2 of the agency (optional)
+ *               state1:
+ *                 type: string
+ *                 description: State 1 of the agency
+ *               city1:
+ *                 type: string
+ *                 description: City 1 of the agency
+ *               pincode1:
+ *                 type: string
+ *                 description: Pincode 1 of the agency
  *               state2:
  *                 type: string
+ *                 description: State 2 of the agency (optional)
  *               city2:
  *                 type: string
+ *                 description: City 2 of the agency (optional)
  *               pincode2:
  *                 type: string
+ *                 description: Pincode 2 of the agency (optional)
  *               contactPersonName:
  *                 type: string
- *               contactPersonEmail:
- *                 type: string
+ *                 description: Name of the contact person
  *               contactPersonPhone:
  *                 type: string
+ *                 description: Phone number of the contact person
+ *               contactPersonEmail:
+ *                 type: string
+ *                 format: email
+ *                 description: Email of the contact person
  *               gstin:
  *                 type: string
+ *                 description: GSTIN of the agency (optional, must follow the format 07ABCDE1234F2Z5)
+ *               letterHead:
+ *                 type: string
+ *                 description: Letterhead attachment (file path or URL) (optional)
+ *               logo:
+ *                 type: string
+ *                 description: Logo of the agency (file path or URL) (optional)
+ *               currentSubscriptionId:
+ *                 type: integer
+ *                 description: ID of the current subscription
  *     responses:
  *       200:
  *         description: Agency updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               description: Updated agency details
  *       400:
  *         description: Bad request
  *       404:
@@ -301,7 +318,7 @@ router.put("/:id", auth, acl("agencies.write"), updateAgency);
  * @swagger
  * /agencies/{id}:
  *   delete:
- *     summary: Delete agency by ID
+ *     summary: Delete an agency
  *     tags: [Agencies]
  *     security:
  *       - bearerAuth: []
