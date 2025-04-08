@@ -1,36 +1,39 @@
-const createError = require('http-errors');
-const Joi = require('joi');
-const bcrypt = require('bcrypt');
-const ExcelJS = require('exceljs');
-const prisma = require('../config/db');
-const validateRequest = require('../utils/validation');
-const roles = require('../config/roles');
-const aclService = require('../services/aclService');
+const createError = require("http-errors");
+const bcrypt = require("bcrypt");
+const ExcelJS = require("exceljs");
+const prisma = require("../config/db");
+const validateRequest = require("../utils/validateRequest");
+const roles = require("../config/roles");
+const aclService = require("../services/aclService");
 const { z } = require("zod");
 
 const getAllUsers = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  const search = req.query.search || '';
-  const roles = req.query.roles ? req.query.roles.split(',') : []; // Handle multiple roles as a comma-separated string
-  const active = req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined;
-  const sortBy = req.query.sortBy || 'id';
-  const sortOrder = req.query.sortOrder === 'desc' ? 'desc' : 'asc';
-  const exportToExcel = req.query.export === 'true'; // Check if export is requested
+  const search = req.query.search || "";
+  const roles = req.query.roles ? req.query.roles.split(",") : []; // Handle multiple roles as a comma-separated string
+  const active =
+    req.query.active === "true"
+      ? true
+      : req.query.active === "false"
+      ? false
+      : undefined;
+  const sortBy = req.query.sortBy || "id";
+  const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+  const exportToExcel = req.query.export === "true"; // Check if export is requested
 
   // Check if the user has the 'users.export' permission using ACL service
-  if (exportToExcel && !aclService.hasPermission(req.user, 'users.export')) {
-    return res.status(403).json({ errors: { message: 'You do not have permission to export users' } });
+  if (exportToExcel && !aclService.hasPermission(req.user, "users.export")) {
+    return res.status(403).json({
+      errors: { message: "You do not have permission to export users" },
+    });
   }
 
   const whereClause = {
     AND: [
       {
-        OR: [
-          { name: { contains: search } },
-          { email: { contains: search } },
-        ],
+        OR: [{ name: { contains: search } }, { email: { contains: search } }],
       },
       roles.length > 0 ? { role: { in: roles } } : {}, // Filter by multiple roles
       active !== undefined ? { active } : {},
@@ -56,16 +59,16 @@ const getAllUsers = async (req, res, next) => {
     if (exportToExcel) {
       // Create a new workbook and worksheet
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Users');
+      const worksheet = workbook.addWorksheet("Users");
 
       // Add headers
       worksheet.columns = [
-        { header: 'ID', key: 'id', width: 10 },
-        { header: 'Name', key: 'name', width: 30 },
-        { header: 'Email', key: 'email', width: 30 },
-        { header: 'Role', key: 'role', width: 15 },
-        { header: 'Active', key: 'active', width: 10 },
-        { header: 'Last Login', key: 'lastLogin', width: 20 },
+        { header: "ID", key: "id", width: 10 },
+        { header: "Name", key: "name", width: 30 },
+        { header: "Email", key: "email", width: 30 },
+        { header: "Role", key: "role", width: 15 },
+        { header: "Active", key: "active", width: 10 },
+        { header: "Last Login", key: "lastLogin", width: 20 },
       ];
 
       // Add rows
@@ -75,14 +78,17 @@ const getAllUsers = async (req, res, next) => {
           name: user.name,
           email: user.email,
           role: user.role,
-          active: user.active ? 'Yes' : 'No',
-          lastLogin: user.lastLogin ? user.lastLogin.toISOString() : 'N/A',
+          active: user.active ? "Yes" : "No",
+          lastLogin: user.lastLogin ? user.lastLogin.toISOString() : "N/A",
         });
       });
 
       // Set response headers for file download
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename=users.xlsx');
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader("Content-Disposition", "attachment; filename=users.xlsx");
 
       // Write the workbook to the response
       await workbook.xlsx.write(res);
@@ -100,7 +106,6 @@ const getAllUsers = async (req, res, next) => {
       totalPages,
       totalUsers,
     });
-
   } catch (error) {
     next(error);
   }
@@ -112,7 +117,7 @@ const getUserById = async (req, res, next) => {
       where: { id: parseInt(req.params.id) },
     });
     if (!user) {
-      return next(createError(404, 'User not found'));
+      return next(createError(404, "User not found"));
     }
     res.json(user);
   } catch (error) {
@@ -122,76 +127,93 @@ const getUserById = async (req, res, next) => {
 
 const createUser = async (req, res, next) => {
   // Define Zod schema for user creation
-  const schema = z.object({
-    name: z.string().nonempty("Name is required."),
-    email: z.string().email("Email must be a valid email address."),
-    password: z.string().min(6, "Password must be at least 6 characters long."),
-    role: z.enum(Object.values(roles), "Invalid role."),
-    active: z.boolean().optional(),
-  });
+  const schema = z
+    .object({
+      name: z.string().nonempty("Name is required."),
+      email: z
+        .string()
+        .email("Email must be a valid email address.")
+        .nonempty("Email is required."),
+      password: z
+        .string()
+        .min(6, "Password must be at least 6 characters long.")
+        .nonempty("Password is required."),
+      role: z.enum(Object.values(roles), "Invalid role."),
+      active: z.boolean().optional(),
+    })
+    .superRefine(async (data, ctx) => {
+      // Check if a user with the same email already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: data.email },
+      });
+
+      if (existingUser) {
+        ctx.addIssue({
+          path: ["email"],
+          message: `User with email ${data.email} already exists.`,
+        });
+      }
+    });
+
+  // Validate the request body using Zod
+  const validationErrors = await validateRequest(schema, req.body, res);
 
   try {
-    // Validate the request body using Zod
-    const validatedData = schema.parse(req.body);
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
-
-    // Create the user
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
     const user = await prisma.user.create({
       data: {
-        ...validatedData,
+        ...req.body,
         password: hashedPassword,
       },
     });
-
     res.status(201).json(user);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      // Handle Zod validation errors
-      return res.status(400).json({
-        errors: error.errors.map((e) => ({
-          path: e.path,
-          message: e.message,
-        })),
-      });
-    }
-
-    if (error.code === "P2002") {
-      return res.status(400).json({ errors: { message: "Email already exists" } });
-    }
-
     next(error);
   }
 };
 
 const updateUser = async (req, res, next) => {
-  const schema = Joi.object({
-    name: Joi.string().optional(),
-    email: Joi.string().email().optional(),
-    role: Joi.string().valid(...Object.values(roles)).optional(),
-    active: Joi.boolean().optional(),
-  });
+  // Define Zod schema for user update
+  const schema = z
+    .object({
+      name: z.string().nonempty("Name is required.").optional(),
+      email: z
+        .string()
+        .email("Email must be a valid email address.")
+        .optional(),
+      role: z.enum(Object.values(roles), "Invalid role."),
+      active: z.boolean().optional(),
+    })
+    .superRefine(async (data, ctx) => {
+      const { id } = req.params; // Get the current user's ID from the URL params
 
-  const validationErrors = validateRequest(schema, req);
-  if (validationErrors) {
-    return res.status(400).json({ errors: validationErrors });
-  }
+      // Check if a user with the same email already exists, excluding the current user
+      const existingUser = await prisma.user.findUnique({
+        where: {
+          email: data.email,
+        },
+        select: { id: true }, // We only need the id to compare
+      });
+
+      // If an existing user is found and it's not the current user
+      if (existingUser && existingUser.id !== parseInt(id)) {
+        ctx.addIssue({
+          path: ["email"],
+          message: `User with email ${data.email} already exists.`,
+        });
+      }
+    });
+
+  // Validate the request body using Zod
+  const validationErrors = await validateRequest(schema, req.body, res);
 
   try {
     const updatedUser = await prisma.user.update({
       where: { id: parseInt(req.params.id) },
-      data: {
-        ...req.body,
-      },
+      data: req.body,
     });
-
     res.json(updatedUser);
-
   } catch (error) {
-    if (error.code === 'P2002') {
-      return next(createError(400, 'Email already exists'));
-    }
     next(error);
   }
 };
@@ -199,24 +221,26 @@ const updateUser = async (req, res, next) => {
 const deleteUser = async (req, res, next) => {
   try {
     await prisma.user.delete({ where: { id: parseInt(req.params.id) } });
-    res.json({ message: 'User deleted' });
+    res.json({ message: "User deleted" });
   } catch (error) {
-    if (error.code === 'P2025') {
-      return next(createError(404, 'User not found'));
+    if (error.code === "P2025") {
+      return next(createError(404, "User not found"));
     }
     next(error);
   }
 };
 
 const setActiveStatus = async (req, res, next) => {
-  const schema = Joi.object({
-    active: Joi.boolean().required(),
+  // Define Zod schema for active status
+  const schema = z.object({
+    active: z.boolean({
+      required_error: "Active status is required.",
+      invalid_type_error: "Active status must be a boolean.",
+    }),
   });
 
-  const validationErrors = validateRequest(schema, req);
-  if (validationErrors) {
-    return res.status(400).json({ errors: validationErrors });
-  }
+  // Validate the request body using Zod
+  const validationErrors = await validateRequest(schema, req.body, res);
 
   try {
     const updatedUser = await prisma.user.update({
@@ -230,14 +254,16 @@ const setActiveStatus = async (req, res, next) => {
 };
 
 const changePassword = async (req, res, next) => {
-  const schema = Joi.object({
-    password: Joi.string().min(6).required(),
+  // Define Zod schema for password validation
+  const schema = z.object({
+    password: z
+      .string()
+      .min(6, "Password must be at least 6 characters long.")
+      .nonempty("Password is required."),
   });
 
-  const validationErrors = validateRequest(schema, req);
-  if (validationErrors) {
-    return res.status(400).json({ errors: validationErrors });
-  }
+  // Validate the request body using Zod
+  const validationErrors = await validateRequest(schema, req.body, res);
 
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
@@ -252,5 +278,11 @@ const changePassword = async (req, res, next) => {
 };
 
 module.exports = {
-  getAllUsers, getUserById, createUser, updateUser, deleteUser, setActiveStatus, changePassword,
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+  setActiveStatus,
+  changePassword,
 };

@@ -1,13 +1,14 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
-const Joi = require("joi");
+const { z } = require("zod");
 const prisma = require("../config/db");
 const emailService = require("../services/emailService");
-const validateRequest = require("../utils/validation");
+const validateRequest = require("../utils/validateRequest");
 const config = require("../config/config");
 const jwtConfig = require("../config/jwt");
 
+// Register a new user
 const register = async (req, res, next) => {
   if (process.env.ALLOW_REGISTRATION !== "true") {
     return res
@@ -15,46 +16,70 @@ const register = async (req, res, next) => {
       .json({ errors: { message: "Registration is disabled" } });
   }
 
-  const schema = Joi.object({
-    name: Joi.string().required(),
-    email: Joi.string().email().required(),
-    password: Joi.string().min(6).required(),
-  });
+  // Define Zod schema for registration validation
+  const schema = z
+    .object({
+      name: z.string().nonempty("Name is required."),
+      email: z
+        .string()
+        .email("Email must be a valid email address.")
+        .nonempty("Email is required."),
+      password: z
+        .string()
+        .min(6, "Password must be at least 6 characters long.")
+        .nonempty("Password is required."),
+    })
+    .superRefine(async (data, ctx) => {
+      // Check if a user with the same email already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: data.email },
+      });
+
+      if (existingUser) {
+        ctx.addIssue({
+          path: ["email"],
+          message: `User with email ${data.email} already exists.`,
+        });
+      }
+    });
 
   try {
-    validateRequest(schema, req);
+    // Use the reusable validation function
+    const validatedData = await validateRequest(schema, req.body, res);
 
-    const { name, email, password } = req.body;
+    const { name, email, password } = validatedData;
     const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: config.defaultUserRole, // Set the default role from the config file
       },
     });
+
     res.status(201).json(user);
   } catch (error) {
-    if (error.code === "P2002") {
-      return res
-        .status(400)
-        .json({ errors: { message: "Email already exists" } });
-    }
     next(error);
   }
 };
 
+// Login a user
 const login = async (req, res, next) => {
-  const schema = Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().required(),
+  // Define Zod schema for login validation
+  const schema = z.object({
+    email: z
+      .string()
+      .email("Email must be a valid email address.")
+      .nonempty("Email is required."),
+    password: z.string().nonempty("Password is required."),
   });
 
   try {
-    validateRequest(schema, req);
+    // Use the reusable validation function
+    const validatedData = await validateRequest(schema, req.body, res);
 
-    const { email, password } = req.body;
+    const { email, password } = validatedData;
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -69,172 +94,84 @@ const login = async (req, res, next) => {
         .json({ errors: { message: "Account is inactive" } });
     }
 
-    // Check if the user is a super_admin
-    if (user.role === "super_admin") {
-      // Update lastLogin timestamp
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { lastLogin: new Date() },
-      });
-
-      const token = jwt.sign({ userId: user.id }, jwtConfig.secret, {
-        expiresIn: jwtConfig.expiresIn,
-      });
-
-      return res.json({
-        token,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          lastLogin: user.lastLogin,
-        },
-      });
-    }
-
-    // If the user is not a super_admin, check their agency
-    const agency = await prisma.agency.findFirst({
-      where: {
-        users: {
-          some: { id: user.id }, // Check if the user belongs to an agency
-        },
-      },
-      include: {
-        currentSubscription: true, // Include the current subscription details
-      },
-    });
-
-    if (!agency) {
-      return res
-        .status(500)
-        .json({ errors: { message: "User does not belong to any agency" } });
-    }
-
-    // Check the subscription details
-    const currentSubscription = agency.currentSubscription;
-    if (
-      !currentSubscription ||
-      new Date(currentSubscription.endDate) < new Date()
-    ) {
-      return res
-        .status(403)
-        .json({ errors: { message: "Subscription expired" } });
-    }
-
-    // Update lastLogin timestamp
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLogin: new Date() },
-    });
-
     const token = jwt.sign({ userId: user.id }, jwtConfig.secret, {
       expiresIn: jwtConfig.expiresIn,
     });
 
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        lastLogin: user.lastLogin,
-        agency: {
-          id: agency.id,
-          name: agency.businessName,
-        },
-        subscription: {
-          id: currentSubscription.id,
-          startDate: currentSubscription.startDate,
-          endDate: currentSubscription.endDate,
-        },
-      },
-    });
+    res.json({ token, user });
   } catch (error) {
     next(error);
   }
 };
 
+// Forgot password
 const forgotPassword = async (req, res, next) => {
-  const schema = Joi.object({
-    email: Joi.string().email().required(),
+  // Define Zod schema for forgot password validation
+  const schema = z.object({
+    email: z
+      .string()
+      .email("Email must be a valid email address.")
+      .nonempty("Email is required."),
   });
 
   try {
-    validateRequest(schema, req);
+    // Use the reusable validation function
+    const validatedData = await validateRequest(schema, req.body, res);
 
-    const { email, resetUrl } = req.body;
+    const { email } = validatedData;
     const user = await prisma.user.findUnique({ where: { email } });
+
     if (!user) {
-      return setTimeout(() => {
-        res.status(404).json({ errors: { message: "User not found" } });
-      }, 3000);
+      return res
+        .status(404)
+        .json({ errors: { message: "User with this email does not exist." } });
     }
 
     const resetToken = uuidv4();
     await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetToken,
-        resetTokenExpires: new Date(Date.now() + 3600000), // Token expires in 1 hour
-      },
+      where: { email },
+      data: { resetToken },
     });
 
-    const resetLink = `${resetUrl}/${resetToken}`; // Replace with your actual domain
-    const templateData = {
-      name: user.name,
-      resetLink,
-      appName: config.appName,
-    };
-    await emailService.sendEmail(
-      email,
-      "Password Reset Request",
-      "passwordReset",
-      templateData
-    );
+    await emailService.sendPasswordResetEmail(email, resetToken);
 
-    res.json({ message: "Password reset link sent" });
+    res.status(200).json({ message: "Password reset email sent." });
   } catch (error) {
     next(error);
   }
 };
 
+// Reset password
 const resetPassword = async (req, res, next) => {
-  const schema = Joi.object({
-    password: Joi.string().min(6).required(),
+  // Define Zod schema for reset password validation
+  const schema = z.object({
+    resetToken: z.string().nonempty("Reset token is required."),
+    newPassword: z
+      .string()
+      .min(6, "New password must be at least 6 characters long.")
+      .nonempty("New password is required."),
   });
 
   try {
-    validateRequest(schema, req);
+    // Use the reusable validation function
+    const validatedData = await validateRequest(schema, req.body, res);
 
-    const { password } = req.body;
-    const { token } = req.body;
-
-    const user = await prisma.user.findFirst({
-      where: {
-        resetToken: token,
-        resetTokenExpires: { gt: new Date() }, // Check if the token is not expired
-      },
-    });
+    const { resetToken, newPassword } = validatedData;
+    const user = await prisma.user.findUnique({ where: { resetToken } });
 
     if (!user) {
       return res
-        .status(400)
-        .json({ errors: { message: "Invalid or expired token" } });
+        .status(404)
+        .json({ errors: { message: "Invalid or expired reset token." } });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        password: hashedPassword,
-        resetToken: null, // Clear the token after use
-        resetTokenExpires: null,
-      },
+      where: { resetToken },
+      data: { password: hashedPassword, resetToken: null },
     });
 
-    res.json({ message: "Password reset successful" });
+    res.status(200).json({ message: "Password reset successfully." });
   } catch (error) {
     next(error);
   }

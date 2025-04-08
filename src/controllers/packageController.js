@@ -1,7 +1,7 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const Joi = require("joi"); // Import Joi for validation
-const validateRequest = require("../utils/validation"); // Utility function for validation
+const { z } = require("zod");
+const validateRequest = require("../utils/validateRequest");
 const createError = require("http-errors"); // For consistent error handling
 
 // Get all packages with pagination, sorting, and search
@@ -52,39 +52,40 @@ const getPackages = async (req, res) => {
 
 // Create a new package
 const createPackage = async (req, res, next) => {
-  // Define Joi schema for package validation
-  const schema = Joi.object({
-    packageName: Joi.string().required().messages({
-      "string.empty": "Package name is required.",
-      "any.required": "Package name is required.",
-    }),
-    numberOfBranches: Joi.number().integer().min(1).required().messages({
-      "number.base": "Number of branches must be a number.",
-      "number.min": "Number of branches must be at least 1.",
-      "any.required": "Number of branches is required.",
-    }),
-    usersPerBranch: Joi.number().integer().min(1).required().messages({
-      "number.base": "Users per branch must be a number.",
-      "number.min": "Users per branch must be at least 1.",
-      "any.required": "Users per branch is required.",
-    }),
-    periodInMonths: Joi.number().integer().min(1).required().messages({
-      "number.base": "Period in months must be a number.",
-      "number.min": "Period in months must be at least 1.",
-      "any.required": "Period in months is required.",
-    }),
-    cost: Joi.number().min(0).required().messages({
-      "number.base": "Cost must be a number.",
-      "number.min": "Cost must be at least 0.",
-      "any.required": "Cost is required.",
-    }),
+  // Define Zod schema for package creation
+  const schema = z.object({
+    packageName: z.string().nonempty("Package name is required."),
+    numberOfBranches: z
+      .number({
+        required_error: "Number of branches is required.",
+        invalid_type_error: "Number of branches must be a number.",
+      })
+      .int("Number of branches must be an integer.")
+      .min(1, "Number of branches must be at least 1."),
+    usersPerBranch: z
+      .number({
+        required_error: "Users per branch is required.",
+        invalid_type_error: "Users per branch must be a number.",
+      })
+      .int("Users per branch must be an integer.")
+      .min(1, "Users per branch must be at least 1."),
+    periodInMonths: z
+      .number({
+        required_error: "Period in months is required.",
+        invalid_type_error: "Period in months must be a number.",
+      })
+      .int("Period in months must be an integer.")
+      .min(1, "Period in months must be at least 1."),
+    cost: z
+      .number({
+        required_error: "Cost is required.",
+        invalid_type_error: "Cost must be a number.",
+      })
+      .min(0, "Cost must be at least 0."),
   });
 
-  // Validate request body using the utility function
-  const validationErrors = validateRequest(schema, req);
-  if (validationErrors) {
-    return res.status(400).json({ errors: validationErrors });
-  }
+  // Validate the request body using Zod
+  const validationErrors = await validateRequest(schema, req.body, res);
 
   const {
     packageName,
@@ -134,39 +135,40 @@ const getPackageById = async (req, res) => {
 
 // Update a package
 const updatePackage = async (req, res, next) => {
-  // Define Joi schema for package validation
-  const schema = Joi.object({
-    packageName: Joi.string().required().messages({
-      "string.empty": "Package name is required.",
-      "any.required": "Package name is required.",
-    }),
-    numberOfBranches: Joi.number().integer().min(1).required().messages({
-      "number.base": "Number of branches must be a number.",
-      "number.min": "Number of branches must be at least 1.",
-      "any.required": "Number of branches is required.",
-    }),
-    usersPerBranch: Joi.number().integer().min(1).required().messages({
-      "number.base": "Users per branch must be a number.",
-      "number.min": "Users per branch must be at least 1.",
-      "any.required": "Users per branch is required.",
-    }),
-    periodInMonths: Joi.number().integer().min(1).required().messages({
-      "number.base": "Period in months must be a number.",
-      "number.min": "Period in months must be at least 1.",
-      "any.required": "Period in months is required.",
-    }),
-    cost: Joi.number().min(0).required().messages({
-      "number.base": "Cost must be a number.",
-      "number.min": "Cost must be at least 0.",
-      "any.required": "Cost is required.",
-    }),
+  // Define Zod schema for package update
+  const schema = z.object({
+    packageName: z.string().nonempty("Package name is required."),
+    numberOfBranches: z
+      .number({
+        required_error: "Number of branches is required.",
+        invalid_type_error: "Number of branches must be a number.",
+      })
+      .int("Number of branches must be an integer.")
+      .min(1, "Number of branches must be at least 1."),
+    usersPerBranch: z
+      .number({
+        required_error: "Users per branch is required.",
+        invalid_type_error: "Users per branch must be a number.",
+      })
+      .int("Users per branch must be an integer.")
+      .min(1, "Users per branch must be at least 1."),
+    periodInMonths: z
+      .number({
+        required_error: "Period in months is required.",
+        invalid_type_error: "Period in months must be a number.",
+      })
+      .int("Period in months must be an integer.")
+      .min(1, "Period in months must be at least 1."),
+    cost: z
+      .number({
+        required_error: "Cost is required.",
+        invalid_type_error: "Cost must be a number.",
+      })
+      .min(0, "Cost must be at least 0."),
   });
 
-  // Validate request body using the utility function
-  const validationErrors = validateRequest(schema, req);
-  if (validationErrors) {
-    return res.status(400).json({ errors: validationErrors });
-  }
+  // Validate the request body using Zod
+  const validationErrors = await validateRequest(schema, req.body, res);
 
   const { id } = req.params;
   const {

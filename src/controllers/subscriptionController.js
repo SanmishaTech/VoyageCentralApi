@@ -1,57 +1,64 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const Joi = require("joi"); // Import Joi for validation
-const validateRequest = require("../utils/validation"); // Utility function for validation
+const { z } = require("zod"); // Import Zod for validation
+const validateRequest = require("../utils/validateRequest"); // Utility function for validation
 const dayjs = require("dayjs"); // Import dayjs
 
 const createSubscription = async (req, res, next) => {
-  // Define Joi schema for subscription validation
-  const schema = Joi.object({
-    packageId: Joi.number().integer().required().messages({
-      "number.base": "Package ID must be a number.",
-      "any.required": "Package ID is required.",
-    }),
-    agencyId: Joi.number().integer().required().messages({
-      "number.base": "Agency ID must be a number.",
-      "any.required": "Agency ID is required.",
-    }),
-  });
+  // Define Zod schema for subscription validation
+  const schema = z
+    .object({
+      packageId: z
+        .number({
+          required_error: "Package ID is required.",
+          invalid_type_error: "Package ID must be a number.",
+        })
+        .int("Package ID must be an integer."),
+      agencyId: z
+        .number({
+          required_error: "Agency ID is required.",
+          invalid_type_error: "Agency ID must be a number.",
+        })
+        .int("Agency ID must be an integer."),
+    })
+    .superRefine(async (data, ctx) => {
+      // Check if the package exists
+      const packageData = await prisma.package.findUnique({
+        where: { id: parseInt(data.packageId) },
+      });
 
-  // Validate request body using the utility function
-  const validationErrors = await validateRequest(schema, req);
-  if (validationErrors) {
-    return res.status(400).json({ errors: validationErrors });
-  }
+      if (!packageData) {
+        ctx.addIssue({
+          path: ["packageId"],
+          message: "Package does not exist with the provided packageId.",
+        });
+      }
+
+      // Check if the agency exists
+      const agencyData = await prisma.agency.findUnique({
+        where: { id: parseInt(data.agencyId) },
+        include: { currentSubscription: true },
+      });
+
+      if (!agencyData) {
+        ctx.addIssue({
+          path: ["agencyId"],
+          message: "Agency does not exist with the provided agencyId.",
+        });
+      }
+    });
+
+  // Validate the request body using Zod
+  const validationErrors = await validateRequest(schema, req.body, res);
 
   const { packageId, agencyId } = req.body;
 
   try {
-    // Get package data to retrieve periodInMonths
-    const packageData = await prisma.package.findUnique({
-      where: { id: packageId },
-    });
-
-    if (!packageData) {
-      return res.status(400).json({
-        errors: {
-          message: "Package does not exist with the provided packageId.",
-        },
-      });
-    }
-
     // Get agency data to retrieve currentSubscriptionId
     const agencyData = await prisma.agency.findUnique({
       where: { id: agencyId },
       include: { currentSubscription: true }, // Include current subscription details
     });
-
-    if (!agencyData) {
-      return res.status(400).json({
-        errors: {
-          message: "Agency does not exist with the provided agencyId.",
-        },
-      });
-    }
 
     // Determine the startDate for the new subscription
     let startDate;
@@ -69,6 +76,9 @@ const createSubscription = async (req, res, next) => {
     }
 
     // Calculate the endDate for the new subscription
+    const packageData = await prisma.package.findUnique({
+      where: { id: packageId },
+    });
     const endDate = startDate.add(packageData.periodInMonths, "month");
 
     // Create the new subscription

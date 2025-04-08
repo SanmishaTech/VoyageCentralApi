@@ -1,9 +1,9 @@
-const express = require('express');
+const express = require("express");
 
 const router = express.Router();
-const userController = require('../controllers/userController');
-const auth = require('../middleware/auth');
-const acl = require('../middleware/acl');
+const userController = require("../controllers/userController");
+const auth = require("../middleware/auth");
+const acl = require("../middleware/acl");
 
 /**
  * @swagger
@@ -110,7 +110,7 @@ const acl = require('../middleware/acl');
  *       403:
  *         description: Forbidden
  */
-router.get('/', auth, acl('users.read'), userController.getAllUsers);
+router.get("/", auth, acl("users.read"), userController.getAllUsers);
 
 /**
  * @swagger
@@ -145,7 +145,7 @@ router.get('/', auth, acl('users.read'), userController.getAllUsers);
  *       403:
  *         description: Forbidden
  */
-router.post('/', auth, acl('users.write'), userController.createUser);
+router.post("/", auth, acl("users.write"), userController.createUser);
 
 /**
  * @swagger
@@ -172,7 +172,7 @@ router.post('/', auth, acl('users.write'), userController.createUser);
  *       404:
  *         description: User not found
  */
-router.get('/:id', auth, acl('users.read'), userController.getUserById);
+router.get("/:id", auth, acl("users.read"), userController.getUserById);
 
 /**
  * @swagger
@@ -216,7 +216,7 @@ router.get('/:id', auth, acl('users.read'), userController.getUserById);
  *       404:
  *         description: User not found
  */
-router.put('/:id', auth, acl('users.write'), userController.updateUser);
+router.put("/:id", auth, acl("users.write"), userController.updateUser);
 
 /**
  * @swagger
@@ -243,7 +243,7 @@ router.put('/:id', auth, acl('users.write'), userController.updateUser);
  *       404:
  *         description: User not found
  */
-router.delete('/:id', auth, acl('users.delete'), userController.deleteUser);
+router.delete("/:id", auth, acl("users.delete"), userController.deleteUser);
 
 /**
  * @swagger
@@ -281,7 +281,12 @@ router.delete('/:id', auth, acl('users.delete'), userController.deleteUser);
  *       404:
  *         description: User not found
  */
-router.patch('/:id/status', auth, acl('users.write'), userController.setActiveStatus);
+router.patch(
+  "/:id/status",
+  auth,
+  acl("users.write"),
+  userController.setActiveStatus
+);
 
 /**
  * @swagger
@@ -305,12 +310,10 @@ router.patch('/:id/status', auth, acl('users.write'), userController.setActiveSt
  *           schema:
  *             type: object
  *             properties:
- *               currentPassword:
+ *               password:
  *                 type: string
- *                 description: The current password of the user
- *               newPassword:
- *                 type: string
- *                 description: The new password to set for the user
+ *                 description: The  password of the user
+ *
  *     responses:
  *       200:
  *         description: User password updated successfully
@@ -323,6 +326,11 @@ router.patch('/:id/status', auth, acl('users.write'), userController.setActiveSt
  *       404:
  *         description: User not found
  */
-router.patch('/:id/password', auth, acl('users.write'), userController.changePassword);
+router.patch(
+  "/:id/password",
+  auth,
+  acl("users.write"),
+  userController.changePassword
+);
 
 module.exports = router;

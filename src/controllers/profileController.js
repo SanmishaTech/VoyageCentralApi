@@ -1,7 +1,7 @@
-const bcrypt = require('bcrypt');
-const Joi = require('joi');
-const prisma = require('../config/db');
-const validateRequest = require('../utils/validation');
+const bcrypt = require("bcrypt");
+const prisma = require("../config/db");
+const { z } = require("zod");
+const validateRequest = require("../utils/validateRequest");
 
 const getProfile = async (req, res, next) => {
   try {
@@ -20,7 +20,7 @@ const getProfile = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(404).json({ errors: { message: 'User not found' } });
+      return res.status(404).json({ errors: { message: "User not found" } });
     }
 
     res.json(user);
@@ -30,13 +30,38 @@ const getProfile = async (req, res, next) => {
 };
 
 const updateProfile = async (req, res, next) => {
-  const schema = Joi.object({
-    name: Joi.string().optional(),
-    email: Joi.string().email().optional(),
-  });
+  // Define Zod schema for profile update validation
+  const schema = z
+    .object({
+      name: z.string().optional(),
+      email: z
+        .string()
+        .email("Email must be a valid email address.")
+        .optional(),
+    })
+    .superRefine(async (data, ctx) => {
+      const usrId = req.user.id; // Assuming `req.user` contains the authenticated user's data
+
+      // Check if a user with the same email already exists, excluding the current user
+      const existingUser = await prisma.user.findUnique({
+        where: {
+          email: data.email,
+        },
+        select: { id: true }, // We only need the id to compare
+      });
+
+      // If an existing user is found and it's not the current user
+      if (existingUser && existingUser.id !== parseInt(usrId)) {
+        ctx.addIssue({
+          path: ["email"],
+          message: `User with email ${data.email} already exists.`,
+        });
+      }
+    });
 
   try {
-    validateRequest(schema, req);
+    // Validate the request body using Zod
+    const validationErrors = await validateRequest(schema, req.body, res);
 
     const userId = req.user.id; // Assuming `req.user` contains the authenticated user's data
     const { name, email } = req.body;
@@ -60,21 +85,23 @@ const updateProfile = async (req, res, next) => {
 
     res.json(updatedUser);
   } catch (error) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ errors: { message: 'Email already exists' } });
-    }
     next(error);
   }
 };
 
 const changePassword = async (req, res, next) => {
-  const schema = Joi.object({
-    currentPassword: Joi.string().required(),
-    newPassword: Joi.string().min(6).required(),
+  // Define Zod schema for password change validation
+  const schema = z.object({
+    currentPassword: z.string().nonempty("Current password is required."),
+    newPassword: z
+      .string()
+      .min(6, "New password must be at least 6 characters long.")
+      .nonempty("New password is required."),
   });
 
   try {
-    validateRequest(schema, req);
+    // Validate the request body using Zod
+    const validationErrors = await validateRequest(schema, req.body, res);
 
     const userId = req.user.id; // Assuming `req.user` contains the authenticated user's data
     const { currentPassword, newPassword } = req.body;
@@ -82,12 +109,17 @@ const changePassword = async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
-      return res.status(404).json({ errors: { message: 'User not found' } });
+      return res.status(404).json({ errors: { message: "User not found" } });
     }
 
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
     if (!isPasswordValid) {
-      return res.status(401).json({ errors: { message: 'Current password is incorrect' } });
+      return res
+        .status(401)
+        .json({ errors: { message: "Current password is incorrect" } });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -96,7 +128,7 @@ const changePassword = async (req, res, next) => {
       data: { password: hashedPassword },
     });
 
-    res.json({ message: 'Password changed successfully' });
+    res.json({ message: "Password changed successfully" });
   } catch (error) {
     next(error);
   }

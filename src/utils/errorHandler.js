@@ -1,12 +1,13 @@
-const createError = require('http-errors');
-const Joi = require('joi'); // Import Joi
+const createError = require("http-errors");
+// const Joi = require('joi'); // Import Joi
+const { z } = require("zod");
 
 const errorHandler = (err, req, res, next) => {
   if (err instanceof createError.HttpError) {
     res.status(err.status).json({
       errors: { message: err.message },
     });
-  } else if (err instanceof Joi.ValidationError) {
+  } else if (err instanceof z.ZodError) {
     res.status(400).json({
       errors: err.details.reduce((acc, curr) => {
         acc[curr.context.key] = curr.message;
@@ -15,7 +16,7 @@ const errorHandler = (err, req, res, next) => {
     });
   } else {
     res.status(err.statusCode || 500).json({
-      errors: { message: err.message || 'Internal Server Error' },
+      errors: { message: err.message || "Internal Server Error" },
     });
   }
 };

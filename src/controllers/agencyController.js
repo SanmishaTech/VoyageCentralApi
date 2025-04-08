@@ -1,8 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcrypt');
-const dayjs = require('dayjs');
-const { z } = require('zod');
-const validateRequest = require('../utils/validateRequest');
+const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcrypt");
+const dayjs = require("dayjs");
+const { z } = require("zod");
+const validateRequest = require("../utils/validateRequest");
 
 const prisma = new PrismaClient();
 
@@ -11,16 +11,16 @@ const getAgencies = async (req, res) => {
   const {
     page = 1,
     limit = 10,
-    sortBy = 'id',
-    order = 'asc',
-    search = '',
+    sortBy = "id",
+    order = "asc",
+    search = "",
   } = req.query;
 
   const skip = (page - 1) * limit;
   const take = parseInt(limit, 10);
 
   const orderBy = {};
-  orderBy[sortBy] = order.toLowerCase() === 'desc' ? 'desc' : 'asc';
+  orderBy[sortBy] = order.toLowerCase() === "desc" ? "desc" : "asc";
 
   const whereClause = {
     OR: [
@@ -76,7 +76,7 @@ const getAgencies = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
-      errors: { message: 'Failed to fetch agencies', details: error.message },
+      errors: { message: "Failed to fetch agencies", details: error.message },
     });
   }
 };
@@ -86,40 +86,48 @@ const createAgency = async (req, res, next) => {
   // Define Zod schema for agency validation
   const schema = z
     .object({
-      businessName: z.string().nonempty('Business name is required.'),
-      addressLine1: z.string().nonempty('Address Line 1 is required.'),
+      businessName: z.string().nonempty("Business name is required."),
+      addressLine1: z.string().nonempty("Address Line 1 is required."),
       addressLine2: z.string().optional(),
-      state: z.string().nonempty('State is required.'),
-      city: z.string().nonempty('City is required.'),
-      pincode: z.string().nonempty('Pincode is required.'),
-      contactPersonName: z.string().nonempty('Contact person name is required.'),
-      contactPersonPhone: z.string().nonempty('Contact person phone is required.'),
+      state: z.string().nonempty("State is required."),
+      city: z.string().nonempty("City is required."),
+      pincode: z.string().nonempty("Pincode is required."),
+      contactPersonName: z
+        .string()
+        .nonempty("Contact person name is required."),
+      contactPersonPhone: z
+        .string()
+        .nonempty("Contact person phone is required."),
       contactPersonEmail: z
         .string()
-        .email('Contact person email must be a valid email address.')
-        .nonempty('Contact person email is required.'),
+        .email("Contact person email must be a valid email address.")
+        .nonempty("Contact person email is required."),
       gstin: z
         .string()
-        .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/, {
-          message: 'GSTIN must be in the format 07ABCDE1234F2Z5.',
-        })
-        .optional()
-        .nullable(),
+        .regex(
+          /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/,
+          {
+            message: "GSTIN must be in the format 07ABCDE1234F2Z5.",
+          }
+        )
+        .or(z.literal("")) // Allow empty string
+        .or(z.null()) // Allow null
+        .optional(), // Allow undefined (not strictly necessary here, but can be used)
       letterHead: z.string().optional().nullable(),
       logo: z.string().optional().nullable(),
       subscription: z.object({
-        packageId: z.number().int('Package ID must be an integer.'),
+        packageId: z.number().int("Package ID must be an integer."),
         startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-          message: 'Start date must be a valid date.',
+          message: "Start date must be a valid date.",
         }),
       }),
       user: z.object({
-        name: z.string().nonempty('User name is required.'),
+        name: z.string().nonempty("User name is required."),
         email: z
           .string()
-          .email('User email must be a valid email address.')
-          .nonempty('User email is required.'),
-        password: z.string().nonempty('User password is required.'),
+          .email("User email must be a valid email address.")
+          .nonempty("User email is required."),
+        password: z.string().nonempty("User password is required."),
       }),
     })
     .superRefine(async (data, ctx) => {
@@ -130,7 +138,7 @@ const createAgency = async (req, res, next) => {
 
       if (!existingPackage) {
         ctx.addIssue({
-          path: ['subscription', 'packageId'],
+          path: ["subscription", "packageId"],
           message: `Package with ID ${data.subscription.packageId} does not exist.`,
         });
       }
@@ -142,7 +150,7 @@ const createAgency = async (req, res, next) => {
 
       if (existingUser) {
         ctx.addIssue({
-          path: ['user', 'email'],
+          path: ["user", "email"],
           message: `User with email ${data.user.email} already exists.`,
         });
       }
@@ -189,7 +197,7 @@ const createAgency = async (req, res, next) => {
 
     // Calculate endDate using dayjs
     const startDate = dayjs(subscription.startDate);
-    const endDate = startDate.add(existingPackage.periodInMonths, 'month');
+    const endDate = startDate.add(existingPackage.periodInMonths, "month");
 
     // Create the subscription
     const newSubscription = await prisma.subscription.create({
@@ -210,7 +218,7 @@ const createAgency = async (req, res, next) => {
         name: user.name,
         email: user.email,
         password: hashedPassword,
-        role: 'branch_admin',
+        role: "branch_admin",
         agencyId: newAgency.id,
       },
     });
@@ -274,127 +282,91 @@ const getAgencyById = async (req, res) => {
     });
 
     if (!agency) {
-      return res.status(404).json({ errors: { message: 'Agency not found' } });
+      return res.status(404).json({ errors: { message: "Agency not found" } });
     }
 
     res.status(200).json(agency);
   } catch (error) {
     res.status(500).json({
-      errors: { message: 'Failed to fetch agency', details: error.message },
+      errors: { message: "Failed to fetch agency", details: error.message },
     });
   }
 };
 
 // Update an agency
 const updateAgency = async (req, res, next) => {
-  // Define Joi schema for agency validation
-  const schema = Joi.object({
-    businessName: Joi.string().required().messages({
-      'string.empty': 'Business name is required.',
-      'any.required': 'Business name is required.',
-    }),
-    addressLine1: Joi.string().required().messages({
-      'string.empty': 'Address Line 1 is required.',
-      'any.required': 'Address Line 1 is required.',
-    }),
-    state1: Joi.string().required().messages({
-      'string.empty': 'State 1 is required.',
-      'any.required': 'State 1 is required.',
-    }),
-    city1: Joi.string().required().messages({
-      'string.empty': 'City 1 is required.',
-      'any.required': 'City 1 is required.',
-    }),
-    pincode1: Joi.string().required().messages({
-      'string.empty': 'Pincode 1 is required.',
-      'any.required': 'Pincode 1 is required.',
-    }),
-    addressLine2: Joi.string().optional(),
-    state2: Joi.string().optional(),
-    city2: Joi.string().optional(),
-    pincode2: Joi.string().optional(),
-    contactPersonName: Joi.string().required().messages({
-      'string.empty': 'Contact person name is required.',
-      'any.required': 'Contact person name is required.',
-    }),
-    contactPersonEmail: Joi.string().email().required().messages({
-      'string.empty': 'Contact person email is required.',
-      'any.required': 'Contact person email is required.',
-      'string.email': 'Contact person email must be a valid email address.',
-    }),
-    contactPersonPhone: Joi.string().required().messages({
-      'string.empty': 'Contact person phone is required.',
-      'any.required': 'Contact person phone is required.',
-    }),
-    gstin: Joi.string()
-      .optional()
-      .pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/)
-      .messages({
-        'string.pattern.base': 'GSTIN must be in the format 07ABCDE1234F2Z5.',
-      }),
-    letterHead: Joi.string().optional().messages({
-      'string.empty': 'Letterhead must be a valid file path or URL.',
-    }),
-    currentSubscriptionId: Joi.number().optional(),
-    logo: Joi.string().optional().messages({
-      'string.empty': 'Logo must be a valid file path or URL.',
-    }),
+  // Define Zod schema for agency validation
+  const schema = z.object({
+    businessName: z.string().nonempty("Business name is required."),
+    addressLine1: z.string().nonempty("Address Line 1 is required."),
+    addressLine2: z.string().optional(),
+    state: z.string().nonempty("State is required."),
+    city: z.string().nonempty("City is required."),
+    pincode: z.string().nonempty("Pincode is required."),
+    contactPersonName: z.string().nonempty("Contact person name is required."),
+    contactPersonEmail: z
+      .string()
+      .email("Contact person email must be a valid email address.")
+      .nonempty("Contact person email is required."),
+    contactPersonPhone: z
+      .string()
+      .nonempty("Contact person phone is required."),
+    gstin: z
+      .string()
+      .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/, {
+        message: "GSTIN must be in the format 07ABCDE1234F2Z5.",
+      })
+      .or(z.literal("")) // Allow empty string
+      .or(z.null()) // Allow null
+      .optional(), // Allow undefined (not strictly necessary here, but can be used)
+    letterHead: z.string().optional().nullable(),
+    logo: z.string().optional().nullable(),
   });
 
-  // Validate request body using the utility function
-  const validationErrors = validateRequest(schema, req);
-  if (validationErrors) {
-    return res.status(400).json({ errors: validationErrors });
-  }
-
-  const {
-    businessName,
-    addressLine1,
-    state1,
-    city1,
-    pincode1,
-    addressLine2,
-    state2,
-    city2,
-    pincode2,
-    contactPersonName,
-    contactPersonEmail,
-    contactPersonPhone,
-    gstin,
-    letterHead,
-    currentSubscriptionId,
-    logo,
-  } = req.body;
-
-  const { id } = req.params;
-
   try {
+    // Use the reusable validation function
+    const validatedData = await validateRequest(schema, req.body, res);
+
+    const {
+      businessName,
+      addressLine1,
+      addressLine2,
+      state,
+      city,
+      pincode,
+      contactPersonName,
+      contactPersonEmail,
+      contactPersonPhone,
+      gstin,
+      letterHead,
+      logo,
+    } = validatedData;
+
+    const { id } = req.params;
+
+    // Update the agency
     const updatedAgency = await prisma.agency.update({
       where: { id: parseInt(id, 10) },
       data: {
         businessName,
         addressLine1,
-        state1,
-        city1,
-        pincode1,
         addressLine2,
-        state2,
-        city2,
-        pincode2,
+        state,
+        city,
+        pincode,
         contactPersonName,
         contactPersonEmail,
         contactPersonPhone,
         gstin,
         letterHead,
-        currentSubscriptionId,
         logo,
       },
     });
 
     res.status(200).json(updatedAgency);
   } catch (error) {
-    if (error.code === 'P2025') {
-      return next(createError(404, 'Agency not found'));
+    if (error.code === "P2025") {
+      return next(createError(404, "Agency not found"));
     }
     next(error);
   }
@@ -411,11 +383,11 @@ const deleteAgency = async (req, res) => {
 
     res.status(204).send();
   } catch (error) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ errors: { message: 'Agency not found' } });
+    if (error.code === "P2025") {
+      return res.status(404).json({ errors: { message: "Agency not found" } });
     }
     res.status(500).json({
-      errors: { message: 'Failed to delete agency', details: error.message },
+      errors: { message: "Failed to delete agency", details: error.message },
     });
   }
 };
