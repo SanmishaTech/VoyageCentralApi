@@ -194,6 +194,10 @@ const createAgency = async (req, res, next) => {
       },
     });
 
+    const existingPackage = await prisma.package.findUnique({
+      where: { id: subscription.packageId },
+    });
+
     // Calculate endDate using dayjs
     const startDate = dayjs(subscription.startDate);
     const endDate = startDate.add(existingPackage.periodInMonths, "month");

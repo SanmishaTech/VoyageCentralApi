@@ -1,17 +1,20 @@
-const validateRequest = async (schema, data, res) => {
-  const result = await schema.safeParseAsync(data);
+const validateRequest = (schema, data, res) => {
+  return new Promise(async (resolve, reject) => {
+    const result = await schema.safeParseAsync(data);
 
-  if (!result.success) {
-    // Return a 400 response with validation errors
-    return res.status(400).json({
-      errors: result.error.errors.map((e) => ({
-        path: e.path,
-        message: e.message,
-      })),
-    });
-  }
+    if (!result.success) {
+      // If validation fails, reject with a custom error that will send a 400 response
+      return res.status(400).json({
+        errors: result.error.errors.map((e) => ({
+          path: e.path,
+          message: e.message,
+        })),
+      });
+    }
 
-  return result.data; // Return validated data if successful
+    // If validation is successful, resolve with the validated data
+    resolve(result.data);
+  });
 };
 
 module.exports = validateRequest;
