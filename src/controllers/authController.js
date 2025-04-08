@@ -45,9 +45,9 @@ const register = async (req, res, next) => {
 
   try {
     // Use the reusable validation function
-    const validatedData = await validateRequest(schema, req.body, res);
+    const validationErrors = await validateRequest(schema, req.body, res);
 
-    const { name, email, password } = validatedData;
+    const { name, email, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
@@ -55,6 +55,7 @@ const register = async (req, res, next) => {
         name,
         email,
         password: hashedPassword,
+        role: config.defaultUserRole,
       },
     });
 
@@ -64,22 +65,18 @@ const register = async (req, res, next) => {
   }
 };
 
-// Login a user
 const login = async (req, res, next) => {
-  // Define Zod schema for login validation
   const schema = z.object({
-    email: z
-      .string()
-      .email("Email must be a valid email address.")
-      .nonempty("Email is required."),
-    password: z.string().nonempty("Password is required."),
+    email: z.string().email("Invalid Email format").min(1, "email is required"),
+    password: z.string().min(6, "Password must be at least 6 characters long"),
   });
 
   try {
-    // Use the reusable validation function
-    const validatedData = await validateRequest(schema, req.body, res);
-
-    const { email, password } = validatedData;
+    const validationErrors = await validateRequest(schema, req.body, res);
+    // if (validationErrors) {
+    //   return;
+    // }
+    const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -94,89 +91,172 @@ const login = async (req, res, next) => {
         .json({ errors: { message: "Account is inactive" } });
     }
 
+    // Check if the user is a super_admin
+    if (user.role === "super_admin") {
+      // Update lastLogin timestamp
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLogin: new Date() },
+      });
+
+      const token = jwt.sign({ userId: user.id }, jwtConfig.secret, {
+        expiresIn: jwtConfig.expiresIn,
+      });
+
+      return res.json({
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          lastLogin: user.lastLogin,
+        },
+      });
+    }
+
+    // If the user is not a super_admin, check their agency
+    const agency = await prisma.agency.findFirst({
+      where: {
+        users: {
+          some: { id: user.id }, // Check if the user belongs to an agency
+        },
+      },
+      include: {
+        currentSubscription: true, // Include the current subscription details
+      },
+    });
+
+    if (!agency) {
+      return res
+        .status(500)
+        .json({ errors: { message: "User does not belong to any agency" } });
+    }
+
+    // Check the subscription details
+    const currentSubscription = agency.currentSubscription;
+    if (
+      !currentSubscription ||
+      new Date(currentSubscription.endDate) < new Date()
+    ) {
+      return res
+        .status(403)
+        .json({ errors: { message: "Subscription expired" } });
+    }
+
+    // Update lastLogin timestamp
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
     const token = jwt.sign({ userId: user.id }, jwtConfig.secret, {
       expiresIn: jwtConfig.expiresIn,
     });
 
-    res.json({ token, user });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        lastLogin: user.lastLogin,
+        agency: {
+          id: agency.id,
+          name: agency.businessName,
+        },
+        subscription: {
+          id: currentSubscription.id,
+          startDate: currentSubscription.startDate,
+          endDate: currentSubscription.endDate,
+        },
+      },
+    });
   } catch (error) {
     next(error);
   }
 };
 
-// Forgot password
 const forgotPassword = async (req, res, next) => {
-  // Define Zod schema for forgot password validation
   const schema = z.object({
-    email: z
-      .string()
-      .email("Email must be a valid email address.")
-      .nonempty("Email is required."),
+    email: z.string().email().required(),
   });
 
   try {
-    // Use the reusable validation function
-    const validatedData = await validateRequest(schema, req.body, res);
-
-    const { email } = validatedData;
+    const validationErrors = await validateRequest(schema, req.body, res);
+    const { email, resetUrl } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
-
     if (!user) {
-      return res
-        .status(404)
-        .json({ errors: { message: "User with this email does not exist." } });
+      return setTimeout(() => {
+        res.status(404).json({ errors: { message: "User not found" } });
+      }, 3000);
     }
 
     const resetToken = uuidv4();
     await prisma.user.update({
-      where: { email },
-      data: { resetToken },
+      where: { id: user.id },
+      data: {
+        resetToken,
+        resetTokenExpires: new Date(Date.now() + 3600000), // Token expires in 1 hour
+      },
     });
+    const resetLink = `${resetUrl}/${resetToken}`; // Replace with your actual domain
+    const templateData = {
+      name: user.name,
+      resetLink,
+      appName: config.appName,
+    };
+    await emailService.sendEmail(
+      email,
+      "Password Reset Request",
+      "passwordReset",
+      templateData
+    );
 
-    await emailService.sendPasswordResetEmail(email, resetToken);
-
-    res.status(200).json({ message: "Password reset email sent." });
+    res.json({ message: "Password reset link sent" });
   } catch (error) {
     next(error);
   }
 };
 
-// Reset password
 const resetPassword = async (req, res, next) => {
-  // Define Zod schema for reset password validation
   const schema = z.object({
-    resetToken: z.string().nonempty("Reset token is required."),
-    newPassword: z
-      .string()
-      .min(6, "New password must be at least 6 characters long.")
-      .nonempty("New password is required."),
+    password: z.string().min(6).required(),
   });
 
   try {
     // Use the reusable validation function
-    const validatedData = await validateRequest(schema, req.body, res);
+    const validationErrors = await validateRequest(schema, req.body, res);
+    const { password } = req.body;
+    const { token } = req.body;
 
-    const { resetToken, newPassword } = validatedData;
-    const user = await prisma.user.findUnique({ where: { resetToken } });
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExpires: { gt: new Date() }, // Check if the token is not expired
+      },
+    });
 
     if (!user) {
       return res
-        .status(404)
-        .json({ errors: { message: "Invalid or expired reset token." } });
+        .status(400)
+        .json({ errors: { message: "Invalid or expired token" } });
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          resetToken: null, // Clear the token after use
+          resetTokenExpires: null,
+        },
+      });
+      res.json({ message: "Password reset successful" });
     }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { resetToken },
-      data: { password: hashedPassword, resetToken: null },
-    });
-
-    res.status(200).json({ message: "Password reset successfully." });
   } catch (error) {
     next(error);
   }
 };
-
 module.exports = {
   register,
   login,

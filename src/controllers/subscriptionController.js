@@ -50,7 +50,6 @@ const createSubscription = async (req, res, next) => {
 
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
-
   const { packageId, agencyId } = req.body;
 
   try {

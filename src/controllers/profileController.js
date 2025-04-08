@@ -62,7 +62,6 @@ const updateProfile = async (req, res, next) => {
   try {
     // Validate the request body using Zod
     const validationErrors = await validateRequest(schema, req.body, res);
-
     const userId = req.user.id; // Assuming `req.user` contains the authenticated user's data
     const { name, email } = req.body;
 
@@ -102,7 +101,6 @@ const changePassword = async (req, res, next) => {
   try {
     // Validate the request body using Zod
     const validationErrors = await validateRequest(schema, req.body, res);
-
     const userId = req.user.id; // Assuming `req.user` contains the authenticated user's data
     const { currentPassword, newPassword } = req.body;
 

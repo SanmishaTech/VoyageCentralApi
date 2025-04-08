@@ -158,8 +158,7 @@ const createAgency = async (req, res, next) => {
 
   try {
     // Use the reusable validation function
-    const validatedData = await validateRequest(schema, req.body, res);
-
+    const validationErrors = await validateRequest(schema, req.body, res);
     const {
       businessName,
       addressLine1,
@@ -175,7 +174,7 @@ const createAgency = async (req, res, next) => {
       logo,
       subscription,
       user,
-    } = validatedData;
+    } = req.body;
 
     // Create the agency first to get its ID
     const newAgency = await prisma.agency.create({
@@ -325,8 +324,7 @@ const updateAgency = async (req, res, next) => {
 
   try {
     // Use the reusable validation function
-    const validatedData = await validateRequest(schema, req.body, res);
-
+    const validationErrors = await validateRequest(schema, req.body, res);
     const {
       businessName,
       addressLine1,
@@ -340,7 +338,7 @@ const updateAgency = async (req, res, next) => {
       gstin,
       letterHead,
       logo,
-    } = validatedData;
+    } = req.body;
 
     const { id } = req.params;
 

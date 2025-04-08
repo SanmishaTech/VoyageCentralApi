@@ -129,7 +129,7 @@ const createUser = async (req, res, next) => {
   // Define Zod schema for user creation
   const schema = z
     .object({
-      name: z.string().nonempty("Name is required."),
+      name: z.string().min(1, "Name is required."), //
       email: z
         .string()
         .email("Email must be a valid email address.")
@@ -206,7 +206,6 @@ const updateUser = async (req, res, next) => {
 
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
-
   try {
     const updatedUser = await prisma.user.update({
       where: { id: parseInt(req.params.id) },
@@ -241,7 +240,6 @@ const setActiveStatus = async (req, res, next) => {
 
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
-
   try {
     const updatedUser = await prisma.user.update({
       where: { id: parseInt(req.params.id) },
@@ -264,7 +262,6 @@ const changePassword = async (req, res, next) => {
 
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
-
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
     const updatedUser = await prisma.user.update({

@@ -169,7 +169,6 @@ const updatePackage = async (req, res, next) => {
 
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
-
   const { id } = req.params;
   const {
     packageName,
