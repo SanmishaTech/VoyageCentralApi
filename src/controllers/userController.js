@@ -6,6 +6,7 @@ const prisma = require('../config/db');
 const validateRequest = require('../utils/validation');
 const roles = require('../config/roles');
 const aclService = require('../services/aclService');
+const { z } = require("zod");
 
 const getAllUsers = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
@@ -120,32 +121,46 @@ const getUserById = async (req, res, next) => {
 };
 
 const createUser = async (req, res, next) => {
-  const schema = Joi.object({
-    name: Joi.string().required(),
-    email: Joi.string().email().required(),
-    password: Joi.string().min(6).required(),
-    role: Joi.string().valid(...Object.values(roles)).required(),
-    active: Joi.boolean().optional(),
+  // Define Zod schema for user creation
+  const schema = z.object({
+    name: z.string().nonempty("Name is required."),
+    email: z.string().email("Email must be a valid email address."),
+    password: z.string().min(6, "Password must be at least 6 characters long."),
+    role: z.enum(Object.values(roles), "Invalid role."),
+    active: z.boolean().optional(),
   });
 
-  const validationErrors = validateRequest(schema, req);
-  if (validationErrors) {
-    return res.status(400).json({ errors: validationErrors });
-  }
-
   try {
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    // Validate the request body using Zod
+    const validatedData = schema.parse(req.body);
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+
+    // Create the user
     const user = await prisma.user.create({
       data: {
-        ...req.body,
+        ...validatedData,
         password: hashedPassword,
       },
     });
+
     res.status(201).json(user);
   } catch (error) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ errors: { message: 'Email already exists' } });
+    if (error instanceof z.ZodError) {
+      // Handle Zod validation errors
+      return res.status(400).json({
+        errors: error.errors.map((e) => ({
+          path: e.path,
+          message: e.message,
+        })),
+      });
     }
+
+    if (error.code === "P2002") {
+      return res.status(400).json({ errors: { message: "Email already exists" } });
+    }
+
     next(error);
   }
 };

@@ -33,5 +33,6 @@ module.exports = {
     'max-len': ['warn', { code: 120 }],
     'no-nested-ternary': 'off',
     radix: 'off',
+    'no-quote-props': 'off',
   },
 };
