@@ -46,7 +46,6 @@ const register = async (req, res, next) => {
   try {
     // Use the reusable validation function
     const validationErrors = await validateRequest(schema, req.body, res);
-
     const { name, email, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -73,9 +72,7 @@ const login = async (req, res, next) => {
 
   try {
     const validationErrors = await validateRequest(schema, req.body, res);
-    // if (validationErrors) {
-    //   return;
-    // }
+
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
 
@@ -180,7 +177,10 @@ const login = async (req, res, next) => {
 
 const forgotPassword = async (req, res, next) => {
   const schema = z.object({
-    email: z.string().email().required(),
+    email: z
+      .string()
+      .email("Invalid Email format")
+      .nonempty("Email is required"),
   });
 
   try {
@@ -222,7 +222,7 @@ const forgotPassword = async (req, res, next) => {
 
 const resetPassword = async (req, res, next) => {
   const schema = z.object({
-    password: z.string().min(6).required(),
+    password: z.string().min(6, "Password must be at least 6 characters long"),
   });
 
   try {
@@ -242,17 +242,17 @@ const resetPassword = async (req, res, next) => {
       return res
         .status(400)
         .json({ errors: { message: "Invalid or expired token" } });
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          password: hashedPassword,
-          resetToken: null, // Clear the token after use
-          resetTokenExpires: null,
-        },
-      });
-      res.json({ message: "Password reset successful" });
     }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null, // Clear the token after use
+        resetTokenExpires: null,
+      },
+    });
+    res.json({ message: "Password reset successful" });
   } catch (error) {
     next(error);
   }
