@@ -50,15 +50,15 @@ model Agency {
   state                String?    
   city                 String?    
   pincode              String?    
-  currentSubscription  Subscription? @relation("CurrentSubscription", fields: [currentSubscriptionId], references: [id], onDelete: Cascade)
+  currentSubscription  Subscription? @relation("CurrentSubscription", fields: [currentSubscriptionId], references: [id])
   logo                 String?   // Logo (file path or URL)
   letterHead           String?   // Letterhead attachment (file path or URL)
   contactPersonName    String    // Contact person name
   contactPersonEmail   String    // Contact person email
   contactPersonPhone   String    // Contact person phone
   gstin                String    // GSTIN
-  subscriptions        Subscription[] @relation("AgencySubscriptions") // Added onDelete: Cascade
-  users                User[]          // Added onDelete: Cascade
+  subscriptions        Subscription[] @relation("AgencySubscriptions") 
+  users                User[]         
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -71,7 +71,7 @@ model Subscription {
   agencyId        Int       // Foreign key to the Agency table
   agency          Agency    @relation("AgencySubscriptions", fields: [agencyId], references: [id], onDelete: Cascade)
   packageId       Int       // Foreign key to the Package table
-  package         Package   @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  package         Package   @relation(fields: [packageId], references: [id])
   cost            Decimal   @db.Decimal(10, 2) // Added cost field with Decimal type
   startDate       DateTime  // Subscription start date
   endDate         DateTime  // Subscription end date
