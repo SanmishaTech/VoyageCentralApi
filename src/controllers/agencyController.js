@@ -7,77 +7,160 @@ const validateRequest = require("../utils/validateRequest");
 const prisma = new PrismaClient();
 
 // Get all agencies with pagination, sorting, and search
-const getAgencies = async (req, res) => {
-  const {
-    page = 1,
-    limit = 10,
-    sortBy = "id",
-    order = "asc",
-    search = "",
-  } = req.query;
-
+const getAgencies = async (req, res, next) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  const take = parseInt(limit, 10);
-
-  const orderBy = {};
-  orderBy[sortBy] = order.toLowerCase() === "desc" ? "desc" : "asc";
-
-  const whereClause = {
-    OR: [
-      { businessName: { contains: search } },
-      { contactPersonName: { contains: search } },
-    ],
-  };
+  const search = req.query.search || "";
+  const sortBy = req.query.sortBy || "id";
+  const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+  const exportToExcel = req.query.export === "true"; // Check if export is requested
 
   try {
-    // Fetch agencies with pagination, sorting, and related data
+    // Build the where clause for filtering
+    const whereClause = {
+      OR: [
+        { businessName: { contains: search } },
+        { contactPersonName: { contains: search } },
+        { addressLine1: { contains: search } },
+        { addressLine2: { contains: search } },
+        { state: { contains: search } },
+        { city: { contains: search } },
+        { contactPersonEmail: { contains: search } },
+        { contactPersonPhone: { contains: search } },
+      ],
+    };
+
+    // Fetch agencies with optional pagination, sorting, and search
     const agencies = await prisma.agency.findMany({
-      skip,
-      take,
-      orderBy,
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        businessName: true,
+        addressLine1: true,
+        addressLine2: true,
+        state: true,
+        city: true,
+        pincode: true,
+        contactPersonName: true,
+        contactPersonEmail: true,
+        contactPersonPhone: true,
+        gstin: true,
+        letterHead: true,
+        logo: true,
         currentSubscription: {
           select: {
             id: true,
             startDate: true,
             endDate: true,
-            createdAt: true,
-            updatedAt: true,
-            package: true, // Include the package details from the packageId
-          },
-        },
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            branchId: true,
-            role: true,
-            active: true,
-            createdAt: true,
-            updatedAt: true,
+            package: {
+              select: {
+                id: true,
+                packageName: true,
+                numberOfBranches: true,
+                usersPerBranch: true,
+                periodInMonths: true,
+                cost: true,
+              },
+            },
           },
         },
       },
+      skip: exportToExcel ? undefined : skip, // Skip pagination if exporting to Excel
+      take: exportToExcel ? undefined : limit, // Skip limit if exporting to Excel
+      orderBy: exportToExcel ? undefined : { [sortBy]: sortOrder }, // Skip sorting if exporting to Excel
     });
 
-    // Get the total count for pagination
-    const totalAgencies = await prisma.agency.count({ where: whereClause });
+    if (exportToExcel) {
+      // Export agencies to Excel
+      const ExcelJS = require("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Agencies");
 
-    res.status(200).json({
+      // Add headers
+      worksheet.columns = [
+        { header: "ID", key: "id", width: 10 },
+        { header: "Business Name", key: "businessName", width: 30 },
+        { header: "Address Line 1", key: "addressLine1", width: 30 },
+        { header: "Address Line 2", key: "addressLine2", width: 30 },
+        { header: "State", key: "state", width: 15 },
+        { header: "City", key: "city", width: 15 },
+        { header: "Pincode", key: "pincode", width: 10 },
+        { header: "Contact Person Name", key: "contactPersonName", width: 25 },
+        {
+          header: "Contact Person Email",
+          key: "contactPersonEmail",
+          width: 30,
+        },
+        {
+          header: "Contact Person Phone",
+          key: "contactPersonPhone",
+          width: 20,
+        },
+        { header: "GSTIN", key: "gstin", width: 20 },
+        { header: "Letter Head", key: "letterHead", width: 20 },
+        { header: "Logo", key: "logo", width: 20 },
+        { header: "Subscription Start Date", key: "startDate", width: 20 },
+        { header: "Subscription End Date", key: "endDate", width: 20 },
+        { header: "Package Name", key: "packageName", width: 30 },
+        { header: "Package Cost", key: "cost", width: 15 },
+      ];
+
+      // Add rows
+      agencies.forEach((agency) => {
+        worksheet.addRow({
+          id: agency.id,
+          businessName: agency.businessName,
+          addressLine1: agency.addressLine1,
+          addressLine2: agency.addressLine2,
+          state: agency.state,
+          city: agency.city,
+          pincode: agency.pincode,
+          contactPersonName: agency.contactPersonName,
+          contactPersonEmail: agency.contactPersonEmail,
+          contactPersonPhone: agency.contactPersonPhone,
+          gstin: agency.gstin,
+          letterHead: agency.letterHead,
+          logo: agency.logo,
+          startDate: agency.currentSubscription?.startDate
+            ? agency.currentSubscription.startDate.toISOString()
+            : "N/A",
+          endDate: agency.currentSubscription?.endDate
+            ? agency.currentSubscription.endDate.toISOString()
+            : "N/A",
+          packageName:
+            agency.currentSubscription?.package?.packageName || "N/A",
+          cost: agency.currentSubscription?.package?.cost || "N/A",
+        });
+      });
+
+      // Set response headers for file download
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=agencies.xlsx"
+      );
+
+      // Write the workbook to the response
+      await workbook.xlsx.write(res);
+      return res.end();
+    }
+
+    // Fetch total count for pagination
+    const totalAgencies = await prisma.agency.count({ where: whereClause });
+    const totalPages = Math.ceil(totalAgencies / limit);
+
+    res.json({
       data: agencies,
-      meta: {
-        total: totalAgencies,
-        page: parseInt(page, 10),
-        limit: take,
-        totalPages: Math.ceil(totalAgencies / take),
-      },
+      page,
+      totalPages,
+      totalAgencies,
     });
   } catch (error) {
-    res.status(500).json({
-      errors: { message: "Failed to fetch agencies", details: error.message },
-    });
+    next(error);
   }
 };
 

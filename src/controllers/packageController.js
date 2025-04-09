@@ -5,48 +5,119 @@ const validateRequest = require("../utils/validateRequest");
 const createError = require("http-errors"); // For consistent error handling
 
 // Get all packages with pagination, sorting, and search
-const getPackages = async (req, res) => {
-  const {
-    page = 1,
-    limit = 10,
-    sortBy = "id",
-    order = "asc",
-    search = "",
-  } = req.query;
-
+const getPackages = async (req, res, next) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  const take = parseInt(limit, 10);
-
-  const orderBy = {};
-  orderBy[sortBy] = order.toLowerCase() === "desc" ? "desc" : "asc";
-
-  const whereClause = {
-    OR: [{ packageName: { contains: search } }],
-  };
+  const search = req.query.search || "";
+  const sortBy = req.query.sortBy || "id";
+  const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+  const exportToExcel = req.query.export === "true"; // Check if export is requested
 
   try {
+    // Fetch packages with optional pagination, sorting, and search
+    const whereClause = {
+      OR: [
+        { packageName: { contains: search } },
+        {
+          usersPerBranch: isNaN(parseInt(search))
+            ? undefined
+            : { equals: parseInt(search) },
+        },
+        {
+          numberOfBranches: isNaN(parseInt(search))
+            ? undefined
+            : { equals: parseInt(search) },
+        },
+        {
+          periodInMonths: isNaN(parseInt(search))
+            ? undefined
+            : { equals: parseInt(search) },
+        },
+        {
+          cost: isNaN(parseInt(search))
+            ? undefined
+            : { equals: parseInt(search) },
+        },
+      ],
+    };
+
     const packages = await prisma.package.findMany({
       where: whereClause,
-      skip,
-      take,
-      orderBy,
+      select: {
+        id: true,
+        packageName: true,
+        numberOfBranches: true,
+        usersPerBranch: true,
+        periodInMonths: true,
+        cost: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      skip: exportToExcel ? undefined : skip, // Skip pagination if exporting to Excel
+      take: exportToExcel ? undefined : limit, // Skip limit if exporting to Excel
+      orderBy: exportToExcel ? undefined : { [sortBy]: sortOrder }, // Skip sorting if exporting to Excel
     });
 
-    const totalPackages = await prisma.package.count({ where: whereClause });
+    if (exportToExcel) {
+      // Export packages to Excel
+      const ExcelJS = require("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Packages");
 
-    res.status(200).json({
-      packages: packages,
-      meta: {
-        total: totalPackages,
-        page: parseInt(page, 10),
-        limit: take,
-        totalPages: Math.ceil(totalPackages / take),
-      },
+      // Add headers
+      worksheet.columns = [
+        { header: "ID", key: "id", width: 10 },
+        { header: "Package Name", key: "packageName", width: 30 },
+        { header: "Number of Branches", key: "numberOfBranches", width: 20 },
+        { header: "Users Per Branch", key: "usersPerBranch", width: 20 },
+        { header: "Period (Months)", key: "periodInMonths", width: 20 },
+        { header: "Cost", key: "cost", width: 15 },
+        { header: "Created At", key: "createdAt", width: 25 },
+        { header: "Updated At", key: "updatedAt", width: 25 },
+      ];
+
+      // Add rows
+      packages.forEach((pkg) => {
+        worksheet.addRow({
+          id: pkg.id,
+          packageName: pkg.packageName,
+          numberOfBranches: pkg.numberOfBranches,
+          usersPerBranch: pkg.usersPerBranch,
+          periodInMonths: pkg.periodInMonths,
+          cost: pkg.cost,
+          createdAt: pkg.createdAt.toISOString(),
+          updatedAt: pkg.updatedAt.toISOString(),
+        });
+      });
+
+      // Set response headers for file download
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=packages.xlsx"
+      );
+
+      // Write the workbook to the response
+      await workbook.xlsx.write(res);
+      return res.end();
+    }
+
+    // Fetch total count for pagination
+    const totalPackages = await prisma.package.count({ where: whereClause });
+    const totalPages = Math.ceil(totalPackages / limit);
+
+    res.json({
+      packages,
+      page,
+      totalPages,
+      totalPackages,
     });
   } catch (error) {
-    res.status(500).json({
-      errors: { message: "Failed to fetch packages", details: error.message },
-    });
+    next(error);
   }
 };
 

@@ -41,7 +41,7 @@ const getAllUsers = async (req, res, next) => {
   };
 
   try {
-    const users = await prisma.user.findMany({
+    let users = await prisma.user.findMany({
       select: {
         id: true,
         name: true,
@@ -55,6 +55,12 @@ const getAllUsers = async (req, res, next) => {
       take: exportToExcel ? undefined : limit, // Skip limit if exporting to Excel
       orderBy: exportToExcel ? undefined : { [sortBy]: sortOrder }, // Skip sorting if exporting to Excel
     });
+
+    // Replace underscores with spaces in the role field
+    users = users.map((user) => ({
+      ...user,
+      role: user.role.replace(/_/g, " "), // Replace all underscores with spaces
+    }));
 
     if (exportToExcel) {
       // Create a new workbook and worksheet
