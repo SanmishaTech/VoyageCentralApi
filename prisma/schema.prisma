@@ -19,7 +19,7 @@ model User {
   lastLogin          DateTime?
   resetToken         String?   // Add this line
   resetTokenExpires  DateTime? // Add this line
-  agency             Agency?   @relation(fields: [agencyId], references: [id])
+  agency             Agency?   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -27,18 +27,18 @@ model User {
 }
 
 model Package {
-  id              Int      @id @default(autoincrement())
-  packageName     String   @map("packages")
+  id              Int       @id @default(autoincrement())
+  packageName     String    @map("packages")
   numberOfBranches Int
   usersPerBranch  Int
   periodInMonths  Int
-  cost            Float
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  cost            Decimal   @db.Decimal(10, 2) // Updated to Decimal type with precision and scale
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@map("packages")
-  Subscription Subscription[]
-  Agency Agency[]
+  Subscription    Subscription[]  
+  Agency          Agency[]       
 }
 
 model Agency {
@@ -50,28 +50,29 @@ model Agency {
   state                String?    
   city                 String?    
   pincode              String?    
-  currentSubscription  Subscription? @relation("CurrentSubscription", fields: [currentSubscriptionId], references: [id])
+  currentSubscription  Subscription? @relation("CurrentSubscription", fields: [currentSubscriptionId], references: [id], onDelete: Cascade)
   logo                 String?   // Logo (file path or URL)
   letterHead           String?   // Letterhead attachment (file path or URL)
   contactPersonName    String    // Contact person name
   contactPersonEmail   String    // Contact person email
   contactPersonPhone   String    // Contact person phone
   gstin                String    // GSTIN
-  subscriptions        Subscription[] @relation("AgencySubscriptions") // One-to-many relationship with subscriptions
-  users                User[]         @relation // One-to-many relationship with users
+  subscriptions        Subscription[] @relation("AgencySubscriptions") // Added onDelete: Cascade
+  users                User[]          // Added onDelete: Cascade
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
   @@map("agencies") // Map the table name to "agencies"
-  Package Package[] 
+  Package Package[]  // Added onDelete: Cascade
 }
 
 model Subscription {
   id              Int       @id @default(autoincrement())
   agencyId        Int       // Foreign key to the Agency table
-  agency          Agency    @relation("AgencySubscriptions", fields: [agencyId], references: [id])
+  agency          Agency    @relation("AgencySubscriptions", fields: [agencyId], references: [id], onDelete: Cascade)
   packageId       Int       // Foreign key to the Package table
-  package         Package   @relation(fields: [packageId], references: [id])
+  package         Package   @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  cost            Decimal   @db.Decimal(10, 2) // Added cost field with Decimal type
   startDate       DateTime  // Subscription start date
   endDate         DateTime  // Subscription end date
   createdAt       DateTime  @default(now())

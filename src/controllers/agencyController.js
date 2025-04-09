@@ -289,6 +289,7 @@ const createAgency = async (req, res, next) => {
     const newSubscription = await prisma.subscription.create({
       data: {
         packageId: subscription.packageId,
+        cost: existingPackage.cost,
         startDate: startDate.toDate(),
         endDate: endDate.toDate(),
         agencyId: newAgency.id,
@@ -304,7 +305,7 @@ const createAgency = async (req, res, next) => {
         name: user.name,
         email: user.email,
         password: hashedPassword,
-        role: "branch_admin",
+        role: "admin",
         agencyId: newAgency.id,
       },
     });

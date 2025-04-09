@@ -87,6 +87,7 @@ const createSubscription = async (req, res, next) => {
         agencyId,
         startDate: startDate.toDate(), // Convert dayjs object to JavaScript Date
         endDate: endDate.toDate(), // Convert dayjs object to JavaScript Date
+        cost: packageData.cost,
       },
     });
 
