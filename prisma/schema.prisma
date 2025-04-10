@@ -10,7 +10,7 @@ datasource db {
 model User {
   id                 Int       @id @default(autoincrement())
   agencyId           Int?      // Foreign key to the Agency table
-  branchId           Int?      // Foreign key to the Branch table (if applicable)
+  branchId           Int?      // Foreign key to the Branch table
   name               String
   email              String    @unique
   password           String
@@ -20,6 +20,7 @@ model User {
   resetToken         String?   // Add this line
   resetTokenExpires  DateTime? // Add this line
   agency             Agency?   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  branch             Branch?   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -59,6 +60,7 @@ model Agency {
   gstin                String    // GSTIN
   subscriptions        Subscription[] @relation("AgencySubscriptions") 
   users                User[]         
+  branches             Branch[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -80,4 +82,20 @@ model Subscription {
 
   @@map("subscriptions") // Map the table name to "subscriptions"
   Agency Agency[] @relation("CurrentSubscription")
+}
+
+model Branch {
+  id            Int       @id @default(autoincrement())
+  agencyId      Int      // Foreign key to Agency
+  branchName    String
+  address       String
+  contactName   String
+  contactEmail  String
+  contactMobile String
+  agency        Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  users         User[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("branches")
 }

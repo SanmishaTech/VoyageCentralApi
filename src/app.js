@@ -14,6 +14,7 @@ const subscriptionRoutes = require("./routes/subscription");
 const { errorHandler } = require("./utils/errorHandler");
 const swaggerRouter = require("./swagger");
 const config = require("./config/config");
+const branchRoutes = require("./routes/branch"); // Import branch routes
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use("/profile", profileRoutes);
 app.use("/packages", packageRoutes);
 app.use("/agencies", agencyRoutes);
 app.use("/subscriptions", subscriptionRoutes);
+app.use("/branches", branchRoutes); // Use branch routes
 app.use(swaggerRouter); // Add this line to include Swagger documentation
 
 app.use((req, res, next) => {
