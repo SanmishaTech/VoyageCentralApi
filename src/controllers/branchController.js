@@ -4,6 +4,66 @@ const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
 const createError = require("http-errors");
 
+// Get all branches
+const getBranches = async (req, res, next) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const search = req.query.search || "";
+  const sortBy = req.query.sortBy || "id";
+  const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+
+  try {
+    // Build the where clause for filtering
+    const whereClause = {
+      OR: [
+        { branchName: { contains: search } },
+        { address: { contains: search } },
+        { contactName: { contains: search } },
+        { contactEmail: { contains: search } },
+        { contactMobile: { contains: search } },
+      ],
+    };
+
+    // Fetch branches with optional pagination, sorting, and search
+    const branches = await prisma.branch.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        branchName: true,
+        address: true,
+        contactName: true,
+        contactEmail: true,
+        contactMobile: true,
+        agency: {
+          select: {
+            id: true,
+            businessName: true,
+          },
+        },
+        createdAt: true,
+        updatedAt: true,
+      },
+      skip,
+      take: limit,
+      orderBy: { [sortBy]: sortOrder },
+    });
+
+    // Fetch total count for pagination
+    const totalBranches = await prisma.branch.count({ where: whereClause });
+    const totalPages = Math.ceil(totalBranches / limit);
+
+    res.json({
+      branches,
+      page,
+      totalPages,
+      totalBranches,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Create a new branch
 const createBranch = async (req, res, next) => {
   const schema = z.object({
@@ -48,39 +108,6 @@ const createBranch = async (req, res, next) => {
     });
 
     res.status(201).json(newBranch);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Get all branches
-const getAllBranches = async (req, res, next) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
-
-  try {
-    const branches = await prisma.branch.findMany({
-      skip: skip,
-      take: limit,
-      include: {
-        agency: {
-          select: {
-            businessName: true,
-          },
-        },
-      },
-    });
-
-    const totalBranches = await prisma.branch.count();
-    const totalPages = Math.ceil(totalBranches / limit);
-
-    res.json({
-      data: branches,
-      page: page,
-      totalPages: totalPages,
-      totalBranches: totalBranches,
-    });
   } catch (error) {
     next(error);
   }
@@ -185,7 +212,7 @@ const deleteBranch = async (req, res, next) => {
 
 module.exports = {
   createBranch,
-  getAllBranches,
+  getBranches,
   getBranchById,
   updateBranch,
   deleteBranch,

@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   createBranch,
-  getAllBranches,
+  getBranches,
   getBranchById,
   updateBranch,
   deleteBranch,
@@ -83,7 +83,7 @@ router.post("/", auth, createBranch);
  *       500:
  *         description: Internal server error
  */
-router.get("/", auth, getAllBranches);
+router.get("/", auth, getBranches);
 
 /**
  * @swagger
