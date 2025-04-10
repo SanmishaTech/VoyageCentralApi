@@ -14,4 +14,7 @@ module.exports = {
   "branches.read": ["super_admin", "admin"],
   "branches.write": ["super_admin", "admin"],
   "branches.delete": ["super_admin"],
+  "countries.write": ["super_admin"],
+  "countries.delete": ["super_admin"],
+  "countries.read": ["super_admin"],
 };

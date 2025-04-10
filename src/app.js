@@ -9,6 +9,7 @@ const userRoutes = require("./routes/users");
 const authRoutes = require("./routes/auth");
 const profileRoutes = require("./routes/profile");
 const packageRoutes = require("./routes/package");
+const countryRoutes = require("./routes/country");
 const agencyRoutes = require("./routes/agency");
 const subscriptionRoutes = require("./routes/subscription");
 const { errorHandler } = require("./utils/errorHandler");
@@ -37,6 +38,7 @@ app.use("/packages", packageRoutes);
 app.use("/agencies", agencyRoutes);
 app.use("/subscriptions", subscriptionRoutes);
 app.use("/branches", branchRoutes); // Use branch routes
+app.use("/countries", countryRoutes);
 app.use(swaggerRouter); // Add this line to include Swagger documentation
 
 app.use((req, res, next) => {
