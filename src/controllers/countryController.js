@@ -85,7 +85,7 @@ const createCountry = async (req, res, next) => {
 };
 
 // Get a country by ID
-const getCountryById = async (req, res) => {
+const getCountryById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
@@ -149,7 +149,7 @@ const updateCountry = async (req, res, next) => {
 };
 
 // Delete a country
-const deleteCountry = async (req, res) => {
+const deleteCountry = async (req, res, next) => {
   const { id } = req.params;
 
   try {
@@ -167,7 +167,7 @@ const deleteCountry = async (req, res) => {
 };
 
 // Get all countries without pagination, sorting, and search
-const getAllCountries = async (req, res) => {
+const getAllCountries = async (req, res, next) => {
   try {
     const countries = await prisma.country.findMany({
       select: {

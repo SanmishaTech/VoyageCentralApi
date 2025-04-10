@@ -23,4 +23,7 @@ module.exports = {
   "cities.write": ["super_admin"],
   "cities.delete": ["super_admin"],
   "cities.read": ["super_admin"],
+  "sectors.write": ["super_admin"],
+  "sectors.delete": ["super_admin"],
+  "sectors.read": ["super_admin"],
 };

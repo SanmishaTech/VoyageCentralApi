@@ -13,6 +13,7 @@ const countryRoutes = require("./routes/country");
 const cityRoutes = require("./routes/city");
 const stateRoutes = require("./routes/state");
 const agencyRoutes = require("./routes/agency");
+const sectorRoutes = require("./routes/sector");
 const subscriptionRoutes = require("./routes/subscription");
 const branchRoutes = require("./routes/branch"); // Import branch routes
 const { errorHandler } = require("./utils/errorHandler");
@@ -104,6 +105,7 @@ app.use("/agencies", agencyRoutes);
 app.use("/subscriptions", subscriptionRoutes);
 app.use("/branches", branchRoutes); // Use branch routes
 app.use("/countries", countryRoutes);
+app.use("/sectors", sectorRoutes);
 app.use("/states", stateRoutes);
 app.use("/cities", cityRoutes);
 app.use(swaggerRouter); // Add this line to include Swagger documentation

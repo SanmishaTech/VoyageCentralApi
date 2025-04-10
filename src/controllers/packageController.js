@@ -184,7 +184,7 @@ const createPackage = async (req, res, next) => {
 };
 
 // Get a package by ID
-const getPackageById = async (req, res) => {
+const getPackageById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
@@ -271,7 +271,7 @@ const updatePackage = async (req, res, next) => {
 };
 
 // Delete a package
-const deletePackage = async (req, res) => {
+const deletePackage = async (req, res, next) => {
   const { id } = req.params;
 
   try {
@@ -284,7 +284,7 @@ const deletePackage = async (req, res) => {
     if (error.code === "P2025") {
       return res.status(404).json({ errors: { message: "Package not found" } });
     }
-    res.status(500).json({
+    return res.status(500).json({
       errors: { message: "Failed to delete package", details: error.message },
     });
   }

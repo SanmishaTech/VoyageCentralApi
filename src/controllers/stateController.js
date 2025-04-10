@@ -109,7 +109,7 @@ const createState = async (req, res, next) => {
 };
 
 // Get a state by ID
-const getStateById = async (req, res) => {
+const getStateById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
@@ -200,7 +200,7 @@ const updateState = async (req, res, next) => {
 };
 
 // Delete a state
-const deleteState = async (req, res) => {
+const deleteState = async (req, res, next) => {
   const { id } = req.params;
 
   try {
@@ -218,7 +218,7 @@ const deleteState = async (req, res) => {
 };
 
 // Get all states without pagination, sorting, and search
-const getAllStates = async (req, res) => {
+const getAllStates = async (req, res, next) => {
   try {
     const states = await prisma.state.findMany({
       select: {

@@ -109,7 +109,7 @@ const createCity = async (req, res, next) => {
 };
 
 // Get a city by ID
-const getCityById = async (req, res) => {
+const getCityById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
@@ -215,7 +215,7 @@ const deleteCity = async (req, res) => {
 };
 
 // Get all cities without pagination, sorting, and search
-const getAllCities = async (req, res) => {
+const getAllCities = async (req, res, next) => {
   try {
     const cities = await prisma.city.findMany({
       select: {
