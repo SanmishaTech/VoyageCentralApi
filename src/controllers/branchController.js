@@ -6,47 +6,39 @@ const createError = require("http-errors");
 
 // Create a new branch
 const createBranch = async (req, res, next) => {
-  const schema = z
-    .object({
-      agencyId: z.number().int("Agency ID must be an integer."),
-      branchName: z.string().nonempty("Branch name is required."),
-      address: z.string().nonempty("Address is required."),
-      contactName: z.string().nonempty("Contact name is required."),
-      contactEmail: z
-        .string()
-        .email("Contact email must be a valid email address.")
-        .nonempty("Contact email is required."),
-      contactMobile: z.string().nonempty("Contact mobile is required."),
-    })
-    .superRefine(async (data, ctx) => {
-      // Check if the agency exists
-      const existingAgency = await prisma.agency.findUnique({
-        where: { id: data.agencyId },
-      });
-
-      if (!existingAgency) {
-        ctx.addIssue({
-          path: ["agencyId"],
-          message: `Agency with ID ${data.agencyId} does not exist.`,
-        });
-      }
-    });
+  const schema = z.object({
+    branchName: z.string().nonempty("Branch name is required."),
+    address: z.string().nonempty("Address is required."),
+    contactName: z.string().nonempty("Contact name is required."),
+    contactEmail: z
+      .string()
+      .email("Contact email must be a valid email address.")
+      .nonempty("Contact email is required."),
+    contactMobile: z.string().nonempty("Contact mobile is required."),
+  });
 
   try {
     const validationErrors = await validateRequest(schema, req.body, res);
 
-    const {
-      agencyId,
-      branchName,
-      address,
-      contactName,
-      contactEmail,
-      contactMobile,
-    } = req.body;
+    const { branchName, address, contactName, contactEmail, contactMobile } =
+      req.body;
+    const userId = req.user.id;
+    const userData = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      include: {
+        agency: true, // Include the agency data
+      },
+    });
+
+    if (!userData || !userData.agency) {
+      return res.status(400).json({
+        errors: { message: "User does not belong to any agency." },
+      });
+    }
 
     const newBranch = await prisma.branch.create({
       data: {
-        agencyId,
+        agencyId: userData.agency.id,
         branchName,
         address,
         contactName,
@@ -129,54 +121,31 @@ const getBranchById = async (req, res, next) => {
 
 // Update a branch
 const updateBranch = async (req, res, next) => {
-  const schema = z
-    .object({
-      agencyId: z.number().int("Agency ID must be an integer.").optional(),
-      branchName: z.string().nonempty("Branch name is required.").optional(),
-      address: z.string().nonempty("Address is required.").optional(),
-      contactName: z.string().nonempty("Contact name is required.").optional(),
-      contactEmail: z
-        .string()
-        .email("Contact email must be a valid email address.")
-        .nonempty("Contact email is required")
-        .optional(),
-      contactMobile: z
-        .string()
-        .nonempty("Contact mobile is required.")
-        .optional(),
-    })
-    .superRefine(async (data, ctx) => {
-      if (data.agencyId) {
-        const existingAgency = await prisma.agency.findUnique({
-          where: { id: data.agencyId },
-        });
-
-        if (!existingAgency) {
-          ctx.addIssue({
-            path: ["agencyId"],
-            message: `Agency with ID ${data.agencyId} does not exist.`,
-          });
-        }
-      }
-    });
+  const schema = z.object({
+    branchName: z.string().nonempty("Branch name is required.").optional(),
+    address: z.string().nonempty("Address is required.").optional(),
+    contactName: z.string().nonempty("Contact name is required.").optional(),
+    contactEmail: z
+      .string()
+      .email("Contact email must be a valid email address.")
+      .nonempty("Contact email is required")
+      .optional(),
+    contactMobile: z
+      .string()
+      .nonempty("Contact mobile is required.")
+      .optional(),
+  });
 
   try {
     const validationErrors = await validateRequest(schema, req.body, res);
 
     const { id } = req.params;
-    const {
-      agencyId,
-      branchName,
-      address,
-      contactName,
-      contactEmail,
-      contactMobile,
-    } = req.body;
+    const { branchName, address, contactName, contactEmail, contactMobile } =
+      req.body;
 
     const updatedBranch = await prisma.branch.update({
       where: { id: parseInt(id, 10) },
       data: {
-        ...(agencyId && { agencyId }),
         ...(branchName && { branchName }),
         ...(address && { address }),
         ...(contactName && { contactName }),

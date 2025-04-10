@@ -64,18 +64,129 @@ const register = async (req, res, next) => {
   }
 };
 
+// const login = async (req, res, next) => {
+//   const schema = z.object({
+//     email: z.string().email("Invalid Email format").min(1, "email is required"),
+//     password: z.string().min(6, "Password must be at least 6 characters long"),
+//   });
+
+//   try {
+//     const validationErrors = await validateRequest(schema, req.body, res);
+
+//     const { email, password } = req.body;
+//     const user = await prisma.user.findUnique({ where: { email } });
+
+//     if (!user || !(await bcrypt.compare(password, user.password))) {
+//       return res
+//         .status(401)
+//         .json({ errors: { message: "Invalid email or password" } });
+//     }
+
+//     if (!user.active) {
+//       return res
+//         .status(403)
+//         .json({ errors: { message: "Account is inactive" } });
+//     }
+
+//     // Check if the user is a super_admin
+//     if (user.role === "super_admin") {
+//       // Update lastLogin timestamp
+//       await prisma.user.update({
+//         where: { id: user.id },
+//         data: { lastLogin: new Date() },
+//       });
+
+//       const token = jwt.sign({ userId: user.id }, jwtConfig.secret, {
+//         // expiresIn: jwtConfig.expiresIn,
+//         expiresIn: "30s",
+//       });
+
+//       return res.json({
+//         token,
+//         user: {
+//           id: user.id,
+//           name: user.name,
+//           email: user.email,
+//           role: user.role,
+//           lastLogin: user.lastLogin,
+//         },
+//       });
+//     }
+
+//     // If the user is not a super_admin, check their agency
+//     const agency = await prisma.agency.findFirst({
+//       where: {
+//         users: {
+//           some: { id: user.id }, // Check if the user belongs to an agency
+//         },
+//       },
+//       include: {
+//         currentSubscription: true, // Include the current subscription details
+//       },
+//     });
+
+//     if (!agency) {
+//       return res
+//         .status(500)
+//         .json({ errors: { message: "User does not belong to any agency" } });
+//     }
+
+//     // Check the subscription details
+//     const currentSubscription = agency.currentSubscription;
+//     if (
+//       !currentSubscription ||
+//       new Date(currentSubscription.endDate) < new Date()
+//     ) {
+//       return res
+//         .status(403)
+//         .json({ errors: { message: "Subscription expired" } });
+//     }
+
+//     // Update lastLogin timestamp
+//     await prisma.user.update({
+//       where: { id: user.id },
+//       data: { lastLogin: new Date() },
+//     });
+
+//     const token = jwt.sign({ userId: user.id }, jwtConfig.secret, {
+//       // expiresIn: jwtConfig.expiresIn,
+//       expiresIn: "30",
+//     });
+
+//     res.json({
+//       token,
+//       user: {
+//         id: user.id,
+//         name: user.name,
+//         email: user.email,
+//         role: user.role,
+//         lastLogin: user.lastLogin,
+//         agency: {
+//           id: agency.id,
+//           name: agency.businessName,
+//         },
+//         subscription: {
+//           id: currentSubscription.id,
+//           startDate: currentSubscription.startDate,
+//           endDate: currentSubscription.endDate,
+//         },
+//       },
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 const login = async (req, res, next) => {
   const schema = z.object({
-    email: z.string().email("Invalid Email format").min(1, "email is required"),
-    password: z.string().min(6, "Password must be at least 6 characters long"),
+    email: z.string().email().optional(),
+    password: z.string().optional(),
   });
 
   try {
-    const validationErrors = await validateRequest(schema, req.body, res);
+    // validateRequest(schema, req);
 
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
-
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res
         .status(401)
@@ -87,6 +198,13 @@ const login = async (req, res, next) => {
         .status(403)
         .json({ errors: { message: "Account is inactive" } });
     }
+
+    // Update lastLogin timestamp using primary key (id)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
     const token = jwt.sign({ userId: user.id }, jwtConfig.secret, {
       expiresIn: jwtConfig.expiresIn,
     });
@@ -101,62 +219,6 @@ const login = async (req, res, next) => {
     });
     res.setHeader("x-access-token", accesstoken);
 
-    // Check if the user is a super_admin
-    if (user.role === "super_admin") {
-      // Update lastLogin timestamp
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { lastLogin: new Date() },
-      });
-
-      return res.json({
-        token,
-        accesstoken,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          lastLogin: user.lastLogin,
-        },
-      });
-    }
-
-    // If the user is not a super_admin, check their agency
-    const agency = await prisma.agency.findFirst({
-      where: {
-        users: {
-          some: { id: user.id }, // Check if the user belongs to an agency
-        },
-      },
-      include: {
-        currentSubscription: true, // Include the current subscription details
-      },
-    });
-
-    if (!agency) {
-      return res
-        .status(500)
-        .json({ errors: { message: "User does not belong to any agency" } });
-    }
-
-    // Check the subscription details
-    const currentSubscription = agency.currentSubscription;
-    if (
-      !currentSubscription ||
-      new Date(currentSubscription.endDate) < new Date()
-    ) {
-      return res
-        .status(403)
-        .json({ errors: { message: "Subscription expired" } });
-    }
-
-    // Update lastLogin timestamp
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLogin: new Date() },
-    });
-
     res.json({
       token,
       accesstoken,
@@ -166,15 +228,6 @@ const login = async (req, res, next) => {
         email: user.email,
         role: user.role,
         lastLogin: user.lastLogin,
-        agency: {
-          id: agency.id,
-          name: agency.businessName,
-        },
-        subscription: {
-          id: currentSubscription.id,
-          startDate: currentSubscription.startDate,
-          endDate: currentSubscription.endDate,
-        },
       },
     });
   } catch (error) {

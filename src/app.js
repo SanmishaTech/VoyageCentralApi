@@ -49,6 +49,7 @@ app.use("/auth", authRoutes);
 
 app.use(async (req, res, next) => {
   const refreshToken = req.headers["x-refresh-token"];
+  console.log("Refresh token in middleware:", refreshToken);
   if (!refreshToken) {
     return next();
   }
