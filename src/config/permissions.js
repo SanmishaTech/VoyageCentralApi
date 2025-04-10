@@ -17,4 +17,10 @@ module.exports = {
   "countries.write": ["super_admin"],
   "countries.delete": ["super_admin"],
   "countries.read": ["super_admin"],
+  "states.write": ["super_admin"],
+  "states.delete": ["super_admin"],
+  "states.read": ["super_admin"],
+  "cities.write": ["super_admin"],
+  "cities.delete": ["super_admin"],
+  "cities.read": ["super_admin"],
 };
