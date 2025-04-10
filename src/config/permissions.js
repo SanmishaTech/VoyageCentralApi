@@ -11,4 +11,7 @@ module.exports = {
   "agencies.write": ["super_admin"],
   "agencies.delete": ["super_admin"],
   "subscriptions.write": ["super_admin"], // Permission to create or update subscriptions
+  "countries.write": ["super_admin"],
+  "countries.delete": ["super_admin"],
+  "countries.read": ["super_admin"],
 };

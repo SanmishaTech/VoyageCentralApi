@@ -81,3 +81,45 @@ model Subscription {
   @@map("subscriptions") // Map the table name to "subscriptions"
   Agency Agency[] @relation("CurrentSubscription")
 }
+
+model Country {
+  id        Int      @id @default(autoincrement())
+  countryName      String   //@unique
+  states    State[]  // One-to-many relationship with State
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("countries") // Map the table name to "countries"
+}
+
+model State {
+  id        Int      @id @default(autoincrement())
+  stateName      String   
+  countryId Int      // Foreign key to the Country table
+  country   Country  @relation(fields: [countryId], references: [id]) //onDelete cascade
+  cities    City[]   // One-to-many relationship with City
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("states") // Map the table name to "states"
+}
+
+model City {
+  id        Int      @id @default(autoincrement())
+  cityName      String   
+  stateId   Int      // Foreign key to the State table
+  state     State    @relation(fields: [stateId], references: [id]) //onDelete caascade
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cities") // Map the table name to "cities"
+}
+
+model Sector {
+  id        Int      @id @default(autoincrement())
+  sectorName    String   @unique // Sector name must be unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("sectors") // Map the table name to "sectors"
+}
