@@ -74,14 +74,22 @@ const createCountry = async (req, res, next) => {
       }
     });
 
-  // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
 
-  const { countryName } = req.body;
-
   try {
+    const { countryName } = req.body;
+
+    const agencyId = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id) },
+      select: { agencyId: true },
+    });
+
+    if (!agencyId.agencyId) {
+      return res.status(404).json({ errors: { message: "User does not belongs to any Agency" } });
+    }
+
     const newCountry = await prisma.country.create({
-      data: { countryName },
+      data: { countryName, agencyId: agencyId.agencyId },
     });
 
     res.status(201).json(newCountry);

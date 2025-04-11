@@ -1,7 +1,7 @@
-const express = require('express');
-const roleController = require('../controllers/roleController');
-const auth = require('../middleware/auth');
-const acl = require('../middleware/acl');
+const express = require("express");
+const roleController = require("../controllers/roleController");
+const auth = require("../middleware/auth");
+const acl = require("../middleware/acl");
 
 const router = express.Router();
 
@@ -30,6 +30,6 @@ const router = express.Router();
  *       403:
  *         description: Forbidden
  */
-router.get('/', auth, acl('roles.read'), roleController.getAllRoles);
+router.get("/", auth, acl("roles.read"), roleController.getRoles);
 
 module.exports = router;

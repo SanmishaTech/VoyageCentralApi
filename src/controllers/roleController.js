@@ -1,6 +1,6 @@
-const roles = require('../config/roles');
+const roles = require("../config/roles");
 
-const getAllRoles = async (req, res, next) => {
+const getRoles = async (req, res, next) => {
   try {
     // Return all roles as a list
     res.json({ roles });
@@ -10,5 +10,5 @@ const getAllRoles = async (req, res, next) => {
 };
 
 module.exports = {
-  getAllRoles,
+  getRoles,
 };

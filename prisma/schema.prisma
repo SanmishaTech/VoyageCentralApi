@@ -61,6 +61,11 @@ model Agency {
   subscriptions        Subscription[] @relation("AgencySubscriptions") 
   users                User[]         
   branches             Branch[]
+  countries            Country[]
+  states            State[]
+  cities            City[]
+  sectors            Sector[]
+
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -102,6 +107,8 @@ model Branch {
 
 model Country {
   id        Int      @id @default(autoincrement())
+  agencyId  Int
+  agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
   countryName      String   //@unique
   states    State[]  // One-to-many relationship with State
   createdAt DateTime @default(now())
@@ -112,9 +119,11 @@ model Country {
 
 model State {
   id        Int      @id @default(autoincrement())
+   agencyId  Int
+  agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
+   countryId Int      // Foreign key to the Country table
+  country   Country  @relation(fields: [countryId], references: [id],onDelete: Cascade) //onDelete cascade
   stateName      String   
-  countryId Int      // Foreign key to the Country table
-  country   Country  @relation(fields: [countryId], references: [id]) //onDelete cascade
   cities    City[]   // One-to-many relationship with City
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -124,9 +133,11 @@ model State {
 
 model City {
   id        Int      @id @default(autoincrement())
-  cityName      String   
+   agencyId  Int
+  agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
   stateId   Int      // Foreign key to the State table
-  state     State    @relation(fields: [stateId], references: [id]) //onDelete caascade
+  state     State    @relation(fields: [stateId], references: [id],onDelete: Cascade) //onDelete caascade
+  cityName      String   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -135,6 +146,8 @@ model City {
 
 model Sector {
   id        Int      @id @default(autoincrement())
+   agencyId  Int
+  agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
   sectorName    String   @unique // Sector name must be unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

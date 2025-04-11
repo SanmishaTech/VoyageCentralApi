@@ -101,11 +101,22 @@ const createState = async (req, res, next) => {
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
 
-  const { stateName, countryId } = req.body;
-
   try {
+    const { stateName, countryId } = req.body;
+
+    const agencyId = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id) },
+      select: { agencyId: true },
+    });
+
+    if (!agencyId.agencyId) {
+      return res
+        .status(404)
+        .json({ errors: { message: "User does not belongs to any Agency" } });
+    }
+
     const newState = await prisma.state.create({
-      data: { stateName, countryId },
+      data: { stateName, countryId, agencyId: agencyId.agencyId },
     });
 
     res.status(201).json(newState);

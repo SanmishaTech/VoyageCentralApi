@@ -110,7 +110,7 @@ const acl = require("../middleware/acl");
  *       403:
  *         description: Forbidden
  */
-router.get("/", auth, acl("users.read"), userController.getAllUsers);
+router.get("/", auth, acl("users.read"), userController.getUsers);
 
 /**
  * @swagger
