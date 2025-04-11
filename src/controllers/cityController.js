@@ -154,8 +154,12 @@ const getCityById = async (req, res, next) => {
         cityName: true,
         state: {
           select: {
-            id: true,
             stateName: true,
+            country: {
+              select: {
+                countryName: true,
+              },
+            },
           },
         },
         createdAt: true,
