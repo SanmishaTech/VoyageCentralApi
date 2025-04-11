@@ -7,12 +7,12 @@ module.exports = {
   "agencies.read": ["super_admin"],
   "agencies.write": ["super_admin"],
   "agencies.delete": ["super_admin"],
-  //superAdmin and admin sections
   "roles.read": ["super_admin"],
   "packages.read": ["super_admin"],
   "packages.write": ["super_admin"],
   "packages.delete": ["super_admin"],
   "subscriptions.write": ["super_admin"],
+  //superAdmin and admin sections
   "branches.read": ["super_admin", "admin"],
   "branches.write": ["super_admin", "admin"],
   "branches.delete": ["super_admin", "admin"],
