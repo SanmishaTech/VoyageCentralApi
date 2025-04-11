@@ -30,27 +30,6 @@ const getStates = async (req, res, next) => {
       stateName: { contains: search },
     };
 
-    // const states = await prisma.state.findMany({
-    //   where: whereClause,
-    //   select: {
-    //     id: true,
-    //     stateName: true,
-    //     country: {
-    //       select: {
-    //         id: true,
-    //         countryName: true,
-    //       },
-    //     },
-    //     createdAt: true,
-    //     updatedAt: true,
-    //   },
-    //   skip,
-    //   take: limit,
-    //   orderBy: { [sortBy]: sortOrder },
-    // });
-
-    // Fetch total count for pagination
-    // const totalStates = await prisma.state.count({ where: whereClause });
     // Step 3: Fetch paginated & sorted countries
     const states = await prisma.state.findMany({
       where: whereClause,
@@ -59,6 +38,11 @@ const getStates = async (req, res, next) => {
         stateName: true,
         createdAt: true,
         updatedAt: true,
+        country: {
+          select: {
+            countryName: true,
+          },
+        },
       },
       skip,
       take: limit,
@@ -268,9 +252,25 @@ const deleteState = async (req, res, next) => {
 };
 
 // Get all states without pagination, sorting, and search
-const getAllStates = async (req, res, next) => {
+const getAllStatesByCountryId = async (req, res, next) => {
   try {
+    const { id } = req.params;
+
+    // Step 1: Get agencyId of the current user
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id) },
+      select: { agencyId: true },
+    });
+
+    if (!user?.agencyId) {
+      return res.status(404).json({ message: "Agency not found" });
+    }
+
     const states = await prisma.state.findMany({
+      where: {
+        agencyId: user.agencyId,
+        countryId: parseInt(id, 10),
+      },
       select: {
         id: true,
         stateName: true,
@@ -295,5 +295,5 @@ module.exports = {
   getStateById,
   updateState,
   deleteState,
-  getAllStates,
+  getAllStatesByCountryId,
 };

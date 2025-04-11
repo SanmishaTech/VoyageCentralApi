@@ -4,6 +4,7 @@ const {
   getStates,
   createState,
   getStateById,
+  getAllStatesByCountryId,
   updateState,
   deleteState,
   getAllStates,
@@ -141,15 +142,22 @@ router.post("/", auth, acl("states.write"), createState);
 
 /**
  * @swagger
- * /states/all:
+ * /states/by-country/{id}:
  *   get:
- *     summary: Get all states without pagination, sorting, and search
+ *     summary: Get all states by country ID
  *     tags: [States]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: Country ID
  *     responses:
  *       200:
- *         description: List of all states
+ *         description: List of all states for the specified country
  *         content:
  *           application/json:
  *             schema:
@@ -168,10 +176,17 @@ router.post("/", auth, acl("states.write"), createState);
  *                         type: integer
  *                       countryName:
  *                         type: string
+ *       404:
+ *         description: Country not found
  *       500:
  *         description: Failed to fetch states
  */
-router.get("/all", auth, acl("states.read"), getAllStates);
+router.get(
+  "/by-country/:id",
+  auth,
+  acl("states.read"),
+  getAllStatesByCountryId
+);
 
 /**
  * @swagger

@@ -124,42 +124,56 @@ const getPackages = async (req, res, next) => {
 // Create a new package
 const createPackage = async (req, res, next) => {
   // Define Zod schema for package creation
-  const schema = z.object({
-    packageName: z
-      .string()
-      .min(1, "Package name cannot be left blank.") // Ensuring minimum length of 2
-      .max(100, "Package name must not exceed 100 characters.")
-      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-        message: "Package name can only contain letters.",
-      }),
-    numberOfBranches: z
-      .number({
-        required_error: "Number of branches is required.",
-        invalid_type_error: "Number of branches must be a number.",
-      })
-      .int("Number of branches must be an integer.")
-      .min(1, "Number of branches must be at least 1."),
-    usersPerBranch: z
-      .number({
-        required_error: "Users per branch is required.",
-        invalid_type_error: "Users per branch must be a number.",
-      })
-      .int("Users per branch must be an integer.")
-      .min(1, "Users per branch must be at least 1."),
-    periodInMonths: z
-      .number({
-        required_error: "Period in months is required.",
-        invalid_type_error: "Period in months must be a number.",
-      })
-      .int("Period in months must be an integer.")
-      .min(1, "Period in months must be at least 1."),
-    cost: z
-      .number({
-        required_error: "Cost is required.",
-        invalid_type_error: "Cost must be a number.",
-      })
-      .min(0, "Cost must be at least 0."),
-  });
+  const schema = z
+    .object({
+      packageName: z
+        .string()
+        .min(1, "Package name cannot be left blank.") // Ensuring minimum length of 2
+        .max(100, "Package name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "Package name can only contain letters.",
+        }),
+      numberOfBranches: z
+        .number({
+          required_error: "Number of branches is required.",
+          invalid_type_error: "Number of branches must be a number.",
+        })
+        .int("Number of branches must be an integer.")
+        .min(1, "Number of branches must be at least 1."),
+      usersPerBranch: z
+        .number({
+          required_error: "Users per branch is required.",
+          invalid_type_error: "Users per branch must be a number.",
+        })
+        .int("Users per branch must be an integer.")
+        .min(1, "Users per branch must be at least 1."),
+      periodInMonths: z
+        .number({
+          required_error: "Period in months is required.",
+          invalid_type_error: "Period in months must be a number.",
+        })
+        .int("Period in months must be an integer.")
+        .min(1, "Period in months must be at least 1."),
+      cost: z
+        .number({
+          required_error: "Cost is required.",
+          invalid_type_error: "Cost must be a number.",
+        })
+        .min(0, "Cost must be at least 0."),
+    })
+    .superRefine(async (data, ctx) => {
+      // Check if the package exists
+      const existingPackageName = await prisma.package.findFirst({
+        where: { packageName: data.packageName },
+      });
+
+      if (existingPackageName) {
+        ctx.addIssue({
+          path: ["packageName"],
+          message: `Package with Name ${data.packageName} already exist.`,
+        });
+      }
+    });
 
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);

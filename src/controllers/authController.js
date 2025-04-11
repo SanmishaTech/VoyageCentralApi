@@ -7,6 +7,7 @@ const emailService = require("../services/emailService");
 const validateRequest = require("../utils/validateRequest");
 const config = require("../config/config");
 const jwtConfig = require("../config/jwt");
+const { SUPER_ADMIN } = require("../config/roles");
 
 // Register a new user
 const register = async (req, res, next) => {
@@ -90,19 +91,9 @@ const login = async (req, res, next) => {
     const token = jwt.sign({ userId: user.id }, jwtConfig.secret, {
       expiresIn: jwtConfig.expiresIn,
     });
-    const accesstoken = jwt.sign({ userId: user.id }, jwtConfig.secret, {
-      expiresIn: "5h",
-    });
-    res.cookie("refreshToken", accesstoken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-    res.setHeader("x-access-token", accesstoken);
 
     // Check if the user is a super_admin
-    if (user.role === "super_admin") {
+    if (user.role === SUPER_ADMIN) {
       // Update lastLogin timestamp
       await prisma.user.update({
         where: { id: user.id },
@@ -111,7 +102,6 @@ const login = async (req, res, next) => {
 
       return res.json({
         token,
-        accesstoken,
         user: {
           id: user.id,
           name: user.name,
@@ -159,7 +149,6 @@ const login = async (req, res, next) => {
 
     res.json({
       token,
-      accesstoken,
       user: {
         id: user.id,
         name: user.name,

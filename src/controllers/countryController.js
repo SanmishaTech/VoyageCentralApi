@@ -59,7 +59,6 @@ const getCountries = async (req, res, next) => {
   }
 };
 
-
 // Create a new country
 const createCountry = async (req, res, next) => {
   // Define Zod schema for country creation
@@ -204,7 +203,20 @@ const deleteCountry = async (req, res, next) => {
 // Get all countries without pagination, sorting, and search
 const getAllCountries = async (req, res, next) => {
   try {
+    // Step 1: Get agencyId of the current user
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id) },
+      select: { agencyId: true },
+    });
+
+    if (!user?.agencyId) {
+      return res.status(404).json({ message: "Agency not found" });
+    }
+
     const countries = await prisma.country.findMany({
+      where: {
+        agencyId: user.agencyId,
+      },
       select: {
         id: true,
         countryName: true,

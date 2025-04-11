@@ -38,6 +38,16 @@ const getCities = async (req, res, next) => {
         cityName: true,
         createdAt: true,
         updatedAt: true,
+        state: {
+          select: {
+            stateName: true,
+            country: {
+              select: {
+                countryName: true,
+              },
+            },
+          },
+        },
       },
       skip,
       take: limit,
@@ -247,7 +257,20 @@ const deleteCity = async (req, res) => {
 // Get all cities without pagination, sorting, and search
 const getAllCities = async (req, res, next) => {
   try {
+    // Step 1: Get agencyId of the current user
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id) },
+      select: { agencyId: true },
+    });
+
+    if (!user?.agencyId) {
+      return res.status(404).json({ message: "Agency not found" });
+    }
+
     const cities = await prisma.city.findMany({
+      where: {
+        agencyId: user.agencyId,
+      },
       select: {
         id: true,
         cityName: true,
