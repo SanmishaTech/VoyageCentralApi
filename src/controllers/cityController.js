@@ -14,22 +14,28 @@ const getCities = async (req, res, next) => {
   const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
   try {
-    // Fetch cities with optional pagination, sorting, and search
+    // Step 1: Get agencyId of the current user
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id) },
+      select: { agencyId: true },
+    });
+
+    if (!user?.agencyId) {
+      return res.status(404).json({ message: "Agency not found" });
+    }
+
+    // Step 2: Build filter clause
     const whereClause = {
+      agencyId: user.agencyId,
       cityName: { contains: search },
     };
 
+    // Step 3: Fetch paginated & sorted countries
     const cities = await prisma.city.findMany({
       where: whereClause,
       select: {
         id: true,
         cityName: true,
-        state: {
-          select: {
-            id: true,
-            stateName: true,
-          },
-        },
         createdAt: true,
         updatedAt: true,
       },
@@ -38,8 +44,9 @@ const getCities = async (req, res, next) => {
       orderBy: { [sortBy]: sortOrder },
     });
 
-    // Fetch total count for pagination
+    // Step 4: Get total count for pagination
     const totalCities = await prisma.city.count({ where: whereClause });
+    // Fetch total count for pagination
     const totalPages = Math.ceil(totalCities / limit);
 
     res.json({

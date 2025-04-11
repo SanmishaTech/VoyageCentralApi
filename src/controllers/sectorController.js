@@ -14,11 +14,23 @@ const getSectors = async (req, res, next) => {
   const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
   try {
-    // Fetch sectors with optional pagination, sorting, and search
+    // Step 1: Get agencyId of the current user
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id) },
+      select: { agencyId: true },
+    });
+
+    if (!user?.agencyId) {
+      return res.status(404).json({ message: "Agency not found" });
+    }
+
+    // Step 2: Build filter clause
     const whereClause = {
+      agencyId: user.agencyId,
       sectorName: { contains: search },
     };
 
+    // Step 3: Fetch paginated & sorted countries
     const sectors = await prisma.sector.findMany({
       where: whereClause,
       select: {
@@ -32,9 +44,11 @@ const getSectors = async (req, res, next) => {
       orderBy: { [sortBy]: sortOrder },
     });
 
-    // Fetch total count for pagination
+    // Step 4: Get total count for pagination
     const totalSectors = await prisma.sector.count({ where: whereClause });
     const totalPages = Math.ceil(totalSectors / limit);
+
+    // end
 
     res.json({
       sectors,

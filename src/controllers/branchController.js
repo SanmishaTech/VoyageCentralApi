@@ -14,8 +14,19 @@ const getBranches = async (req, res, next) => {
   const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
   try {
-    // Build the where clause for filtering
+    // Step 1: Get agencyId of the current user
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id) },
+      select: { agencyId: true },
+    });
+
+    if (!user?.agencyId) {
+      return res.status(404).json({ message: "Agency not found" });
+    }
+
+    // Step 2: Build filter clause
     const whereClause = {
+      agencyId: user.agencyId,
       OR: [
         { branchName: { contains: search } },
         { address: { contains: search } },
@@ -25,7 +36,7 @@ const getBranches = async (req, res, next) => {
       ],
     };
 
-    // Fetch branches with optional pagination, sorting, and search
+    // Step 3: Fetch paginated & sorted countries
     const branches = await prisma.branch.findMany({
       where: whereClause,
       select: {
@@ -49,7 +60,6 @@ const getBranches = async (req, res, next) => {
       orderBy: { [sortBy]: sortOrder },
     });
 
-    // Fetch total count for pagination
     const totalBranches = await prisma.branch.count({ where: whereClause });
     const totalPages = Math.ceil(totalBranches / limit);
 

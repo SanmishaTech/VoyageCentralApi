@@ -14,22 +14,49 @@ const getStates = async (req, res, next) => {
   const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
   try {
-    // Fetch states with optional pagination, sorting, and search
+    // Step 1: Get agencyId of the current user
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id) },
+      select: { agencyId: true },
+    });
+
+    if (!user?.agencyId) {
+      return res.status(404).json({ message: "Agency not found" });
+    }
+
+    // Step 2: Build filter clause
     const whereClause = {
+      agencyId: user.agencyId,
       stateName: { contains: search },
     };
 
+    // const states = await prisma.state.findMany({
+    //   where: whereClause,
+    //   select: {
+    //     id: true,
+    //     stateName: true,
+    //     country: {
+    //       select: {
+    //         id: true,
+    //         countryName: true,
+    //       },
+    //     },
+    //     createdAt: true,
+    //     updatedAt: true,
+    //   },
+    //   skip,
+    //   take: limit,
+    //   orderBy: { [sortBy]: sortOrder },
+    // });
+
+    // Fetch total count for pagination
+    // const totalStates = await prisma.state.count({ where: whereClause });
+    // Step 3: Fetch paginated & sorted countries
     const states = await prisma.state.findMany({
       where: whereClause,
       select: {
         id: true,
         stateName: true,
-        country: {
-          select: {
-            id: true,
-            countryName: true,
-          },
-        },
         createdAt: true,
         updatedAt: true,
       },
@@ -38,7 +65,7 @@ const getStates = async (req, res, next) => {
       orderBy: { [sortBy]: sortOrder },
     });
 
-    // Fetch total count for pagination
+    // Step 4: Get total count for pagination
     const totalStates = await prisma.state.count({ where: whereClause });
     const totalPages = Math.ceil(totalStates / limit);
 

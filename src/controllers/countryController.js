@@ -14,11 +14,23 @@ const getCountries = async (req, res, next) => {
   const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
   try {
-    // Fetch countries with optional pagination, sorting, and search
+    // Step 1: Get agencyId of the current user
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(req.user.id) },
+      select: { agencyId: true },
+    });
+
+    if (!user?.agencyId) {
+      return res.status(404).json({ message: "Agency not found" });
+    }
+
+    // Step 2: Build filter clause
     const whereClause = {
+      agencyId: user.agencyId,
       countryName: { contains: search },
     };
 
+    // Step 3: Fetch paginated & sorted countries
     const countries = await prisma.country.findMany({
       where: whereClause,
       select: {
@@ -32,7 +44,7 @@ const getCountries = async (req, res, next) => {
       orderBy: { [sortBy]: sortOrder },
     });
 
-    // Fetch total count for pagination
+    // Step 4: Get total count for pagination
     const totalCountries = await prisma.country.count({ where: whereClause });
     const totalPages = Math.ceil(totalCountries / limit);
 
@@ -46,6 +58,7 @@ const getCountries = async (req, res, next) => {
     next(error);
   }
 };
+
 
 // Create a new country
 const createCountry = async (req, res, next) => {
@@ -85,7 +98,9 @@ const createCountry = async (req, res, next) => {
     });
 
     if (!agencyId.agencyId) {
-      return res.status(404).json({ errors: { message: "User does not belongs to any Agency" } });
+      return res
+        .status(404)
+        .json({ errors: { message: "User does not belongs to any Agency" } });
     }
 
     const newCountry = await prisma.country.create({
