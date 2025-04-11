@@ -125,7 +125,13 @@ const getPackages = async (req, res, next) => {
 const createPackage = async (req, res, next) => {
   // Define Zod schema for package creation
   const schema = z.object({
-    packageName: z.string().nonempty("Package name is required."),
+    packageName: z
+      .string()
+      .min(1, "Package name cannot be left blank.") // Ensuring minimum length of 2
+      .max(100, "Package name must not exceed 100 characters.")
+      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+        message: "Package name can only contain letters.",
+      }),
     numberOfBranches: z
       .number({
         required_error: "Number of branches is required.",
@@ -208,7 +214,13 @@ const getPackageById = async (req, res, next) => {
 const updatePackage = async (req, res, next) => {
   // Define Zod schema for package update
   const schema = z.object({
-    packageName: z.string().nonempty("Package name is required."),
+    packageName: z
+      .string()
+      .min(1, "Package name cannot be left blank.") // Ensuring minimum length of 2
+      .max(100, "Package name must not exceed 100 characters.")
+      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+        message: "Package name can only contain letters.",
+      }),
     numberOfBranches: z
       .number({
         required_error: "Number of branches is required.",

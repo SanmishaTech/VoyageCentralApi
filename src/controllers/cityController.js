@@ -58,7 +58,13 @@ const createCity = async (req, res, next) => {
   // Define Zod schema for city creation
   const schema = z
     .object({
-      cityName: z.string().nonempty("City name is required."),
+      cityName: z
+        .string()
+        .min(1, "City name cannot be left blank.") // Ensuring minimum length of 2
+        .max(100, "City name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "City name can only contain letters.",
+        }),
       stateId: z
         .number({
           required_error: "State ID is required.",
@@ -144,7 +150,13 @@ const updateCity = async (req, res, next) => {
   // Define Zod schema for city update
   const schema = z
     .object({
-      cityName: z.string().nonempty("City name is required."),
+      cityName: z
+        .string()
+        .min(1, "City name cannot be left blank.") // Ensuring minimum length of 2
+        .max(100, "City name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "City name can only contain letters.",
+        }),
       stateId: z
         .number({
           required_error: "State ID is required.",

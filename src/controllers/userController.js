@@ -135,7 +135,13 @@ const createUser = async (req, res, next) => {
   // Define Zod schema for user creation
   const schema = z
     .object({
-      name: z.string().min(1, "Name is required."), //
+      name: z
+        .string()
+        .min(1, "Name cannot be left blank.") // Ensuring minimum length of 2
+        .max(100, "Name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "Name can only contain letters.",
+        }),
       email: z
         .string()
         .email("Email must be a valid email address.")
@@ -182,7 +188,13 @@ const updateUser = async (req, res, next) => {
   // Define Zod schema for user update
   const schema = z
     .object({
-      name: z.string().nonempty("Name is required.").optional(),
+      name: z
+        .string()
+        .min(1, "Name cannot be left blank.") // Ensuring minimum length of 2
+        .max(100, "Name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "Name can only contain letters.",
+        }),
       email: z
         .string()
         .email("Email must be a valid email address.")

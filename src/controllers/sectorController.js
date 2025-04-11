@@ -52,7 +52,10 @@ const createSector = async (req, res, next) => {
   // Define Zod schema for sector creation
   const schema = z
     .object({
-      sectorName: z.string().nonempty("Sector name is required."),
+      sectorName: z
+        .string()
+        .min(1, "Sector name is required.")
+        .max(100, "Sector name must be less than 100 characters."),
     })
     .superRefine(async (data, ctx) => {
       // Check if the sector already exists
@@ -85,7 +88,7 @@ const createSector = async (req, res, next) => {
 };
 
 // Get a sector by ID
-const getSectorById = async (req, res,next) => {
+const getSectorById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
@@ -108,7 +111,10 @@ const updateSector = async (req, res, next) => {
   // Define Zod schema for sector update
   const schema = z
     .object({
-      sectorName: z.string().nonempty("Sector name is required."),
+      sectorName: z
+        .string()
+        .min(1, "Sector name is required.")
+        .max(100, "Sector name must be less than 100 characters."),
     })
     .superRefine(async (data, ctx) => {
       const { id } = req.params;

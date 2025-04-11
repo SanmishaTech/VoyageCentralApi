@@ -58,7 +58,13 @@ const createState = async (req, res, next) => {
   // Define Zod schema for state creation
   const schema = z
     .object({
-      stateName: z.string().nonempty("State name is required."),
+      stateName: z
+        .string()
+        .min(1, "State name cannot be left blank.") // Ensuring minimum length of 2
+        .max(100, "State name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "State name can only contain letters.",
+        }),
       countryId: z
         .number({
           required_error: "Country ID is required.",
@@ -144,7 +150,13 @@ const updateState = async (req, res, next) => {
   // Define Zod schema for state update
   const schema = z
     .object({
-      stateName: z.string().nonempty("State name is required."),
+      stateName: z
+        .string()
+        .min(1, "State name cannot be left blank.") // Ensuring minimum length of 2
+        .max(100, "State name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "State name can only contain letters.",
+        }),
       countryId: z
         .number({
           required_error: "Country ID is required.",

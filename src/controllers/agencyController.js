@@ -154,7 +154,7 @@ const getAgencies = async (req, res, next) => {
     const totalPages = Math.ceil(totalAgencies / limit);
 
     res.json({
-      data: agencies,
+      agencies,
       page,
       totalPages,
       totalAgencies,
@@ -169,18 +169,42 @@ const createAgency = async (req, res, next) => {
   // Define Zod schema for agency validation
   const schema = z
     .object({
-      businessName: z.string().nonempty("Business name is required."),
-      addressLine1: z.string().nonempty("Address Line 1 is required."),
-      addressLine2: z.string().optional(),
-      state: z.string().nonempty("State is required."),
-      city: z.string().nonempty("City is required."),
-      pincode: z.string().nonempty("Pincode is required."),
+      businessName: z
+        .string()
+        .min(1, "Business name is required.")
+        .max(100, "Business name must not exceed 100 characters."),
+      addressLine1: z
+        .string()
+        .min(1, "Address Line 1 is required.")
+        .max(255, "Address Line 1 must not exceed 255 characters."),
+      addressLine2: z
+        .string()
+        .max(255, "Address line 2 must not exceed 255 characters.")
+        .optional(),
+      state: z
+        .string()
+        .min(1, "State is required.")
+        .max(100, "State must not exceed 100 characters."),
+      city: z
+        .string()
+        .min(1, "City is required.")
+        .max(100, "City must not exceed 100 characters."),
+      pincode: z
+        .string()
+        .min(1, "Pincode is required.")
+        .max(10, "Pincode must not exceed 10 characters."),
+
       contactPersonName: z
         .string()
-        .nonempty("Contact person name is required."),
+        .min(1, "name cannot be left blank.") // Ensuring minimum length of 2
+        .max(100, "name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "name can only contain letters.",
+        }),
       contactPersonPhone: z
         .string()
-        .nonempty("Contact person phone is required."),
+        .min(10, "Contact person phone must be 10 digits.")
+        .max(10, "Contact person phone must be 10 digits."),
       contactPersonEmail: z
         .string()
         .email("Contact person email must be a valid email address.")
@@ -205,7 +229,13 @@ const createAgency = async (req, res, next) => {
         }),
       }),
       user: z.object({
-        name: z.string().nonempty("User name is required."),
+        name: z
+          .string()
+          .min(1, "name cannot be left blank.") // Ensuring minimum length of 2
+          .max(100, "name must not exceed 100 characters.")
+          .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+            message: "name can only contain letters.",
+          }),
         email: z
           .string()
           .email("User email must be a valid email address.")
@@ -384,20 +414,47 @@ const getAgencyById = async (req, res) => {
 const updateAgency = async (req, res, next) => {
   // Define Zod schema for agency validation
   const schema = z.object({
-    businessName: z.string().nonempty("Business name is required."),
-    addressLine1: z.string().nonempty("Address Line 1 is required."),
-    addressLine2: z.string().optional(),
-    state: z.string().nonempty("State is required."),
-    city: z.string().nonempty("City is required."),
-    pincode: z.string().nonempty("Pincode is required."),
-    contactPersonName: z.string().nonempty("Contact person name is required."),
+    businessName: z
+      .string()
+      .min(1, "Business name is required.")
+      .max(100, "Business name must not exceed 100 characters."),
+    addressLine1: z
+      .string()
+      .min(1, "Address Line 1 is required.")
+      .max(255, "Address Line 1 must not exceed 255 characters."),
+    addressLine2: z
+      .string()
+      .max(255, "Address line 2 must not exceed 255 characters.")
+      .optional(),
+    state: z
+      .string()
+      .min(1, "State is required.")
+      .max(100, "State must not exceed 100 characters."),
+    city: z
+      .string()
+      .min(1, "City is required.")
+      .max(100, "City must not exceed 100 characters."),
+    pincode: z
+      .string()
+      .min(1, "Pincode is required.")
+      .max(10, "Pincode must not exceed 10 characters."),
+
+    contactPersonName: z
+      .string()
+      .min(1, "name cannot be left blank.") // Ensuring minimum length of 2
+      .max(100, "name must not exceed 100 characters.")
+      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+        message: "name can only contain letters.",
+      }),
+
     contactPersonEmail: z
       .string()
       .email("Contact person email must be a valid email address.")
       .nonempty("Contact person email is required."),
     contactPersonPhone: z
       .string()
-      .nonempty("Contact person phone is required."),
+      .min(10, "Contact person phone must be 10 digits.")
+      .max(10, "Contact person phone must be 10 digits."),
     gstin: z
       .string()
       .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/, {

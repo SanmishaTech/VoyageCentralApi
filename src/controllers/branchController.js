@@ -67,14 +67,29 @@ const getBranches = async (req, res, next) => {
 // Create a new branch
 const createBranch = async (req, res, next) => {
   const schema = z.object({
-    branchName: z.string().nonempty("Branch name is required."),
-    address: z.string().nonempty("Address is required."),
-    contactName: z.string().nonempty("Contact name is required."),
+    branchName: z
+      .string()
+      .min(1, "Branch name is required.")
+      .max(100, "Branch name must be less than 100 characters."),
+    address: z
+      .string()
+      .min(1, "Address is required.")
+      .max(255, "Address must be less than 255 characters."),
+    contactName: z
+      .string()
+      .min(1, "Name cannot be left blank.") // Ensuring minimum length of 2
+      .max(100, "Name must not exceed 100 characters.")
+      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+        message: "Name can only contain letters.",
+      }),
     contactEmail: z
       .string()
       .email("Contact email must be a valid email address.")
       .nonempty("Contact email is required."),
-    contactMobile: z.string().nonempty("Contact mobile is required."),
+    contactMobile: z
+      .string()
+      .min(10, "Contact number must be 10 digits.")
+      .max(10, "Contact number must be 10 digits."),
   });
 
   try {
@@ -149,18 +164,29 @@ const getBranchById = async (req, res, next) => {
 // Update a branch
 const updateBranch = async (req, res, next) => {
   const schema = z.object({
-    branchName: z.string().nonempty("Branch name is required.").optional(),
-    address: z.string().nonempty("Address is required.").optional(),
-    contactName: z.string().nonempty("Contact name is required.").optional(),
+    branchName: z
+      .string()
+      .min(1, "Branch name is required.")
+      .max(100, "Branch name must be less than 100 characters."),
+    address: z
+      .string()
+      .min(1, "Address is required.")
+      .max(255, "Address must be less than 255 characters."),
+    contactName: z
+      .string()
+      .min(1, "Name cannot be left blank.") // Ensuring minimum length of 2
+      .max(100, "Name must not exceed 100 characters.")
+      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+        message: "Name can only contain letters.",
+      }),
     contactEmail: z
       .string()
       .email("Contact email must be a valid email address.")
-      .nonempty("Contact email is required")
-      .optional(),
+      .nonempty("Contact email is required."),
     contactMobile: z
       .string()
-      .nonempty("Contact mobile is required.")
-      .optional(),
+      .min(10, "Contact number must be 10 digits.")
+      .max(10, "Contact number must be 10 digits."),
   });
 
   try {

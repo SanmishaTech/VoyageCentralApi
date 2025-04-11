@@ -52,7 +52,13 @@ const createCountry = async (req, res, next) => {
   // Define Zod schema for country creation
   const schema = z
     .object({
-      countryName: z.string().nonempty("Country name is required."),
+      countryName: z
+        .string()
+        .min(1, "Country name cannot be left blank.") // Ensuring minimum length of 2
+        .max(100, "Country name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "Country name can only contain letters.",
+        }),
     })
     .superRefine(async (data, ctx) => {
       // Check if the package exists
@@ -108,7 +114,13 @@ const updateCountry = async (req, res, next) => {
   // Define Zod schema for country update
   const schema = z
     .object({
-      countryName: z.string().nonempty("Country name is required."),
+      countryName: z
+        .string()
+        .min(1, "Country name cannot be left blank.") // Ensuring minimum length of 2
+        .max(100, "Country name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "Country name can only contain letters.",
+        }),
     })
     .superRefine(async (data, ctx) => {
       const { id } = req.params; // Get the current user's ID from the URL params
