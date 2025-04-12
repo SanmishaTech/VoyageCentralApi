@@ -35,6 +35,7 @@ app.use(express.json());
 console.log("Hello from Ganesh");
 console.log("Hello from Vipul");
 console.log("Hello from Yashc");
+console.log("Hello Ganesh from main");
 app.use("/auth", authRoutes);
 app.use("/roles", roleRoutes);
 app.use("/users", userRoutes);
