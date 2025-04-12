@@ -15,18 +15,15 @@ const getCities = async (req, res, next) => {
 
   try {
     // Step 1: Get agencyId of the current user
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id) },
-      select: { agencyId: true },
-    });
-
-    if (!user?.agencyId) {
-      return res.status(404).json({ message: "Agency not found" });
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belongs to any Agency" });
     }
 
     // Step 2: Build filter clause
     const whereClause = {
-      agencyId: user.agencyId,
+      agencyId: req.user.agencyId,
       cityName: { contains: search },
     };
 
@@ -90,9 +87,18 @@ const createCity = async (req, res, next) => {
         .int("State ID must be an integer."),
     })
     .superRefine(async (data, ctx) => {
-      // Check if the city already exists
+      if (!req.user.agencyId) {
+        return res
+          .status(404)
+          .json({ message: "User does not belongs to any Agency" });
+      }
       const existingCity = await prisma.city.findFirst({
-        where: { cityName: data.cityName },
+        where: {
+          AND: [
+            { cityName: data.cityName },
+            { agencyId: parseInt(req.user.agencyId) },
+          ],
+        },
       });
 
       if (existingCity) {
@@ -121,19 +127,8 @@ const createCity = async (req, res, next) => {
   try {
     const { cityName, stateId } = req.body;
 
-    const agencyId = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id) },
-      select: { agencyId: true },
-    });
-
-    if (!agencyId.agencyId) {
-      return res
-        .status(404)
-        .json({ errors: { message: "User does not belongs to any Agency" } });
-    }
-
     const newCity = await prisma.city.create({
-      data: { cityName, stateId, agencyId: agencyId.agencyId },
+      data: { cityName, stateId, agencyId: req.user.agencyId },
     });
 
     res.status(201).json(newCity);
@@ -198,11 +193,20 @@ const updateCity = async (req, res, next) => {
     })
     .superRefine(async (data, ctx) => {
       const { id } = req.params;
+      if (!req.user.agencyId) {
+        return res
+          .status(404)
+          .json({ message: "User does not belongs to any Agency" });
+      }
 
-      // Check if the city already exists
       const existingCity = await prisma.city.findFirst({
-        where: { cityName: data.cityName },
-        select: { id: true },
+        where: {
+          AND: [
+            { cityName: data.cityName },
+            { agencyId: parseInt(req.user.agencyId) },
+          ],
+        },
+        select: { id: true }, // We only need the id to compare
       });
 
       if (existingCity && existingCity.id !== parseInt(id)) {
@@ -262,18 +266,15 @@ const deleteCity = async (req, res) => {
 const getAllCities = async (req, res, next) => {
   try {
     // Step 1: Get agencyId of the current user
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id) },
-      select: { agencyId: true },
-    });
-
-    if (!user?.agencyId) {
-      return res.status(404).json({ message: "Agency not found" });
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belongs to any Agency" });
     }
 
     const cities = await prisma.city.findMany({
       where: {
-        agencyId: user.agencyId,
+        agencyId: req.user.agencyId,
       },
       select: {
         id: true,

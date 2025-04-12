@@ -84,9 +84,18 @@ const createState = async (req, res, next) => {
         .int("Country ID must be an integer."),
     })
     .superRefine(async (data, ctx) => {
-      // Check if the state already exists
+      if (!req.user.agencyId) {
+        return res
+          .status(404)
+          .json({ message: "User does not belongs to any Agency" });
+      }
       const existingState = await prisma.state.findFirst({
-        where: { stateName: data.stateName },
+        where: {
+          AND: [
+            { stateName: data.stateName },
+            { agencyId: parseInt(req.user.agencyId) },
+          ],
+        },
       });
 
       if (existingState) {
@@ -115,19 +124,8 @@ const createState = async (req, res, next) => {
   try {
     const { stateName, countryId } = req.body;
 
-    const agencyId = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id) },
-      select: { agencyId: true },
-    });
-
-    if (!agencyId.agencyId) {
-      return res
-        .status(404)
-        .json({ errors: { message: "User does not belongs to any Agency" } });
-    }
-
     const newState = await prisma.state.create({
-      data: { stateName, countryId, agencyId: agencyId.agencyId },
+      data: { stateName, countryId, agencyId: req.user.agencyId },
     });
 
     res.status(201).json(newState);
@@ -188,11 +186,20 @@ const updateState = async (req, res, next) => {
     })
     .superRefine(async (data, ctx) => {
       const { id } = req.params;
+      if (!req.user.agencyId) {
+        return res
+          .status(404)
+          .json({ message: "User does not belongs to any Agency" });
+      }
 
-      // Check if the state already exists
       const existingState = await prisma.state.findFirst({
-        where: { stateName: data.stateName },
-        select: { id: true },
+        where: {
+          AND: [
+            { stateName: data.stateName },
+            { agencyId: parseInt(req.user.agencyId) },
+          ],
+        },
+        select: { id: true }, // We only need the id to compare
       });
 
       if (existingState && existingState.id !== parseInt(id)) {
@@ -257,18 +264,15 @@ const getAllStatesByCountryId = async (req, res, next) => {
     const { id } = req.params;
 
     // Step 1: Get agencyId of the current user
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id) },
-      select: { agencyId: true },
-    });
-
-    if (!user?.agencyId) {
-      return res.status(404).json({ message: "Agency not found" });
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belongs to any Agency" });
     }
 
     const states = await prisma.state.findMany({
       where: {
-        agencyId: user.agencyId,
+        agencyId: req.user.agencyId,
         countryId: parseInt(id, 10),
       },
       select: {

@@ -15,18 +15,15 @@ const getSectors = async (req, res, next) => {
 
   try {
     // Step 1: Get agencyId of the current user
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id) },
-      select: { agencyId: true },
-    });
-
-    if (!user?.agencyId) {
-      return res.status(404).json({ message: "Agency not found" });
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belongs to any Agency" });
     }
 
     // Step 2: Build filter clause
     const whereClause = {
-      agencyId: user.agencyId,
+      agencyId: req.user.agencyId,
       sectorName: { contains: search },
     };
 
@@ -72,9 +69,19 @@ const createSector = async (req, res, next) => {
         .max(100, "Sector name must be less than 100 characters."),
     })
     .superRefine(async (data, ctx) => {
-      // Check if the sector already exists
-      const existingSector = await prisma.sector.findUnique({
-        where: { sectorName: data.sectorName },
+      if (!req.user.agencyId) {
+        return res
+          .status(404)
+          .json({ message: "User does not belongs to any Agency" });
+      }
+
+      const existingSector = await prisma.sector.findFirst({
+        where: {
+          AND: [
+            { sectorName: data.sectorName },
+            { agencyId: parseInt(req.user.agencyId) },
+          ],
+        },
       });
 
       if (existingSector) {
@@ -91,19 +98,8 @@ const createSector = async (req, res, next) => {
   try {
     const { sectorName } = req.body;
 
-    const agencyId = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id) },
-      select: { agencyId: true },
-    });
-
-    if (!agencyId.agencyId) {
-      return res
-        .status(404)
-        .json({ errors: { message: "User does not belongs to any Agency" } });
-    }
-
     const newSector = await prisma.sector.create({
-      data: { sectorName, agencyId: agencyId.agencyId },
+      data: { sectorName, agencyId: req.user.agencyId },
     });
 
     res.status(201).json(newSector);
@@ -143,11 +139,20 @@ const updateSector = async (req, res, next) => {
     })
     .superRefine(async (data, ctx) => {
       const { id } = req.params;
+      if (!req.user.agencyId) {
+        return res
+          .status(404)
+          .json({ message: "User does not belongs to any Agency" });
+      }
 
-      // Check if the sector already exists
-      const existingSector = await prisma.sector.findUnique({
-        where: { sectorName: data.sectorName },
-        select: { id: true },
+      const existingSector = await prisma.sector.findFirst({
+        where: {
+          AND: [
+            { sectorName: data.sectorName },
+            { agencyId: parseInt(req.user.agencyId) },
+          ],
+        },
+        select: { id: true }, // We only need the id to compare
       });
 
       if (existingSector && existingSector.id !== parseInt(id)) {
@@ -158,7 +163,6 @@ const updateSector = async (req, res, next) => {
       }
     });
 
-  // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
 
   const { id } = req.params;
@@ -194,7 +198,13 @@ const deleteSector = async (req, res, next) => {
 // Get all sectors without pagination, sorting, and search
 const getAllSectors = async (req, res, next) => {
   try {
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belongs to any Agency" });
+    }
     const sectors = await prisma.sector.findMany({
+      where: { agencyId: req.user.agencyId },
       select: {
         id: true,
         sectorName: true,

@@ -15,18 +15,15 @@ const getBranches = async (req, res, next) => {
 
   try {
     // Step 1: Get agencyId of the current user
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id) },
-      select: { agencyId: true },
-    });
-
-    if (!user?.agencyId) {
-      return res.status(404).json({ message: "Agency not found" });
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belongs to any Agency" });
     }
 
     // Step 2: Build filter clause
     const whereClause = {
-      agencyId: user.agencyId,
+      agencyId: req.user.agencyId,
       OR: [
         { branchName: { contains: search } },
         { address: { contains: search } },
@@ -107,15 +104,8 @@ const createBranch = async (req, res, next) => {
 
     const { branchName, address, contactName, contactEmail, contactMobile } =
       req.body;
-    const userId = req.user.id;
-    const userData = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
-      include: {
-        agency: true, // Include the agency data
-      },
-    });
 
-    if (!userData || !userData.agency) {
+    if (!req.user.agencyId) {
       return res.status(400).json({
         errors: { message: "User does not belong to any agency." },
       });
@@ -123,7 +113,7 @@ const createBranch = async (req, res, next) => {
 
     const newBranch = await prisma.branch.create({
       data: {
-        agencyId: userData.agency.id,
+        agencyId: req.user.agencyId,
         branchName,
         address,
         contactName,
