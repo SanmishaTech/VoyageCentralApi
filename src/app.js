@@ -33,7 +33,7 @@ app.use(
 );
 app.use(express.json());
 console.log("Hello from Ganesh");
-console.log("Hello from Yash");
+console.log("Hello from Vipul");
 app.use("/auth", authRoutes);
 app.use("/roles", roleRoutes);
 app.use("/users", userRoutes);
