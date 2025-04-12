@@ -22,9 +22,17 @@ const getCities = async (req, res, next) => {
     }
 
     // Step 2: Build filter clause
+    // const whereClause = {
+    //   agencyId: req.user.agencyId,
+    //   cityName: { contains: search },
+    // };
     const whereClause = {
       agencyId: req.user.agencyId,
-      cityName: { contains: search },
+      OR: [
+        { cityName: { contains: search } },
+        { state: { stateName: { contains: search } } }, // Filter by stateName
+        { state: { country: { countryName: { contains: search } } } }, // Filter by stateName
+      ],
     };
 
     // Step 3: Fetch paginated & sorted countries
@@ -48,7 +56,13 @@ const getCities = async (req, res, next) => {
       },
       skip,
       take: limit,
-      orderBy: { [sortBy]: sortOrder },
+      // orderBy: { [sortBy]: sortOrder },
+      orderBy:
+        sortBy === "stateName"
+          ? { state: { stateName: sortOrder } }
+          : sortBy === "countryName"
+          ? { state: { country: { countryName: sortOrder } } }
+          : { [sortBy]: sortOrder },
     });
 
     // Step 4: Get total count for pagination
