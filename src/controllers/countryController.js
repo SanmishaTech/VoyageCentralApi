@@ -122,7 +122,9 @@ const getCountryById = async (req, res, next) => {
 
     res.status(200).json(country);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      errors: { message: "Failed to fetch country", details: error.message },
+    });
   }
 };
 
@@ -181,6 +183,9 @@ const updateCountry = async (req, res, next) => {
 
     res.status(200).json(updatedCountry);
   } catch (error) {
+    if (error.code === "P2025") {
+      return next(createError(404, "Country not found"));
+    }
     next(error);
   }
 };
@@ -199,7 +204,9 @@ const deleteCountry = async (req, res, next) => {
     if (error.code === "P2025") {
       return res.status(404).json({ errors: { message: "Country not found" } });
     }
-    next(error);
+    res.status(500).json({
+      errors: { message: "Failed to delete country", details: error.message },
+    });
   }
 };
 

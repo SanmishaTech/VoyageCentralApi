@@ -1,8 +1,8 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { z } = require("zod");
+const createError = require("http-errors");
 const validateRequest = require("../utils/validateRequest");
-const createError = require("http-errors"); // For consistent error handling
 
 // Get all packages with pagination, sorting, and search
 const getPackages = async (req, res, next) => {

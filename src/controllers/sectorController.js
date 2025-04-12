@@ -1,8 +1,8 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const createError = require("http-errors");
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
-const createError = require("http-errors"); // For consistent error handling
 
 // Get all sectors with pagination, sorting, and search
 const getSectors = async (req, res, next) => {
@@ -123,7 +123,9 @@ const getSectorById = async (req, res, next) => {
 
     res.status(200).json(sector);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      errors: { message: "Failed to fetch sector", details: error.message },
+    });
   }
 };
 
@@ -176,6 +178,9 @@ const updateSector = async (req, res, next) => {
 
     res.status(200).json(updatedSector);
   } catch (error) {
+    if (error.code === "P2025") {
+      return next(createError(404, "Sector not found"));
+    }
     next(error);
   }
 };
@@ -191,7 +196,12 @@ const deleteSector = async (req, res, next) => {
 
     res.status(204).send();
   } catch (error) {
-    next(error);
+    if (error.code === "P2025") {
+      return res.status(404).json({ errors: { message: "Sector not found" } });
+    }
+    res.status(500).json({
+      errors: { message: "Failed to delete sector", details: error.message },
+    });
   }
 };
 

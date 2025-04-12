@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const dayjs = require("dayjs");
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
+const createError = require("http-errors");
 
 const prisma = new PrismaClient();
 
@@ -357,7 +358,7 @@ const createAgency = async (req, res, next) => {
 };
 
 // Get an agency by ID
-const getAgencyById = async (req, res) => {
+const getAgencyById = async (req, res,next) => {
   const { id } = req.params;
 
   try {
@@ -516,7 +517,7 @@ const updateAgency = async (req, res, next) => {
 };
 
 // Delete an agency
-const deleteAgency = async (req, res) => {
+const deleteAgency = async (req, res, next) => {
   const { id } = req.params;
 
   try {

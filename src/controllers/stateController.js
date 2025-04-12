@@ -1,8 +1,8 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const createError = require("http-errors");
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
-const createError = require("http-errors"); // For consistent error handling
 
 // Get all states with pagination, sorting, and search
 const getStates = async (req, res, next) => {
@@ -185,7 +185,9 @@ const getStateById = async (req, res, next) => {
 
     res.status(200).json(state);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      errors: { message: "Failed to fetch state", details: error.message },
+    });
   }
 };
 
@@ -260,6 +262,9 @@ const updateState = async (req, res, next) => {
 
     res.status(200).json(updatedState);
   } catch (error) {
+    if (error.code === "P2025") {
+      return next(createError(404, "State not found"));
+    }
     next(error);
   }
 };
@@ -278,7 +283,9 @@ const deleteState = async (req, res, next) => {
     if (error.code === "P2025") {
       return res.status(404).json({ errors: { message: "State not found" } });
     }
-    next(error);
+    res.status(500).json({
+      errors: { message: "Failed to delete state", details: error.message },
+    });
   }
 };
 

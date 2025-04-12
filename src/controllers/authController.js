@@ -6,6 +6,7 @@ const prisma = require("../config/db");
 const emailService = require("../services/emailService");
 const validateRequest = require("../utils/validateRequest");
 const config = require("../config/config");
+const createError = require("http-errors");
 const jwtConfig = require("../config/jwt");
 const { SUPER_ADMIN } = require("../config/roles");
 

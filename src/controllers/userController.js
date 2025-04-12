@@ -127,7 +127,9 @@ const getUserById = async (req, res, next) => {
     }
     res.json(user);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      errors: { message: "Failed to fetch user", details: error.message },
+    });
   }
 };
 
@@ -231,6 +233,9 @@ const updateUser = async (req, res, next) => {
     });
     res.json(updatedUser);
   } catch (error) {
+    if (error.code === "P2025") {
+      return next(createError(404, "User not found"));
+    }
     next(error);
   }
 };

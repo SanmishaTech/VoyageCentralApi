@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const prisma = require("../config/db");
 const { z } = require("zod");
+const createError = require("http-errors");
 const validateRequest = require("../utils/validateRequest");
 
 const getProfile = async (req, res, next) => {

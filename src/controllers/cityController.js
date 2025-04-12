@@ -182,7 +182,9 @@ const getCityById = async (req, res, next) => {
 
     res.status(200).json(city);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      errors: { message: "Failed to fetch city", details: error.message },
+    });
   }
 };
 
@@ -257,12 +259,15 @@ const updateCity = async (req, res, next) => {
 
     res.status(200).json(updatedCity);
   } catch (error) {
+    if (error.code === "P2025") {
+      return next(createError(404, "City not found"));
+    }
     next(error);
   }
 };
 
 // Delete a city
-const deleteCity = async (req, res) => {
+const deleteCity = async (req, res, next) => {
   const { id } = req.params;
 
   try {
@@ -272,7 +277,12 @@ const deleteCity = async (req, res) => {
 
     res.status(204).send();
   } catch (error) {
-    next(error);
+    if (error.code === "P2025") {
+      return res.status(404).json({ errors: { message: "City not found" } });
+    }
+    res.status(500).json({
+      errors: { message: "Failed to delete city", details: error.message },
+    });
   }
 };
 

@@ -173,7 +173,9 @@ const getBranchById = async (req, res, next) => {
 
     res.json(branch);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      errors: { message: "Failed to fetch Branch", details: error.message },
+    });
   }
 };
 
