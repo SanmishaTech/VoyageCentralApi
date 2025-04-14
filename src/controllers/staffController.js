@@ -25,10 +25,10 @@ const getStaff = async (req, res, next) => {
       {
         OR: [
           { name: { contains: search } },
-          { email: { contains: search } },
+          // { email: { contains: search } },
           { communicationEmail: { contains: search } },
           { mobile1: { contains: search } },
-          { mobile2: { contains: search } },
+          // { mobile2: { contains: search } },
         ],
       },
       { agencyId: req.user.agencyId },
@@ -446,7 +446,6 @@ const changePassword = async (req, res, next) => {
 };
 
 const setActiveStatus = async (req, res, next) => {
-  // Define Zod schema for active status
   const schema = z.object({
     active: z.boolean({
       required_error: "Active status is required.",
@@ -454,15 +453,31 @@ const setActiveStatus = async (req, res, next) => {
     }),
   });
 
-  // Validate the request body using Zod
-  const validationErrors = await validateRequest(schema, req.body, res);
   try {
-    const updatedUser = await prisma.user.update({
-      where: { id: parseInt(req.params.id) },
+    const validationErrors = await validateRequest(schema, req.body, res);
+
+    const updatedStaff = await prisma.user.update({
+      where: {
+        id: parseInt(req.params.id),
+        agencyId: req.user.agencyId,
+      },
       data: { active: req.body.active },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        active: true,
+      },
     });
-    res.json(updatedUser);
+
+    res.json(updatedStaff);
   } catch (error) {
+    if (error.code === "P2025") {
+      return res.status(404).json({ message: "Staff member not found" });
+    }
+    if (error.name === "UnauthorizedError") {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
     next(error);
   }
 };

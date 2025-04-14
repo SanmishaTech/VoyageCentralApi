@@ -349,6 +349,49 @@ router.put("/:id", auth, acl("staff.write"), staffController.updateStaff);
  */
 router.delete("/:id", auth, acl("staff.write"), staffController.deleteStaff);
 
+/**
+ * @swagger
+ * /staff/{id}/status:
+ *   patch:
+ *     summary: Set staff active status
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: Staff ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               active:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Staff status updated
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Staff not found
+ */
+router.patch(
+  "/:id/status",
+  auth,
+  acl("staff.write"),
+  staffController.setActiveStatus
+);
+
 router.patch(
   "/:id/password",
   auth,
