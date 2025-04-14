@@ -81,7 +81,24 @@ const getStaff = async (req, res, next) => {
       totalStaff,
     });
   } catch (error) {
-    next(error);
+    if (error.name === "UnauthorizedError") {
+      return res.status(401).json({
+        errors: {
+          auth: {
+            type: "server",
+            message: "Unauthorized access",
+          },
+        },
+      });
+    }
+    return res.status(500).json({
+      errors: {
+        server: {
+          type: "server",
+          message: error.message || "Internal server error",
+        },
+      },
+    });
   }
 };
 
@@ -138,6 +155,16 @@ const getStaffById = async (req, res, next) => {
     });
   } catch (error) {
     console.error("Error in getStaffById:", error);
+    if (error.name === "UnauthorizedError") {
+      return res.status(401).json({
+        errors: {
+          auth: {
+            type: "server",
+            message: "Unauthorized access",
+          },
+        },
+      });
+    }
     next(error);
   }
 };
@@ -185,12 +212,13 @@ const createStaff = async (req, res, next) => {
     const validation = schema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
-        status: "error",
-        message: "Validation failed",
-        errors: validation.error.errors.map((error) => ({
-          field: error.path.join("."),
-          message: error.message,
-        })),
+        errors: validation.error.errors.reduce((acc, error) => {
+          acc[error.path[0]] = {
+            type: "server",
+            message: error.message,
+          };
+          return acc;
+        }, {}),
       });
     }
 
@@ -200,8 +228,12 @@ const createStaff = async (req, res, next) => {
 
     if (existingUser) {
       return res.status(409).json({
-        status: "error",
-        message: "Email already exists",
+        errors: {
+          email: {
+            type: "server",
+            message: "Email already exists",
+          },
+        },
       });
     }
 
@@ -233,10 +265,23 @@ const createStaff = async (req, res, next) => {
       data: staff,
     });
   } catch (error) {
+    if (error.name === "UnauthorizedError") {
+      return res.status(401).json({
+        errors: {
+          auth: {
+            type: "server",
+            message: "Unauthorized access",
+          },
+        },
+      });
+    }
     return res.status(500).json({
-      status: "error",
-      message: "Internal server error",
-      error: error.message,
+      errors: {
+        server: {
+          type: "server",
+          message: error.message || "Internal server error",
+        },
+      },
     });
   }
 };
@@ -276,6 +321,27 @@ const updateStaff = async (req, res, next) => {
   try {
     const validationErrors = await validateRequest(schema, req.body, res);
 
+    // Check if email exists (if email is being updated)
+    if (req.body.email) {
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          email: req.body.email,
+          id: { not: parseInt(req.params.id) },
+        },
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          errors: {
+            email: {
+              type: "server",
+              message: "Email already exists.",
+            },
+          },
+        });
+      }
+    }
+
     const updatedStaff = await prisma.user.update({
       where: {
         id: parseInt(req.params.id),
@@ -287,9 +353,33 @@ const updateStaff = async (req, res, next) => {
     res.json(updatedStaff);
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "Staff member not found"));
+      return res.status(404).json({
+        errors: {
+          staff: {
+            type: "server",
+            message: "Staff member not found",
+          },
+        },
+      });
     }
-    next(error);
+    if (error.name === "UnauthorizedError") {
+      return res.status(401).json({
+        errors: {
+          auth: {
+            type: "server",
+            message: "Unauthorized access",
+          },
+        },
+      });
+    }
+    return res.status(500).json({
+      errors: {
+        server: {
+          type: "server",
+          message: error.message || "Internal server error",
+        },
+      },
+    });
   }
 };
 
@@ -303,9 +393,76 @@ const deleteStaff = async (req, res, next) => {
     });
     res.json({ message: "Staff member deleted" });
   } catch (error) {
-    if (error.code === "P2025") {
-      return next(createError(404, "Staff member not found"));
+    if (error.name === "UnauthorizedError") {
+      return res.status(401).json({
+        errors: {
+          auth: {
+            type: "server",
+            message: "Unauthorized access",
+          },
+        },
+      });
     }
+    next(error);
+  }
+};
+
+const changePassword = async (req, res, next) => {
+  // Define Zod schema for password validation
+  const schema = z.object({
+    password: z
+      .string()
+      .min(6, "Password must be at least 6 characters long.")
+      .nonempty("Password is required."),
+  });
+
+  try {
+    // Validate the request body using Zod
+    const validationErrors = await validateRequest(schema, req.body, res);
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+
+    const updatedStaff = await prisma.user.update({
+      where: {
+        id: parseInt(req.params.id),
+        agencyId: req.user.agencyId, // Ensure staff belongs to agency
+      },
+      data: { password: hashedPassword },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    if (error.code === "P2025") {
+      return res.status(404).json({
+        errors: { message: "Staff member not found" },
+      });
+    }
+    next(error);
+  }
+};
+
+const setActiveStatus = async (req, res, next) => {
+  // Define Zod schema for active status
+  const schema = z.object({
+    active: z.boolean({
+      required_error: "Active status is required.",
+      invalid_type_error: "Active status must be a boolean.",
+    }),
+  });
+
+  // Validate the request body using Zod
+  const validationErrors = await validateRequest(schema, req.body, res);
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: parseInt(req.params.id) },
+      data: { active: req.body.active },
+    });
+    res.json(updatedUser);
+  } catch (error) {
     next(error);
   }
 };
@@ -316,4 +473,6 @@ module.exports = {
   createStaff,
   updateStaff,
   deleteStaff,
+  changePassword,
+  setActiveStatus,
 };

@@ -349,4 +349,11 @@ router.put("/:id", auth, acl("staff.write"), staffController.updateStaff);
  */
 router.delete("/:id", auth, acl("staff.write"), staffController.deleteStaff);
 
+router.patch(
+  "/:id/password",
+  auth,
+  acl("staff.write"),
+  staffController.changePassword
+);
+
 module.exports = router;
