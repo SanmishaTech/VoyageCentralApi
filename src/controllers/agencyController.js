@@ -54,6 +54,7 @@ const getAgencies = async (req, res, next) => {
             id: true,
             startDate: true,
             endDate: true,
+            cost: true,
             package: {
               select: {
                 id: true,
@@ -358,7 +359,7 @@ const createAgency = async (req, res, next) => {
 };
 
 // Get an agency by ID
-const getAgencyById = async (req, res,next) => {
+const getAgencyById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
@@ -382,6 +383,7 @@ const getAgencyById = async (req, res,next) => {
             id: true,
             startDate: true,
             endDate: true,
+            cost: true,
             createdAt: true,
             updatedAt: true,
             package: {
