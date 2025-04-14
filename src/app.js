@@ -26,7 +26,7 @@ app.use(morgan("dev"));
 app.use(helmet());
 app.use(
   cors({
-    origin: config.frontendUrl, // Allow requests from this origin
+    origin: config.frontendUrl || "http://localhost:5173", // Allow requests from this origin
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Allowed HTTP methods
     allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
   })
