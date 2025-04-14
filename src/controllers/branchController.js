@@ -16,9 +16,9 @@ const getBranches = async (req, res, next) => {
   try {
     // Step 1: Get agencyId of the current user
     if (!req.user.agencyId) {
-      return res
-        .status(404)
-        .json({ message: "User does not belongs to any Agency" });
+      return res.status(404).json({
+        errors: { message: "User does not belongs to any Agency" },
+      });
     }
 
     // Step 2: Build filter clause
@@ -100,9 +100,9 @@ const createBranch = async (req, res, next) => {
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
+        return res.status(404).json({
+          errors: { message: "User does not belongs to any Agency" },
+        });
       }
       const existingBranchName = await prisma.branch.findFirst({
         where: {
@@ -168,7 +168,9 @@ const getBranchById = async (req, res, next) => {
     });
 
     if (!branch) {
-      return next(createError(404, "Branch not found"));
+      return res.status(404).json({
+        errors: { message: "Branch Not Found" },
+      });
     }
 
     res.json(branch);
@@ -209,9 +211,9 @@ const updateBranch = async (req, res, next) => {
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
+        return res.status(404).json({
+          errors: { message: "User does not belongs to any Agency" },
+        });
       }
       const { id } = req.params; // Get the current user's ID from the URL params
 
@@ -256,7 +258,9 @@ const updateBranch = async (req, res, next) => {
     res.json(updatedBranch);
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "Branch not found"));
+      return res.status(404).json({
+        errors: { message: "Branch not found", details: error.message },
+      });
     }
     next(error);
   }

@@ -15,19 +15,18 @@ const getStates = async (req, res, next) => {
 
   try {
     // Step 1: Get agencyId of the current user
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(req.user.id) },
-      select: { agencyId: true },
-    });
-
-    if (!user?.agencyId) {
-      return res.status(404).json({ message: "Agency not found" });
+    if (!req.user.agencyId) {
+      return res.status(404).json({
+        errors: {
+          message: "User does not belongs to any Agency",
+        },
+      });
     }
 
     // Step 2: Build filter clause
 
     const whereClause = {
-      agencyId: user.agencyId,
+      agencyId: req.user.agencyId,
       OR: [
         { stateName: { contains: search } },
         { country: { countryName: { contains: search } } }, // Filter by countryName
@@ -109,9 +108,11 @@ const createState = async (req, res, next) => {
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
+        return res.status(404).json({
+          errors: {
+            message: "User does not belongs to any Agency",
+          },
+        });
       }
       const existingState = await prisma.state.findFirst({
         where: {
@@ -213,9 +214,11 @@ const updateState = async (req, res, next) => {
     .superRefine(async (data, ctx) => {
       const { id } = req.params;
       if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
+        return res.status(404).json({
+          errors: {
+            message: "User does not belongs to any Agency",
+          },
+        });
       }
 
       const existingState = await prisma.state.findFirst({
@@ -263,7 +266,11 @@ const updateState = async (req, res, next) => {
     res.status(200).json(updatedState);
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "State not found"));
+      return res.status(404).json({
+        errors: {
+          message: "State not found",
+        },
+      });
     }
     next(error);
   }
@@ -296,9 +303,11 @@ const getAllStatesByCountryId = async (req, res, next) => {
 
     // Step 1: Get agencyId of the current user
     if (!req.user.agencyId) {
-      return res
-        .status(404)
-        .json({ message: "User does not belongs to any Agency" });
+      return res.status(404).json({
+        errors: {
+          message: "User does not belongs to any Agency",
+        },
+      });
     }
 
     const states = await prisma.state.findMany({

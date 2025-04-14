@@ -16,9 +16,11 @@ const getCities = async (req, res, next) => {
   try {
     // Step 1: Get agencyId of the current user
     if (!req.user.agencyId) {
-      return res
-        .status(404)
-        .json({ message: "User does not belongs to any Agency" });
+      return res.status(404).json({
+        errors: {
+          message: "User does not belongs to any Agency",
+        },
+      });
     }
 
     // Step 2: Build filter clause
@@ -102,9 +104,11 @@ const createCity = async (req, res, next) => {
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
+        return res.status(404).json({
+          errors: {
+            message: "User does not belongs to any Agency",
+          },
+        });
       }
       const existingCity = await prisma.city.findFirst({
         where: {
@@ -210,9 +214,11 @@ const updateCity = async (req, res, next) => {
     .superRefine(async (data, ctx) => {
       const { id } = req.params;
       if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
+        return res.status(404).json({
+          errors: {
+            message: "User does not belongs to any Agency",
+          },
+        });
       }
 
       const existingCity = await prisma.city.findFirst({
@@ -260,7 +266,11 @@ const updateCity = async (req, res, next) => {
     res.status(200).json(updatedCity);
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "City not found"));
+      return res.status(404).json({
+        errors: {
+          message: "City not found",
+        },
+      });
     }
     next(error);
   }
@@ -291,9 +301,11 @@ const getAllCities = async (req, res, next) => {
   try {
     // Step 1: Get agencyId of the current user
     if (!req.user.agencyId) {
-      return res
-        .status(404)
-        .json({ message: "User does not belongs to any Agency" });
+      return res.status(404).json({
+        errors: {
+          message: "User does not belongs to any Agency",
+        },
+      });
     }
 
     const cities = await prisma.city.findMany({

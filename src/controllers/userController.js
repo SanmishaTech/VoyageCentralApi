@@ -234,7 +234,11 @@ const updateUser = async (req, res, next) => {
     res.json(updatedUser);
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "User not found"));
+      return res.status(404).json({
+        errors: {
+          message: "User not found",
+        },
+      });
     }
     next(error);
   }
@@ -246,7 +250,11 @@ const deleteUser = async (req, res, next) => {
     res.json({ message: "User deleted" });
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "User not found"));
+      return res.status(404).json({
+        errors: {
+          message: "User not found",
+        },
+      });
     }
     next(error);
   }

@@ -16,9 +16,11 @@ const getSectors = async (req, res, next) => {
   try {
     // Step 1: Get agencyId of the current user
     if (!req.user.agencyId) {
-      return res
-        .status(404)
-        .json({ message: "User does not belongs to any Agency" });
+      return res.status(404).json({
+        errors: {
+          message: "User does not belongs to any Agency",
+        },
+      });
     }
 
     // Step 2: Build filter clause
@@ -70,9 +72,11 @@ const createSector = async (req, res, next) => {
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
+        return res.status(404).json({
+          errors: {
+            message: "User does not belongs to any Agency",
+          },
+        });
       }
 
       const existingSector = await prisma.sector.findFirst({
@@ -142,9 +146,11 @@ const updateSector = async (req, res, next) => {
     .superRefine(async (data, ctx) => {
       const { id } = req.params;
       if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
+        return res.status(404).json({
+          errors: {
+            message: "User does not belongs to any Agency",
+          },
+        });
       }
 
       const existingSector = await prisma.sector.findFirst({
@@ -179,7 +185,11 @@ const updateSector = async (req, res, next) => {
     res.status(200).json(updatedSector);
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "Sector not found"));
+      return res.status(404).json({
+        errors: {
+          message: "Sector not found",
+        },
+      });
     }
     next(error);
   }
@@ -209,9 +219,11 @@ const deleteSector = async (req, res, next) => {
 const getAllSectors = async (req, res, next) => {
   try {
     if (!req.user.agencyId) {
-      return res
-        .status(404)
-        .json({ message: "User does not belongs to any Agency" });
+      return res.status(404).json({
+        errors: {
+          message: "User does not belongs to any Agency",
+        },
+      });
     }
     const sectors = await prisma.sector.findMany({
       where: { agencyId: req.user.agencyId },

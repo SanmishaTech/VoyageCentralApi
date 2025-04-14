@@ -4,8 +4,14 @@ const dayjs = require("dayjs");
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
 const createError = require("http-errors");
-
 const prisma = new PrismaClient();
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+];
 
 // Get all agencies with pagination, sorting, and search
 const getAgencies = async (req, res, next) => {
@@ -168,6 +174,42 @@ const getAgencies = async (req, res, next) => {
 
 // Create a new agency
 const createAgency = async (req, res, next) => {
+  // Extract file paths
+  const logo = req.files?.logo ? req.files.logo[0].path : null;
+  const letterHead = req.files?.letterHead
+    ? req.files.letterHead[0].path
+    : null;
+
+  // Parse JSON fields
+  if (req.body.subscription) {
+    try {
+      req.body.subscription = JSON.parse(req.body.subscription);
+    } catch (error) {
+      return res.status(400).json({
+        errors: {
+          subscription: {
+            type: "server",
+            message: "Invalid JSON format for subscription field.",
+          },
+        },
+      });
+    }
+  }
+
+  if (req.body.user) {
+    try {
+      req.body.user = JSON.parse(req.body.user);
+    } catch (error) {
+      return res.status(400).json({
+        errors: {
+          user: {
+            type: "server",
+            message: "Invalid JSON format for user field.",
+          },
+        },
+      });
+    }
+  }
   // Define Zod schema for agency validation
   const schema = z
     .object({
@@ -222,8 +264,8 @@ const createAgency = async (req, res, next) => {
         .or(z.literal("")) // Allow empty string
         .or(z.null()) // Allow null
         .optional(), // Allow undefined (not strictly necessary here, but can be used)
-      letterHead: z.string().optional().nullable(),
-      logo: z.string().optional().nullable(),
+      // letterHead: z.string().optional().nullable(),
+      // logo: z.string().optional().nullable(),
       subscription: z.object({
         packageId: z.number().int("Package ID must be an integer."),
         startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
@@ -243,6 +285,32 @@ const createAgency = async (req, res, next) => {
           .email("User email must be a valid email address.")
           .nonempty("User email is required."),
         password: z.string().nonempty("User password is required."),
+        logo: z
+          .any()
+          .refine(
+            (file) =>
+              !file ||
+              (file.mimetype && ACCEPTED_IMAGE_TYPES.includes(file.mimetype)),
+            {
+              message: "Logo must be an image (jpeg, png, jpg, webp).",
+            }
+          )
+          .refine((file) => !file || file.size <= MAX_FILE_SIZE, {
+            message: "Logo must not exceed 10MB in size.",
+          })
+          .optional()
+          .nullable(),
+
+        letterHead: z
+          .any()
+          .refine((file) => !file || file.mimetype === "application/pdf", {
+            message: "Letterhead must be a PDF file.",
+          })
+          .refine((file) => !file || file.size <= MAX_FILE_SIZE, {
+            message: "Letterhead must not exceed 10MB in size.",
+          })
+          .optional()
+          .nullable(),
       }),
     })
     .superRefine(async (data, ctx) => {
@@ -285,8 +353,8 @@ const createAgency = async (req, res, next) => {
       contactPersonPhone,
       contactPersonEmail,
       gstin,
-      letterHead,
-      logo,
+      // letterHead,
+      // logo,
       subscription,
       user,
     } = req.body;
@@ -407,7 +475,7 @@ const getAgencyById = async (req, res, next) => {
 
     res.status(200).json(agency);
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       errors: { message: "Failed to fetch agency", details: error.message },
     });
   }
@@ -512,7 +580,9 @@ const updateAgency = async (req, res, next) => {
     res.status(200).json(updatedAgency);
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "Agency not found"));
+      return res.status(404).json({
+        errors: { message: "Agency not found", details: error.message },
+      });
     }
     next(error);
   }
