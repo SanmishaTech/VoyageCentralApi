@@ -16,7 +16,6 @@ const agencyRoutes = require("./routes/agency");
 const sectorRoutes = require("./routes/sector");
 const subscriptionRoutes = require("./routes/subscription");
 const branchRoutes = require("./routes/branch"); // Import branch routes
-const { errorHandler } = require("./utils/errorHandler");
 const swaggerRouter = require("./swagger");
 const config = require("./config/config");
 
@@ -51,7 +50,5 @@ app.use(swaggerRouter); // Add this line to include Swagger documentation
 app.use((req, res, next) => {
   next(createError(404));
 });
-
-app.use(errorHandler);
 
 module.exports = app;
