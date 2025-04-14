@@ -11,6 +11,7 @@ const profileRoutes = require("./routes/profile");
 const packageRoutes = require("./routes/package");
 const countryRoutes = require("./routes/country");
 const cityRoutes = require("./routes/city");
+const staffRoutes = require("./routes/staff");
 const stateRoutes = require("./routes/state");
 const agencyRoutes = require("./routes/agency");
 const sectorRoutes = require("./routes/sector");
@@ -32,10 +33,7 @@ app.use(
   })
 );
 app.use(express.json());
-console.log("Hello from Ganesh");
-console.log("Hello from Vipul");
-console.log("Hello from Yashc");
-console.log("Hello Ganesh from main");
+
 app.use("/auth", authRoutes);
 app.use("/roles", roleRoutes);
 app.use("/users", userRoutes);
@@ -48,6 +46,7 @@ app.use("/countries", countryRoutes);
 app.use("/sectors", sectorRoutes);
 app.use("/states", stateRoutes);
 app.use("/cities", cityRoutes);
+app.use("/staff", staffRoutes);
 app.use(swaggerRouter); // Add this line to include Swagger documentation
 
 app.use((req, res, next) => {
