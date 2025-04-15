@@ -135,43 +135,45 @@ const getUserById = async (req, res, next) => {
 
 const createUser = async (req, res, next) => {
   // Define Zod schema for user creation
-  const schema = z
-    .object({
-      name: z
-        .string()
-        .min(1, "Name cannot be left blank.") // Ensuring minimum length of 2
-        .max(100, "Name must not exceed 100 characters.")
-        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-          message: "Name can only contain letters.",
-        }),
-      email: z
-        .string()
-        .email("Email must be a valid email address.")
-        .nonempty("Email is required."),
-      password: z
-        .string()
-        .min(6, "Password must be at least 6 characters long.")
-        .nonempty("Password is required."),
-      role: z.enum(Object.values(roles), "Invalid role."),
-      active: z.boolean().optional(),
-    })
-    .superRefine(async (data, ctx) => {
-      // Check if a user with the same email already exists
-      const existingUser = await prisma.user.findUnique({
-        where: { email: data.email },
-      });
-
-      if (existingUser) {
-        ctx.addIssue({
-          path: ["email"],
-          message: `User with email ${data.email} already exists.`,
-        });
-      }
-    });
+  const schema = z.object({
+    name: z
+      .string()
+      .min(1, "Name cannot be left blank.")
+      .max(100, "Name must not exceed 100 characters.")
+      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+        message: "Name can only contain letters.",
+      }),
+    email: z
+      .string()
+      .email("Email must be a valid email address.")
+      .nonempty("Email is required.")
+      // async refine on the field itself:
+      .refine(
+        async (email) => {
+          const existing = await prisma.user.findUnique({
+            where: { email },
+          });
+          return !existing;
+        },
+        {
+          message: "A user with this email already exists.",
+          // path is optional here because we're on the field itself,
+          // but you could add `path: []` or other if you were object-level.
+        }
+      ),
+    password: z
+      .string()
+      .min(6, "Password must be at least 6 characters long.")
+      .nonempty("Password is required."),
+    role: z.enum(Object.values(roles), "Invalid role."),
+    active: z.boolean().optional(),
+  });
 
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
-
+  // if (validationErrors) {
+  //   return res.status(400).json(validationErrors);
+  // }
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
     const user = await prisma.user.create({
