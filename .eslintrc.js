@@ -34,5 +34,8 @@ module.exports = {
     'no-nested-ternary': 'off',
     radix: 'off',
     'no-quote-props': 'off',
+    "prettier.singleQuote": "true",
+    "prettier.jsxSingleQuote": "true",
+    "typescript.preferences.quoteStyle": "single"     
   },
 };
