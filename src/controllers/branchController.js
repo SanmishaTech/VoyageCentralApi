@@ -14,16 +14,15 @@ const getBranches = async (req, res, next) => {
   const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
   try {
-    // Step 1: Get agencyId of the current user
+    // Check if user belongs to an agency
     if (!req.user.agencyId) {
       return res
         .status(404)
-        .json({ message: "User does not belongs to any Agency" });
+        .json({ message: "User does not belong to any Agency" });
     }
 
-    // Step 2: Build filter clause
     const whereClause = {
-      agencyId: req.user.agencyId,
+      agencyId: req.user.agencyId, // Add agency filter
       OR: [
         { branchName: { contains: search } },
         { address: { contains: search } },
@@ -33,31 +32,32 @@ const getBranches = async (req, res, next) => {
       ],
     };
 
-    // Step 3: Fetch paginated & sorted countries
-    const branches = await prisma.branch.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        branchName: true,
-        address: true,
-        contactName: true,
-        contactEmail: true,
-        contactMobile: true,
-        agency: {
-          select: {
-            id: true,
-            businessName: true,
+    const [branches, totalBranches] = await Promise.all([
+      prisma.branch.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          branchName: true,
+          address: true,
+          contactName: true,
+          contactEmail: true,
+          contactMobile: true,
+          agency: {
+            select: {
+              id: true,
+              businessName: true,
+            },
           },
+          createdAt: true,
+          updatedAt: true,
         },
-        createdAt: true,
-        updatedAt: true,
-      },
-      skip,
-      take: limit,
-      orderBy: { [sortBy]: sortOrder },
-    });
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      prisma.branch.count({ where: whereClause }),
+    ]);
 
-    const totalBranches = await prisma.branch.count({ where: whereClause });
     const totalPages = Math.ceil(totalBranches / limit);
 
     res.json({
@@ -99,17 +99,9 @@ const createBranch = async (req, res, next) => {
         .max(100, "Address field should not exceed 100 characters"),
     })
     .superRefine(async (data, ctx) => {
-      if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
-      }
       const existingBranchName = await prisma.branch.findFirst({
         where: {
-          AND: [
-            { branchName: data.branchName },
-            { agencyId: parseInt(req.user.agencyId) },
-          ],
+          branchName: data.branchName,
         },
       });
 

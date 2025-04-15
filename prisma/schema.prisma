@@ -13,12 +13,15 @@ model User {
   branchId           Int?      // Foreign key to the Branch table
   name               String
   email              String    @unique
+  communicationEmail String?   // Added: Optional email for communications
+  mobile1            String?   // Added: Primary mobile number
+  mobile2            String?   // Added: Secondary mobile number
   password           String
   role               String
   active             Boolean   @default(true)
   lastLogin          DateTime?
-  resetToken         String?   // Add this line
-  resetTokenExpires  DateTime? // Add this line
+  resetToken         String?   
+  resetTokenExpires  DateTime?
   agency             Agency?   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   branch             Branch?   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   createdAt          DateTime  @default(now())
