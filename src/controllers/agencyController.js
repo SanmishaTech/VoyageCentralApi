@@ -342,8 +342,8 @@ const createAgency = async (req, res, next) => {
   try {
     // Use the reusable validation function
     const file = true;
-    console.log("Res body", req.uploadErrors);
     const validationErrors = await validateRequest(schema, req.body, res, file);
+    console.log("Res body", req.uploadErrors);
 
     // Collect upload errors from middleware
     const uploadErrors = req.uploadErrors || null;
