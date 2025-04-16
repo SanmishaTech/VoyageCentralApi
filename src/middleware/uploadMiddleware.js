@@ -137,31 +137,39 @@ function createUploadMiddleware(fields) {
     // --- Cleanup Logic ---
     if (Object.keys(req.uploadErrors).length > 0) {
       let uploadDir = null;
-      Object.values(req.files)
-        .flat()
-        .forEach((file) => {
-          // Clean up files marked for cleanup OR all files if any error occurred
-          if (file.cleanup) {
-            try {
-              if (!uploadDir) uploadDir = path.dirname(file.path);
-              fs.unlinkSync(file.path);
-            } catch (e) {
-              console.error(`Failed to cleanup file: ${file.path}`, e); // Log cleanup errors
-            }
-          }
-        });
+      // Get all files associated with this request, regardless of the 'cleanup' flag
+      const allFiles = Object.values(req.files).flat();
 
-      // Attempt to remove the unique request directory if it's now empty or only contained invalid files
-      if (uploadDir) {
-        fs.rmdir(uploadDir, (err) => {
-          if (err && err.code !== "ENOENT") {
-            // Ignore if already deleted
-            console.error(
-              `Failed to remove upload directory: ${uploadDir}`,
-              err
-            );
+      allFiles.forEach((file) => {
+        // If any error occurred for this request, attempt to clean up all its files
+        try {
+          // Determine directory from the first available file path
+          if (!uploadDir && file.path) uploadDir = path.dirname(file.path);
+          // Ensure file.path exists before trying to unlink
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
           }
-        });
+        } catch (e) {
+          // Log if unlinking a specific file fails, but continue trying others
+          console.error(`Failed to cleanup file: ${file.path}`, e);
+        }
+      });
+
+      // Attempt to remove the unique request directory if it was determined
+      if (uploadDir) {
+        // Check if directory exists before attempting removal
+        if (fs.existsSync(uploadDir)) {
+          fs.rmdir(uploadDir, (err) => {
+            if (err && err.code !== "ENOENT") {
+              // Ignore if already deleted
+              // Log the error (e.g., ENOTEMPTY if unlink failed above) but continue
+              console.error(
+                `Failed to remove upload directory: ${uploadDir}`,
+                err
+              );
+            }
+          });
+        }
       }
     }
 
