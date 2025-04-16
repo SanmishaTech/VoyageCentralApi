@@ -1,4 +1,4 @@
-const validateRequest = (schema, data, res) => {
+const validateRequest = (schema, data, res, file) => {
   return new Promise(async (resolve, reject) => {
     const result = await schema.safeParseAsync(data);
 
@@ -15,7 +15,13 @@ const validateRequest = (schema, data, res) => {
       });
 
       // e.g. { errors: { "user.name": { type:"server", message:"..." }, ... } }
-      return res.status(400).json({ errors });
+      // return res.status(400).json({ errors });
+      if (file) {
+        resolve(errors); // Changed from return to resolve
+      } else {
+        return res.status(400).json({ errors });
+      }
+      return;
     }
 
     resolve(result.data);
