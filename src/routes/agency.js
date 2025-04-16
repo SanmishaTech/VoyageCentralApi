@@ -9,8 +9,21 @@ const {
 } = require("../controllers/agencyController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
-
-//this is agency routes
+const createUploadMiddleware = require("../middleware/uploadMiddleware");
+const multer = require("multer");
+const agencyUploadConfig = [
+  {
+    name: "logo",
+    allowedTypes: ["image/jpeg", "image/png", "image/jpg"],
+    maxSize: 2 * 1024 * 1024, // 2MB
+  },
+  {
+    name: "letterHead",
+    allowedTypes: ["application/pdf"],
+    maxSize: 5 * 1024 * 1024, // 5MB
+  },
+];
+const uploadMiddleware = createUploadMiddleware(agencyUploadConfig);
 
 /**
  * @swagger
@@ -33,7 +46,7 @@ const acl = require("../middleware/acl");
  * @swagger
  * /agencies:
  *   get:
- *     summary: Get all agencies
+ *     summary: Get all agencies with pagination, sorting, and search
  *     tags: [Agencies]
  *     security:
  *       - bearerAuth: []
@@ -62,7 +75,7 @@ const acl = require("../middleware/acl");
  *           default: id
  *         description: Field to sort by
  *       - in: query
- *         name: order
+ *         name: sortOrder
  *         schema:
  *           type: string
  *           enum: [asc, desc]
@@ -76,7 +89,7 @@ const acl = require("../middleware/acl");
  *             schema:
  *               type: object
  *               properties:
- *                 data:
+ *                 agencies:
  *                   type: array
  *                   items:
  *                     type: object
@@ -151,7 +164,7 @@ router.get("/", auth, acl("agencies.read"), getAgencies);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -178,8 +191,10 @@ router.get("/", auth, acl("agencies.read"), getAgencies);
  *                 type: string
  *               letterHead:
  *                 type: string
+ *                 format: binary
  *               logo:
  *                 type: string
+ *                 format: binary
  *               subscription:
  *                 type: object
  *                 properties:
@@ -206,8 +221,14 @@ router.get("/", auth, acl("agencies.read"), getAgencies);
  *       500:
  *         description: Failed to create agency
  */
-router.post("/", auth, acl("agencies.write"), createAgency);
+router.post(
+  "/",
+  auth,
+  acl("agencies.write"),
+  ...uploadMiddleware, // Spread the array of middleware functions
 
+  createAgency
+);
 /**
  * @swagger
  * /agencies/{id}:
@@ -312,7 +333,7 @@ router.get("/:id", auth, acl("agencies.read"), getAgencyById);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -339,8 +360,10 @@ router.get("/:id", auth, acl("agencies.read"), getAgencyById);
  *                 type: string
  *               letterHead:
  *                 type: string
+ *                 format: binary
  *               logo:
  *                 type: string
+ *                 format: binary
  *     responses:
  *       200:
  *         description: Agency updated successfully
