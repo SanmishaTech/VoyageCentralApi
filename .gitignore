@@ -1,3 +1,6 @@
 node_modules
 .env
 prisma/migrations
+/uploads
+/bun.lockb
+bun.lockb

@@ -19,11 +19,11 @@ const agencyUploadConfig = [
   },
   {
     name: "letterHead",
-    allowedTypes: ["application/pdf"],
+    allowedTypes: ["image/jpeg", "image/png", "image/jpg"],
     maxSize: 5 * 1024 * 1024, // 5MB
   },
 ];
-const uploadMiddleware = createUploadMiddleware(agencyUploadConfig);
+const uploadMiddleware = createUploadMiddleware("agency", agencyUploadConfig);
 
 /**
  * @swagger
@@ -225,8 +225,8 @@ router.post(
   "/",
   auth,
   acl("agencies.write"),
-  ...uploadMiddleware, // Spread the array of middleware functions
 
+  ...uploadMiddleware, // Spread the array of middleware functions
   createAgency
 );
 /**
@@ -374,7 +374,13 @@ router.get("/:id", auth, acl("agencies.read"), getAgencyById);
  *       500:
  *         description: Failed to update agency
  */
-router.put("/:id", auth, acl("agencies.write"), updateAgency);
+router.put(
+  "/:id",
+  auth,
+  acl("agencies.write"),
+  ...uploadMiddleware, // Spread the array of middleware functions
+  updateAgency
+);
 
 /**
  * @swagger

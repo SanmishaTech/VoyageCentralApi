@@ -1,8 +1,8 @@
 const multer = require("multer");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
-const fs = require("fs");
-const mime = require("mime-types");
+const fs = require("fs").promises; // Use promises API
+// const mime = require('mime-types'); // Not strictly needed in this version
 
 /**
  * Configuration for a single upload field.
@@ -13,22 +13,45 @@ const mime = require("mime-types");
  */
 
 /**
- * Creates Multer middleware with integrated validation.
+ * Creates Multer middleware with integrated validation and cleanup capability.
+ * Files for each field are stored in separate subdirectories following the pattern:
+ * <uploadDir>/<moduleName>/<fieldname>/<uuid>/<filename>
+ * Attaches `req.uploadErrors` (object) and `req.cleanupUpload` (function) to the request object.
  *
+ * @param {string} moduleName - The name of the module this upload belongs to (used for directory structure).
  * @param {FieldConfig[]} fields - An array of field configurations.
- * @returns {Function} Express middleware function.
+ * @param {string} [uploadDir='uploads'] - The base directory for uploads.
+ * @returns {Function[]} Array of Express middleware functions.
  */
-function createUploadMiddleware(fields) {
+function createUploadMiddleware(moduleName, fields, uploadDir = "uploads") {
+  // --- Input Validation ---
+  if (typeof moduleName !== "string" || moduleName.trim() === "") {
+    throw new Error("Invalid moduleName provided. Must be a non-empty string.");
+  }
+  // Basic sanitization for moduleName to prevent path traversal issues
+  const safeModuleName = moduleName.replace(/[^a-zA-Z0-9_-]/g, "_");
+  if (safeModuleName !== moduleName) {
+    console.warn(
+      `Original moduleName "${moduleName}" sanitized to "${safeModuleName}" for directory usage.`
+    );
+  }
+  moduleName = safeModuleName; // Use the sanitized version
+
   if (!Array.isArray(fields) || fields.length === 0) {
     throw new Error("Field configuration array is required.");
   }
 
   const fieldsConfig = fields.reduce((acc, field) => {
-    if (!field.name || !field.allowedTypes || !field.maxSize) {
+    if (
+      !field ||
+      typeof field.name !== "string" ||
+      !Array.isArray(field.allowedTypes) ||
+      typeof field.maxSize !== "number"
+    ) {
       throw new Error(
         `Invalid configuration for field: ${JSON.stringify(
           field
-        )}. Ensure 'name', 'allowedTypes', and 'maxSize' are provided.`
+        )}. Ensure 'name' (string), 'allowedTypes' (array), and 'maxSize' (number) are provided.`
       );
     }
     acc[field.name] = {
@@ -40,179 +63,427 @@ function createUploadMiddleware(fields) {
 
   const multerFields = fields.map((field) => ({ name: field.name }));
 
+  // --- Helper Function for Cleanup (Cleans *this request's* uploads across all relevant field directories) ---
+  async function cleanupRequestUploads(req) {
+    // Use the request-specific UUID and moduleName to target cleanup
+    const requestUUID = req.uploadUUID;
+    const requestModuleName = req.uploadModuleName; // Get moduleName attached to req
+
+    if (!requestUUID || !requestModuleName) {
+      console.warn(
+        `[Cleanup] Cannot proceed: Missing requestUUID (${requestUUID}) or requestModuleName (${requestModuleName}) on req.`
+      );
+      return;
+    }
+
+    console.log(
+      `[Cleanup:${requestUUID}] Attempting cleanup for module '${requestModuleName}' and UUID '${requestUUID}'.`
+    );
+
+    let cleanupFailed = false;
+
+    // Need to potentially clean up multiple directories (<uploadDir>/<module>/<fieldname>/<uuid>)
+    // Iterate through the fields defined for *this* middleware instance
+    for (const field of fields) {
+      const fieldname = field.name;
+      // Construct the specific directory path for this field and this request's UUID
+      const targetDir = path.join(
+        uploadDir,
+        requestModuleName,
+        fieldname,
+        requestUUID
+      );
+
+      try {
+        // Check if the directory potentially exists before trying to remove it
+        // Although fs.rm with force:true handles non-existence, this avoids unnecessary logs/attempts
+        // For atomicity, fs.rm is still preferred over manual readdir/unlink/rmdir
+        // Let fs.rm handle the recursive removal if it exists.
+
+        // Use fs.rm with recursive option to remove the UUID directory and its contents for this field
+        await fs.rm(targetDir, { recursive: true, force: true }); // force:true suppresses ENOENT errors
+        console.log(
+          `[Cleanup:${requestUUID}] Successfully checked/removed directory: ${targetDir}`
+        );
+      } catch (err) {
+        // Even with force:true, other errors (like permissions) might occur.
+        console.error(
+          `[Cleanup:${requestUUID}] Failed to remove directory ${targetDir}:`,
+          err
+        );
+        cleanupFailed = true;
+      }
+    }
+
+    if (cleanupFailed) {
+      // Optional: Add a general cleanup error if any part failed
+      req.uploadErrors = req.uploadErrors || {};
+      req.uploadErrors["general"] = req.uploadErrors["general"] || [];
+      if (
+        !req.uploadErrors["general"].some((e) => e.type === "cleanup_error")
+      ) {
+        req.uploadErrors["general"].push({
+          type: "cleanup_error",
+          message:
+            "One or more upload directories could not be fully cleaned up.",
+        });
+      }
+    }
+
+    // Clear related properties on req (optional, depends on downstream needs)
+    // req.files = null;
+    // req.uploadUUID = null; // Keep for logging?
+    // req.uploadModuleName = null;
+  }
+
   // --- Multer Storage Configuration ---
   const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      // Generate a unique directory for each request's uploads
-      const uniqueReqId = req.uploadUUID || (req.uploadUUID = uuidv4());
-      const uploadPath = path.join("uploads", uniqueReqId); // Consider making 'uploads' configurable
-      fs.mkdir(uploadPath, { recursive: true }, (err) => {
-        if (err) {
-          return cb(err);
-        }
-        cb(null, uploadPath);
-      });
+    destination: async (req, file, cb) => {
+      // Get request-specific UUID and moduleName
+      const requestUUID = req.uploadUUID;
+      const requestModuleName = req.uploadModuleName;
+
+      if (!requestUUID || !requestModuleName) {
+        console.error(
+          `[Destination Error] Missing requestUUID (${requestUUID}) or requestModuleName (${requestModuleName}) on req!`
+        );
+        return cb(
+          new Error("Upload configuration error (UUID/Module missing).")
+        );
+      }
+
+      // Construct path: <uploadDir>/<moduleName>/<fieldname>/<uuid>
+      const finalDestinationPath = path.join(
+        uploadDir,
+        requestModuleName,
+        file.fieldname,
+        requestUUID
+      );
+
+      try {
+        // Ensure this specific directory exists
+        await fs.mkdir(finalDestinationPath, { recursive: true });
+        cb(null, finalDestinationPath); // Save the file here
+      } catch (err) {
+        console.error(
+          `[Destination Error:${requestUUID}] Error creating destination directory: ${finalDestinationPath}`,
+          err
+        );
+        cb(err);
+      }
     },
     filename: (req, file, cb) => {
-      // Sanitize filename if necessary, here using fieldname + timestamp
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      cb(
-        null,
-        file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)
-      );
+      // Keep the original filename logic, but ensure it's safe
+      const extension = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, extension);
+      // Sanitize basename more thoroughly
+      const safeBaseName = baseName
+        .replace(/[^a-zA-Z0-9_-]/g, "_")
+        .substring(0, 100); // Limit length
+      // Using only UUID and original safe name + extension is usually sufficient and avoids collisions within the UUID folder
+      const finalFilename = `${safeBaseName}${extension}`;
+      // Alternative: Add timestamp for extra uniqueness if needed, though UUID dir usually suffices
+      // const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E6);
+      // const finalFilename = `${safeBaseName}-${uniqueSuffix}${extension}`;
+
+      cb(null, finalFilename);
     },
   });
 
   // --- Multer Instance ---
-  // No fileFilter or limits here; validation happens post-upload
-  const upload = multer({ storage });
+  const upload = multer({
+    storage: storage,
+    // Limits check is done after upload in validation middleware
+  });
 
-  // --- Validation Middleware ---
-  const validateFiles = (req, res, next) => {
-    req.uploadErrors = req.uploadErrors || {}; // Initialize if not present
+  // --- Validation Middleware (Async Ready - No changes needed here) ---
+  const validateFiles = async (req, res, next) => {
+    req.uploadErrors = req.uploadErrors || {};
 
-    if (!req.files) {
-      // Check if any configured fields were expected but not provided
-      fields.forEach((field) => {
-        // This basic check assumes fields are required. Add more complex logic if fields are optional.
-        // You might need to check req.body to see if the field was intended.
-        // For simplicity, we'll assume presence implies requirement for now.
-      });
+    if (
+      !req.files ||
+      typeof req.files !== "object" ||
+      Object.keys(req.files).length === 0
+    ) {
+      // If no files were uploaded (even if fields were expected), just proceed.
+      // Multer handles cases like missing fields if they were required by .fields()
+      // This validation focuses on files *actually* uploaded.
       return next();
     }
 
-    const filesToValidate = Object.entries(req.files);
+    let hasValidationErrors = false;
 
-    filesToValidate.forEach(([fieldname, fileArray]) => {
-      const config = fieldsConfig[fieldname];
+    // Validate files against the configuration for expected fields
+    for (const fieldConfig of fields) {
+      const fieldname = fieldConfig.name;
+      const config = fieldsConfig[fieldname]; // Get config from the map created earlier
+      const uploadedFiles = req.files[fieldname] || []; // Get files for this field
 
-      if (!config) {
-        // Handle unexpected fields
-        req.uploadErrors[fieldname] = req.uploadErrors[fieldname] || [];
-        req.uploadErrors[fieldname].push({
-          type: "unexpected_field",
-          message: `Unexpected file field: ${fieldname}`,
-        });
-        // Mark files for cleanup
-        fileArray.forEach((file) => (file.cleanup = true));
-        return; // Skip validation for unexpected fields
-      }
+      // This check should not be necessary if using upload.fields correctly,
+      // but kept for robustness against unexpected req.files structure.
+      // if (!config) {
+      //     // This case means a field was uploaded that wasn't in the initial fields array
+      //     // Multer's .fields() should prevent this, but handle defensively.
+      //     if (uploadedFiles.length > 0) {
+      //         req.uploadErrors[fieldname] = req.uploadErrors[fieldname] || [];
+      //         req.uploadErrors[fieldname].push({
+      //             type: 'unexpected_field',
+      //             message: `Unexpected file field received (should have been handled by Multer): ${fieldname}`
+      //         });
+      //         hasValidationErrors = true;
+      //     }
+      //     continue; // Skip validation for unexpected fields
+      // }
 
-      fileArray.forEach((file) => {
-        let isValid = true;
+      for (const file of uploadedFiles) {
         const fileMimeType = file.mimetype;
 
         // 1. Type Validation
-        if (!config.types.includes(fileMimeType)) {
-          isValid = false;
+        if (config && !config.types.includes(fileMimeType)) {
+          hasValidationErrors = true;
           req.uploadErrors[fieldname] = req.uploadErrors[fieldname] || [];
           req.uploadErrors[fieldname].push({
-            type: "server",
-            message: `Invalid file type for ${fieldname}. Allowed: ${config.types.join(
+            type: "invalid_type",
+            message: `Invalid file type for field '${fieldname}'. Allowed: ${config.types.join(
               ", "
-            )}. Received: ${fileMimeType}`,
+            )}. Received: ${fileMimeType || "N/A"}`,
             filename: file.originalname,
+            receivedType: fileMimeType,
           });
         }
 
         // 2. Size Validation
-        if (file.size > config.maxSize) {
-          isValid = false;
+        if (config && file.size > config.maxSize) {
+          hasValidationErrors = true;
           req.uploadErrors[fieldname] = req.uploadErrors[fieldname] || [];
           req.uploadErrors[fieldname].push({
             type: "invalid_size",
-            message: `File too large for ${fieldname}. Max size: ${
-              config.maxSize / 1024 / 1024
-            }MB. Received: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
+            message: `File too large for field '${fieldname}'. Max size: ${(
+              config.maxSize /
+              1024 /
+              1024
+            ).toFixed(2)} MB. Received: ${(file.size / 1024 / 1024).toFixed(
+              2
+            )} MB`,
             filename: file.originalname,
-          });
-        }
-
-        if (!isValid) {
-          file.cleanup = true; // Mark invalid file for cleanup
-        }
-      });
-    });
-
-    // --- Cleanup Logic ---
-    if (Object.keys(req.uploadErrors).length > 0) {
-      let uploadDir = null;
-      // Get all files associated with this request, regardless of the 'cleanup' flag
-      const allFiles = Object.values(req.files).flat();
-
-      allFiles.forEach((file) => {
-        // If any error occurred for this request, attempt to clean up all its files
-        try {
-          // Determine directory from the first available file path
-          if (!uploadDir && file.path) uploadDir = path.dirname(file.path);
-          // Ensure file.path exists before trying to unlink
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
-          }
-        } catch (e) {
-          // Log if unlinking a specific file fails, but continue trying others
-          console.error(`Failed to cleanup file: ${file.path}`, e);
-        }
-      });
-
-      // Attempt to remove the unique request directory if it was determined
-      if (uploadDir) {
-        // Check if directory exists before attempting removal
-        if (fs.existsSync(uploadDir)) {
-          fs.rmdir(uploadDir, (err) => {
-            if (err && err.code !== "ENOENT") {
-              // Ignore if already deleted
-              // Log the error (e.g., ENOTEMPTY if unlink failed above) but continue
-              console.error(
-                `Failed to remove upload directory: ${uploadDir}`,
-                err
-              );
-            }
+            maxSize: config.maxSize,
+            receivedSize: file.size,
           });
         }
       }
     }
 
-    next(); // Proceed to the next middleware/controller
+    // Check for fields present in req.files but *not* in the configured fields
+    // Multer's `.fields()` middleware typically prevents extra fields from appearing
+    // in `req.files` unless maybe configured differently, but this check adds safety.
+    for (const receivedFieldname in req.files) {
+      if (!fieldsConfig[receivedFieldname]) {
+        req.uploadErrors[receivedFieldname] =
+          req.uploadErrors[receivedFieldname] || [];
+        // Avoid adding duplicate messages if already added above
+        if (
+          !req.uploadErrors[receivedFieldname].some(
+            (e) => e.type === "unexpected_field"
+          )
+        ) {
+          req.uploadErrors[receivedFieldname].push({
+            type: "unexpected_field",
+            message: `Unexpected file field found in request files object: ${receivedFieldname}`,
+          });
+        }
+        hasValidationErrors = true;
+      }
+    }
+
+    // --- Cleanup Logic (within validation) ---
+    if (hasValidationErrors) {
+      console.log(
+        `[Validation:${req.uploadUUID}] Validation errors detected. Triggering cleanup.`
+      );
+      try {
+        // Use await here as cleanupRequestUploads is async
+        await req.cleanupUpload(req); // Call the cleanup function attached to the request
+      } catch (cleanupErr) {
+        console.error(
+          `[Validation:${req.uploadUUID}] Error during post-validation cleanup:`,
+          cleanupErr
+        );
+        req.uploadErrors["general"] = req.uploadErrors["general"] || [];
+        if (
+          !req.uploadErrors["general"].some((e) => e.type === "cleanup_error")
+        ) {
+          req.uploadErrors["general"].push({
+            type: "cleanup_error",
+            message:
+              "Failed to cleanup temporary upload files after validation error.",
+          });
+        }
+      }
+      // Optionally clear req.files after cleanup on validation error
+      // req.files = {}; // Be cautious if error handlers need this info
+    }
+
+    next();
   };
 
-  // --- Multer Error Handler Middleware ---
+  // --- Multer Error Handler Middleware (No changes needed here conceptually) ---
   const handleMulterErrors = (err, req, res, next) => {
     req.uploadErrors = req.uploadErrors || {};
+    const requestUUID = req.uploadUUID || "N/A"; // Use UUID for logging if available
+
     if (err instanceof multer.MulterError) {
-      const field = err.field || "file"; // Default field name if not specified
+      console.error(`[Multer Error:${requestUUID}]`, err);
+      const field = err.field || "general"; // Use 'general' if field is not specified
       req.uploadErrors[field] = req.uploadErrors[field] || [];
       req.uploadErrors[field].push({
         type: `multer_${err.code.toLowerCase()}`,
         message: err.message,
+        code: err.code,
+        field: err.field,
       });
-      // Potentially trigger cleanup here as well if needed
-      return next(); // Pass control, errors are on req.uploadErrors
+
+      // Trigger cleanup if the function exists on the request
+      if (req.cleanupUpload) {
+        req
+          .cleanupUpload(req) // Call cleanup
+          .catch((cleanupErr) => {
+            console.error(
+              `[Multer Error:${requestUUID}] Error during cleanup after Multer error:`,
+              cleanupErr
+            );
+            req.uploadErrors["general"] = req.uploadErrors["general"] || [];
+            if (
+              !req.uploadErrors["general"].some(
+                (e) => e.type === "cleanup_error"
+              )
+            ) {
+              req.uploadErrors["general"].push({
+                type: "cleanup_error",
+                message:
+                  "Failed to cleanup temporary upload files after Multer error.",
+              });
+            }
+          })
+          .finally(() => {
+            next(); // Proceed even if cleanup failed, errors are recorded
+          });
+      } else {
+        console.warn(
+          `[Multer Error:${requestUUID}] req.cleanupUpload not found when handling Multer error.`
+        );
+        next();
+      }
     } else if (err) {
-      // Handle other potential errors during upload (e.g., disk space)
+      // Handle other unexpected errors during Multer processing/setup (e.g., disk errors before handler)
+      console.error(`[Upload Setup Error:${requestUUID}]`, err);
       req.uploadErrors["general"] = req.uploadErrors["general"] || [];
       req.uploadErrors["general"].push({
-        type: "upload_error",
-        message: err.message || "An unexpected upload error occurred.",
+        type: "upload_setup_error",
+        message:
+          err.message || "An unexpected error occurred during upload setup.",
+        error: err.toString(), // Avoid sending full error object in production response potentially
       });
-      return next(); // Pass control
+
+      // Trigger cleanup if possible
+      if (req.cleanupUpload) {
+        req
+          .cleanupUpload(req)
+          .catch((cleanupErr) => {
+            console.error(
+              `[Upload Setup Error:${requestUUID}] Error during cleanup after setup error:`,
+              cleanupErr
+            );
+            req.uploadErrors["general"] = req.uploadErrors["general"] || [];
+            if (
+              !req.uploadErrors["general"].some(
+                (e) => e.type === "cleanup_error"
+              )
+            ) {
+              req.uploadErrors["general"].push({
+                type: "cleanup_error",
+                message:
+                  "Failed to cleanup temporary upload files after setup error.",
+              });
+            }
+          })
+          .finally(() => {
+            next();
+          });
+      } else {
+        console.warn(
+          `[Upload Setup Error:${requestUUID}] req.cleanupUpload not found when handling setup error.`
+        );
+        next();
+      }
+    } else {
+      next(); // No error
     }
-    next(); // No Multer error
   };
 
-  // Return the sequence of middleware functions
+  // --- Return the sequence of middleware functions ---
   const multerMiddleware = upload.fields(multerFields);
+
   return [
+    // 1. Initial Setup Middleware (Synchronous)
     (req, res, next) => {
-      // Wrap multer middleware to pass errors to our handler
+      req.uploadUUID = uuidv4(); // Unique ID for this request's uploads
+      req.uploadModuleName = moduleName; // Store moduleName for destination/cleanup
+      // Base path is no longer a single directory, cleanup targets based on module/field/uuid
+      // req.uploadBasePath = path.join(uploadDir, req.uploadUUID); // REMOVED
+      req.uploadErrors = {}; // Initialize errors object
+      // Attach the cleanup function
+      req.cleanupUpload = cleanupRequestUploads;
+
+      console.log(
+        `[Request Init:${req.uploadUUID}] Setup complete for module '${req.uploadModuleName}'.`
+      );
+      next();
+    },
+
+    // 2. Multer Middleware (Handles actual upload based on storage config)
+    (req, res, next) => {
+      const requestUUID = req.uploadUUID; // Grab for logging context
+      console.log(
+        `[Multer Start:${requestUUID}] Applying Multer middleware...`
+      );
       multerMiddleware(req, res, (err) => {
+        // This callback catches errors *from* the multer processing (like limits before file save completion, disk errors)
         if (err) {
+          console.log(
+            `[Multer Error Caught:${requestUUID}] Passing error to Multer error handler.`
+          );
+          // Pass the error to our dedicated handler
           return handleMulterErrors(err, req, res, next);
         }
+        // Multer succeeded (files are on disk temporarily)
+        console.log(
+          `[Multer Success:${requestUUID}] Multer finished processing. Files on req:`,
+          req.files
+            ? Object.keys(req.files)
+                .map((k) => `${k}: ${req.files[k].length}`)
+                .join(", ")
+            : "None"
+        );
+        // Log the actual file paths for verification
+        if (req.files) {
+          Object.values(req.files)
+            .flat()
+            .forEach((f) => console.log(` -> Uploaded Temp: ${f.path}`));
+        }
+        // Proceed to custom validation
         next();
       });
     },
-    validateFiles, // Our custom validation middleware
+
+    // 3. Custom Validation Middleware (Async - checks type/size after upload)
+    validateFiles,
+
+    // 4. Final Multer Error Handler Middleware (Catches errors passed from Multer's callback)
+    // Note: handleMulterErrors is *called* by the Multer middleware callback on error,
+    // so it doesn't need to be explicitly listed again here unless you want it
+    // to catch errors from `validateFiles` *as well*, which might be confusing.
+    // It's better placed where it is, invoked directly by the multer callback.
+    // We might add a final *general* error handler for the route later if needed.
   ];
 }
 
