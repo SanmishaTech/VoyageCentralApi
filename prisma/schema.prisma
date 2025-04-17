@@ -55,8 +55,9 @@ model Agency {
   city                 String?    
   pincode              String?    
   currentSubscription  Subscription? @relation("CurrentSubscription", fields: [currentSubscriptionId], references: [id])
-  logo                 String?   // Logo (file path or URL)
-  letterHead           String?   // Letterhead attachment (file path or URL)
+ uploadUUID          String?  // Stores the UUID directory name
+  logoFilename        String?  // Stores only the filename for the logo
+  letterheadFilename  String?  // Stores only the filename for the letterhead
   contactPersonName    String    // Contact person name
   contactPersonEmail   String    // Contact person email
   contactPersonPhone   String    // Contact person phone

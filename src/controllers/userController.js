@@ -150,15 +150,13 @@ const createUser = async (req, res, next) => {
       // async refine on the field itself:
       .refine(
         async (email) => {
-          const existing = await prisma.user.findUnique({
+          const existing = await prisma.user.findFirst({
             where: { email },
           });
           return !existing;
         },
         {
           message: "A user with this email already exists.",
-          // path is optional here because we're on the field itself,
-          // but you could add `path: []` or other if you were object-level.
         }
       ),
     password: z
@@ -171,9 +169,9 @@ const createUser = async (req, res, next) => {
 
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
-  // if (validationErrors) {
-  //   return res.status(400).json(validationErrors);
-  // }
+  if (!validationErrors.success) {
+    return res.status(400).json({ errors: validationErrors.errors });
+  }
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
     const user = await prisma.user.create({

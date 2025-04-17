@@ -18,12 +18,15 @@ const sectorRoutes = require("./routes/sector");
 const subscriptionRoutes = require("./routes/subscription");
 const branchRoutes = require("./routes/branch"); // Import branch routes
 const swaggerRouter = require("./swagger");
+const path = require("path");
 const config = require("./config/config");
-
 const app = express();
-
 app.use(morgan("dev"));
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resource loading
+  })
+);
 app.use(
   cors({
     origin: config.frontendUrl || "http://localhost:5173", // Allow requests from this origin
@@ -32,7 +35,10 @@ app.use(
   })
 );
 app.use(express.json());
-
+app.use(express.urlencoded({ extended: true })); // For application/x-www-form-urlencoded (optional, but common)
+const uploadsPath = path.join(__dirname, "..", "uploads");
+console.log(`Serving static files from: ${uploadsPath}`); // Verify this path on startup!
+app.use("/uploads", express.static(uploadsPath));
 app.use("/auth", authRoutes);
 app.use("/roles", roleRoutes);
 app.use("/users", userRoutes);
