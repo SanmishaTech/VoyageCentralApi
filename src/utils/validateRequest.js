@@ -35,7 +35,7 @@ const validateRequest = async (schema, data, uploadErrors = {}) => {
         // Ensure Zod message is not empty either, though typically it won't be
         if (e.message && e.message.trim() !== "") {
           errors[name] = {
-            type: "validation_error",
+            type: "server",
             message: e.message,
           };
         } else {
