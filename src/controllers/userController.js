@@ -123,11 +123,13 @@ const getUserById = async (req, res, next) => {
       where: { id: parseInt(req.params.id) },
     });
     if (!user) {
-      return next(createError(404, "User not found"));
+      return res.status(404).json({
+        errors: { message: "User not found." },
+      });
     }
     res.json(user);
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       errors: { message: "Failed to fetch user", details: error.message },
     });
   }
@@ -169,9 +171,7 @@ const createUser = async (req, res, next) => {
 
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
-  if (!validationErrors.success) {
-    return res.status(400).json({ errors: validationErrors.errors });
-  }
+
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
     const user = await prisma.user.create({
@@ -234,7 +234,9 @@ const updateUser = async (req, res, next) => {
     res.json(updatedUser);
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "User not found"));
+      return res.status(404).json({
+        errors: { message: "User not Found" },
+      });
     }
     next(error);
   }
@@ -246,7 +248,9 @@ const deleteUser = async (req, res, next) => {
     res.json({ message: "User deleted" });
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "User not found"));
+      return res.status(404).json({
+        errors: { message: "User not Found" },
+      });
     }
     next(error);
   }

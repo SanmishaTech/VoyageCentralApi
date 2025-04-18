@@ -310,7 +310,9 @@ const updatePackage = async (req, res, next) => {
     res.status(200).json(updatedPackage);
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "Package not found"));
+      return res.status(404).json({
+        errors: { message: "package not Found" },
+      });
     }
     next(error);
   }
