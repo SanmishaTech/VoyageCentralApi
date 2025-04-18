@@ -152,7 +152,7 @@ model Sector {
   id        Int      @id @default(autoincrement())
    agencyId  Int
   agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
-  sectorName    String   @unique // Sector name must be unique
+  sectorName    String  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   

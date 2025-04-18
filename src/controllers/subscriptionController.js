@@ -64,7 +64,8 @@ const createSubscription = async (req, res, next) => {
     let startDate;
     if (agencyData.currentSubscription) {
       // Use the endDate of the current subscription as the startDate for the new subscription
-      startDate = dayjs(agencyData.currentSubscription.endDate);
+      // startDate = dayjs(agencyData.currentSubscription.endDate);
+      startDate = dayjs(agencyData.currentSubscription.endDate).add(1, 'day');
     } else {
       // If no current subscription, send an error
       return res.status(400).json({

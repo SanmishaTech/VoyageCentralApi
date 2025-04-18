@@ -263,7 +263,7 @@ const updateState = async (req, res, next) => {
     res.status(200).json(updatedState);
   } catch (error) {
     if (error.code === "P2025") {
-      return next(createError(404, "State not found"));
+      return res.status(404).json({ errors: { message: "State not found" } });
     }
     next(error);
   }

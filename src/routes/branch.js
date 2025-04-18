@@ -41,9 +41,6 @@ const auth = require("../middleware/auth");
  *           schema:
  *             type: object
  *             properties:
- *               agencyId:
- *                 type: integer
- *                 description: ID of the agency associated with the branch
  *               branchName:
  *                 type: string
  *                 description: Name of the branch
@@ -132,9 +129,6 @@ router.get("/:id", auth, getBranchById);
  *           schema:
  *             type: object
  *             properties:
- *               agencyId:
- *                 type: integer
- *                 description: ID of the agency associated with the branch
  *               branchName:
  *                 type: string
  *                 description: Name of the branch
