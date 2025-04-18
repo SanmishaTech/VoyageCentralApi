@@ -2,7 +2,7 @@ const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcrypt");
 const dayjs = require("dayjs");
 const { z } = require("zod");
-const validateRequest = require("../utils/validateRequest"); // Assuming this merges Zod body errors and req.uploadErrors
+const validateRequest = require("../utils/validateUpload"); // Assuming this merges Zod body errors and req.uploadErrors
 const createError = require("http-errors");
 const prisma = new PrismaClient();
 const fs = require("fs").promises; // Use promises API
@@ -26,139 +26,138 @@ const getFileUrl = (moduleName, fieldName, uuid, filename) => {
 };
 
 // --- Zod Schemas (Remain the same - validate body data) ---
-const createAgencyBodySchema = z
-  .object({
-    // --- Agency Details ---
-    businessName: z
-      .string({ required_error: "Business name is required." })
-      .min(1, "Business name cannot be empty.")
-      .max(100, "Business name must not exceed 100 characters."),
-    addressLine1: z
-      .string({ required_error: "Address Line 1 is required." })
-      .min(1, "Address Line 1 cannot be empty.")
-      .max(255, "Address Line 1 must not exceed 255 characters."),
-    addressLine2: z
-      .string()
-      .max(255, "Address line 2 must not exceed 255 characters.")
-      .optional()
-      .nullable(),
-    state: z
-      .string({ required_error: "State is required." })
-      .min(1, "State cannot be empty.")
-      .max(100, "State must not exceed 100 characters."),
-    city: z
-      .string({ required_error: "City is required." })
-      .min(1, "City cannot be empty.")
-      .max(100, "City must not exceed 100 characters."),
-    pincode: z
-      .string({ required_error: "Pincode is required." })
-      .min(1, "Pincode cannot be empty.")
-      .max(10, "Pincode must not exceed 10 characters."),
-    contactPersonName: z
-      .string({ required_error: "Contact person name is required." })
-      .min(1, "Contact name cannot be left blank.")
-      .max(100, "Contact name must not exceed 100 characters.")
-      .regex(
-        /^[A-Za-z\s\u0900-\u097F]+$/,
-        "Contact name can only contain letters and spaces."
-      ),
-    contactPersonPhone: z
-      .string({ required_error: "Contact person phone is required." })
-      .length(10, "Contact person phone must be exactly 10 digits."),
-    contactPersonEmail: z
-      .string({ required_error: "Contact person email is required." })
-      .email("Contact person email must be a valid email address."),
-    gstin: z
-      .string()
-      .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/, {
-        message: "Invalid GSTIN format (e.g., 07ABCDE1234F1Z5).",
-      })
-      .or(z.literal(""))
-      .or(z.null())
-      .optional(),
-
-    // --- Subscription (Parsed from JSON) ---
-    subscription: z.object(
-      {
-        packageId: z
-          .number({
-            required_error: "Package ID is required.",
-            invalid_type_error: "Package ID must be a number.",
-          })
-          .int("Package ID must be an integer."),
-        startDate: z
-          .string({ required_error: "Subscription start date is required." })
-          .refine((date) => !isNaN(Date.parse(date)), {
-            message:
-              "Start date must be a valid date string (e.g., YYYY-MM-DD).",
-          }),
-      },
-      { required_error: "Subscription details are required." }
+const createAgencyBodySchema = z.object({
+  // --- Agency Details ---
+  businessName: z
+    .string({ required_error: "Business name is required." })
+    .min(1, "Business name cannot be empty.")
+    .max(100, "Business name must not exceed 100 characters."),
+  addressLine1: z
+    .string({ required_error: "Address Line 1 is required." })
+    .min(1, "Address Line 1 cannot be empty.")
+    .max(255, "Address Line 1 must not exceed 255 characters."),
+  addressLine2: z
+    .string()
+    .max(255, "Address line 2 must not exceed 255 characters.")
+    .optional()
+    .nullable(),
+  state: z
+    .string({ required_error: "State is required." })
+    .min(1, "State cannot be empty.")
+    .max(100, "State must not exceed 100 characters."),
+  city: z
+    .string({ required_error: "City is required." })
+    .min(1, "City cannot be empty.")
+    .max(100, "City must not exceed 100 characters."),
+  pincode: z
+    .string({ required_error: "Pincode is required." })
+    .min(1, "Pincode cannot be empty.")
+    .max(10, "Pincode must not exceed 10 characters."),
+  contactPersonName: z
+    .string({ required_error: "Contact person name is required." })
+    .min(1, "Contact name cannot be left blank.")
+    .max(100, "Contact name must not exceed 100 characters.")
+    .regex(
+      /^[A-Za-z\s\u0900-\u097F]+$/,
+      "Contact name can only contain letters and spaces."
     ),
-
-    // --- Initial Admin User (Parsed from JSON) ---
-    user: z.object(
-      {
-        name: z
-          .string({ required_error: "Admin user name is required." })
-          .min(1, "User name cannot be left blank.")
-          .max(100, "User name must not exceed 100 characters.")
-          .regex(
-            /^[A-Za-z\s\u0900-\u097F]+$/,
-            "User name can only contain letters and spaces."
-          ),
-        email: z
-          .string({ required_error: "Admin user email is required." })
-          .email("User email must be a valid email address."),
-        password: z
-          .string({ required_error: "Admin user password is required." })
-          .min(1, "User password cannot be empty."),
+  contactPersonPhone: z
+    .string({ required_error: "Contact person phone is required." })
+    .length(10, "Contact person phone must be exactly 10 digits."),
+  contactPersonEmail: z
+    .string({ required_error: "Contact person email is required." })
+    .email("Contact person email must be a valid email address.")
+    // Refine for Agency Contact Email Uniqueness
+    .refine(
+      async (email) => {
+        // Check only if email is provided and valid so far
+        if (!email) return true; // Allow empty/invalid emails handled by previous rules
+        const existingAgencyContact = await prisma.agency.findFirst({
+          where: { contactPersonEmail: email },
+        });
+        return !existingAgencyContact; // Return true if no existing contact found (valid)
       },
-      { required_error: "Initial admin user details are required." }
+      {
+        message: "An agency with this contact email already exists.", // Zod automatically uses the value in error messages where appropriate
+      }
     ),
-  })
-  .superRefine(async (data, ctx) => {
-    // --- Async DB Checks (Remain the same) ---
-    // Check Package Existence
-    if (data.subscription?.packageId) {
-      const existingPackage = await prisma.package.findUnique({
-        where: { id: data.subscription.packageId },
-      });
-      if (!existingPackage) {
-        ctx.addIssue({
-          path: ["subscription", "packageId"],
-          message: `Package with ID ${data.subscription.packageId} does not exist.`,
-          code: z.ZodIssueCode.custom,
-        });
-      }
-    }
-    // Check User Email Uniqueness
-    if (data.user?.email) {
-      const existingUser = await prisma.user.findUnique({
-        where: { email: data.user.email },
-      });
-      if (existingUser) {
-        ctx.addIssue({
-          path: ["user", "email"],
-          message: `An admin user with email ${data.user.email} already exists.`,
-          code: z.ZodIssueCode.custom,
-        });
-      }
-    }
-    // Check Agency Contact Email Uniqueness
-    if (data.contactPersonEmail) {
-      const existingAgencyContact = await prisma.agency.findFirst({
-        where: { contactPersonEmail: data.contactPersonEmail },
-      });
-      if (existingAgencyContact) {
-        ctx.addIssue({
-          path: ["contactPersonEmail"],
-          message: `An agency with contact email ${data.contactPersonEmail} already exists.`,
-          code: z.ZodIssueCode.custom,
-        });
-      }
-    }
-  });
+  gstin: z
+    .string()
+    .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/, {
+      message: "Invalid GSTIN format (e.g., 07ABCDE1234F1Z5).",
+    })
+    .or(z.literal(""))
+    .or(z.null())
+    .optional(),
+
+  // --- Subscription (Parsed from JSON) ---
+  subscription: z.object(
+    {
+      packageId: z
+        .number({
+          required_error: "Package ID is required.",
+          invalid_type_error: "Package ID must be a number.",
+        })
+        .int("Package ID must be an integer.")
+        // Refine for Package Existence
+        .refine(
+          async (id) => {
+            // Check only if id is provided and valid so far
+            if (typeof id !== "number" || !Number.isInteger(id)) return true;
+            const existingPackage = await prisma.package.findUnique({
+              where: { id: id },
+            });
+            return !!existingPackage; // Return true if package exists (valid)
+          },
+          {
+            message: "Selected package does not exist.",
+          }
+        ),
+      startDate: z
+        .string({ required_error: "Subscription start date is required." })
+        .refine((date) => !isNaN(Date.parse(date)), {
+          message: "Start date must be a valid date string (e.g., YYYY-MM-DD).",
+        }),
+    },
+    { required_error: "Subscription details are required." }
+  ),
+
+  // --- Initial Admin User (Parsed from JSON) ---
+  user: z.object(
+    {
+      name: z
+        .string({ required_error: "Admin user name is required." })
+        .min(1, "User name cannot be left blank.")
+        .max(100, "User name must not exceed 100 characters.")
+        .regex(
+          /^[A-Za-z\s\u0900-\u097F]+$/,
+          "User name can only contain letters and spaces."
+        ),
+      email: z
+        .string({ required_error: "Admin user email is required." })
+        .email("User email must be a valid email address.")
+        // Refine for User Email Uniqueness
+        .refine(
+          async (email) => {
+            // Check only if email is provided and valid so far
+            if (!email || !z.string().email().safeParse(email).success)
+              return true;
+            const existingUser = await prisma.user.findUnique({
+              where: { email: email },
+            });
+            return !existingUser; // Return true if no existing user found (valid)
+          },
+          {
+            message: "An admin user with this email already exists.",
+          }
+        ),
+      password: z
+        .string({ required_error: "Admin user password is required." })
+        .min(1, "User password cannot be empty."),
+    },
+    { required_error: "Initial admin user details are required." }
+  ),
+});
 
 const updateAgencyBodySchema = z
   .object({
@@ -271,7 +270,6 @@ const getAgencies = async (req, res, next) => {
         agency.logoFilename
       ),
       letterheadUrl: getFileUrl(
-        AGENCY_MODULE_NAME, // moduleName
         "letterHead", // fieldName for letterhead
         agency.uploadUUID,
         agency.letterheadFilename
@@ -425,7 +423,7 @@ const createAgency = async (req, res, next) => {
 
     // 3. Extract Data and File Info (remains the same)
     const {
-      /* ...validated body fields... */ businessName,
+      businessName,
       addressLine1,
       addressLine2,
       state,
@@ -438,7 +436,7 @@ const createAgency = async (req, res, next) => {
       subscription,
       user,
     } = validationResult.data;
-    const uploadUUID = req.uploadUUID; // Provided by middleware
+    const uploadUUID = req.uploadUUID;
     const logoFile = req.files?.logo?.[0];
     const letterheadFile = req.files?.letterHead?.[0];
     const logoFilename = logoFile ? logoFile.filename : null;
