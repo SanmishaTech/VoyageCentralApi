@@ -11,6 +11,10 @@ const profileRoutes = require("./routes/profile");
 const packageRoutes = require("./routes/package");
 const countryRoutes = require("./routes/country");
 const cityRoutes = require("./routes/city");
+const accommodationRoutes = require("./routes/accommodation");
+const vehicleRoutes = require("./routes/vehicle");
+const airlineRoutes = require("./routes/airline");
+const hotelRoutes = require("./routes/hotel");
 const staffRoutes = require("./routes/staff");
 const stateRoutes = require("./routes/state");
 const agencyRoutes = require("./routes/agency");
@@ -52,6 +56,10 @@ app.use("/sectors", sectorRoutes);
 app.use("/states", stateRoutes);
 app.use("/cities", cityRoutes);
 app.use("/staff", staffRoutes);
+app.use("/accommodations", accommodationRoutes);
+app.use("/vehicles", vehicleRoutes);
+app.use("/airlines", airlineRoutes);
+app.use("/hotels", hotelRoutes);
 app.use(swaggerRouter); // Add this line to include Swagger documentation
 
 app.use((req, res, next) => {

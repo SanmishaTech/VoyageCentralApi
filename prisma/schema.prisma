@@ -66,9 +66,13 @@ model Agency {
   users                User[]         
   branches             Branch[]
   countries            Country[]
-  states            State[]
-  cities            City[]
-  sectors            Sector[]
+  states               State[]
+  cities               City[]
+  sectors              Sector[]
+  accommodations       Accommodation[]
+  vehicles             Vehicle[]
+  airlines             Airline[]
+  hotels               Hotel[]
 
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -159,3 +163,77 @@ model Sector {
   @@map("sectors") // Map the table name to "sectors"
 }
 
+
+model Accommodation {
+  id        Int      @id @default(autoincrement())
+  agencyId  Int
+  agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
+  accommodationName    String  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("accommodations") // Map the table name to "sectors"
+}
+
+model Vehicle {
+  id   Int  @id @default(autoincrement())
+  agencyId  Int
+  agency   Agency   @relation(fields:[agencyId],references:[id],onDelete:Cascade)
+  vehicleName String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("vehicles")
+}
+
+model Airline {
+  id   Int  @id @default(autoincrement())
+  agencyId  Int
+  agency   Agency   @relation(fields:[agencyId],references:[id],onDelete:Cascade)
+  airlineName String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("airlines")
+}
+
+model Hotel {
+  id                  Int      @id @default(autoincrement())
+  agencyId            Int
+  agency              Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  hotelName           String
+  hotelAddressLine1   String?
+  hotelAddressLine2   String?
+  hotelAddressLine3   String?
+  hotelCountry        String?
+  hotelState          String?
+  hotelCity           String?
+  hotelPincode        String?
+  officeAddressLine1  String?
+  officeAddressLine2  String?
+  officeAddressLine3  String?
+  officeCountry       String?
+  officeState         String?
+  officeCity          String?
+  officePincode       String?
+  contactPerson       String?
+  hotelContactNo1     String?
+  hotelContactNo2     String?
+  officeContactNo1    String?
+  officeContactNo2    String?
+  email1              String?
+  email2              String?
+  website             String?
+  panNumber           String?
+  bankName            String?
+  bankAccountNumber   String?
+  branch              String?
+  beneficiaryName     String?
+  ifsc_code           String?
+  swiftCode           String?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("hotels")
+}

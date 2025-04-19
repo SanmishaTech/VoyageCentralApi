@@ -41,4 +41,20 @@ module.exports = {
   "staff.read": ["admin"],
   "staff.write": ["admin"],
   "staff.delete": ["admin"],
+  //accommodations
+  "accommodations.write": ["super_admin", "admin"],
+  "accommodations.delete": ["super_admin", "admin"],
+  "accommodations.read": ["super_admin", "admin"],
+  //vehicles
+  "vehicles.write": ["super_admin", "admin"],
+  "vehicles.delete": ["super_admin", "admin"],
+  "vehicles.read": ["super_admin", "admin"],
+  //airlines
+  "airlines.write": ["super_admin", "admin"],
+  "airlines.delete": ["super_admin", "admin"],
+  "airlines.read": ["super_admin", "admin"],
+  //hotels
+  "hotels.write": ["super_admin", "admin"],
+  "hotels.delete": ["super_admin", "admin"],
+  "hotels.read": ["super_admin", "admin"],
 };
