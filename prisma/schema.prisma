@@ -73,6 +73,8 @@ model Agency {
   vehicles             Vehicle[]
   airlines             Airline[]
   hotels               Hotel[]
+  clients               Client[]
+
 
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -119,6 +121,9 @@ model Country {
   agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
   countryName      String   //@unique
   states    State[]  // One-to-many relationship with State
+ hotelAddresses  Hotel[] @relation("HotelCountry")
+officeAddresses Hotel[] @relation("OfficeCountry")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -133,6 +138,10 @@ model State {
   country   Country  @relation(fields: [countryId], references: [id],onDelete: Cascade) //onDelete cascade
   stateName      String   
   cities    City[]   // One-to-many relationship with City
+hotelAddresses  Hotel[] @relation("HotelState")
+officeAddresses Hotel[] @relation("OfficeState")
+  clients         Client[]  // One-to-many relationship with Client
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -146,6 +155,10 @@ model City {
   stateId   Int      // Foreign key to the State table
   state     State    @relation(fields: [stateId], references: [id],onDelete: Cascade) //onDelete caascade
   cityName      String   
+ hotelAddresses  Hotel[] @relation("HotelCity")
+officeAddresses Hotel[] @relation("OfficeCity")
+  clients         Client[]  // One-to-many relationship with Client
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -205,16 +218,26 @@ model Hotel {
   hotelAddressLine1   String?
   hotelAddressLine2   String?
   hotelAddressLine3   String?
-  hotelCountry        String?
-  hotelState          String?
-  hotelCity           String?
+
   hotelPincode        String?
   officeAddressLine1  String?
   officeAddressLine2  String?
   officeAddressLine3  String?
-  officeCountry       String?
-  officeState         String?
-  officeCity          String?
+  hotelCountryId   Int?
+hotelStateId     Int?
+hotelCityId      Int?
+officeCountryId  Int?
+officeStateId    Int?
+officeCityId     Int?
+
+hotelCountry     Country? @relation("HotelCountry", fields: [hotelCountryId], references: [id], onDelete: Cascade)
+hotelState       State?   @relation("HotelState", fields: [hotelStateId], references: [id], onDelete: Cascade)
+hotelCity        City?    @relation("HotelCity", fields: [hotelCityId], references: [id], onDelete: Cascade)
+
+officeCountry    Country? @relation("OfficeCountry", fields: [officeCountryId], references: [id], onDelete: Cascade)
+officeState      State?   @relation("OfficeState", fields: [officeStateId], references: [id], onDelete: Cascade)
+officeCity       City?    @relation("OfficeCity", fields: [officeCityId], references: [id], onDelete: Cascade)
+
   officePincode       String?
   contactPerson       String?
   hotelContactNo1     String?
@@ -225,15 +248,72 @@ model Hotel {
   email2              String?
   website             String?
   panNumber           String?
-  bankName            String?
-  bankAccountNumber   String?
-  branch              String?
-  beneficiaryName     String?
-  ifsc_code           String?
-  swiftCode           String?
+  bankName1            String?
+  bankAccountNumber1   String?
+  branch1              String?
+  beneficiaryName1     String?
+  ifsc_code1           String?
+  swiftCode1           String?
+
+  bankName2            String?
+  bankAccountNumber2   String?
+  branch2              String?
+  beneficiaryName2     String?
+  ifsc_code2           String?
+  swiftCode2           String?
 
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   @@map("hotels")
+}
+
+model Client {
+  id          Int      @id @default(autoincrement())
+  agencyId    Int      // Foreign key to the Agency table
+  agency      Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  clientName  String   // Client name
+  gender      String?   // Gender
+  email       String?
+  dateOfBirth DateTime? // Date of birth
+  marriageDate DateTime? // Marriage date (optional)
+  referBy     String?  // Referred by (optional)
+  address1    String?   // Address Line 1
+  address2    String?  // Address Line 2 (optional)
+   stateId         Int?             // Foreign key to the State table
+  state           State?           @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  cityId          Int?             // Foreign key to the City table
+  city            City?            @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  pincode     String?   // Pincode
+  mobile1     String?   // Primary mobile number
+  mobile2     String?  // Secondary mobile number (optional)
+  gstin       String?  // GSTIN (optional)
+  passportNo  String?  // Passport number (optional)
+  panNo       String?  // PAN number (optional)
+  aadharNo    String?
+  familyFriends   FamilyFriends[]  // One-to-many relationship with FamilyFriends
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@map("clients") // Map the table name to "clients"
+}
+
+model FamilyFriends {
+  id              Int      @id @default(autoincrement())
+  clientId        Int      // Foreign key to the Client table
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name            String   // Name of the family member or friend
+  gender          String?  // Gender
+  relation        String?   // Relation to the client (e.g., Father, Mother, Friend)
+  aadharNo        String?  // AADHAR number (optional)
+  dateOfBirth     DateTime? // Date of birth (optional)
+  anniversaryDate DateTime? // Anniversary date (optional)
+  foodType        String?  // Food type (e.g., Vegetarian, Non-Vegetarian)
+  mobile          String?  // Mobile number (optional)
+  email           String?  // Email address (optional)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("family_friends") // Map the table name to "family_friends"
 }
