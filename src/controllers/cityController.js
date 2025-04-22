@@ -1,24 +1,24 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { z } = require("zod");
-const validateRequest = require("../utils/validateRequest");
-const createError = require("http-errors"); // For consistent error handling
+const { z } = require('zod');
+const validateRequest = require('../utils/validateRequest');
+const createError = require('http-errors'); // For consistent error handling
 
 // Get all cities with pagination, sorting, and search
 const getCities = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  const search = req.query.search || "";
-  const sortBy = req.query.sortBy || "id";
-  const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+  const search = req.query.search || '';
+  const sortBy = req.query.sortBy || 'id';
+  const sortOrder = req.query.sortOrder === 'desc' ? 'desc' : 'asc';
 
   try {
     // Step 1: Get agencyId of the current user
     if (!req.user.agencyId) {
       return res
         .status(404)
-        .json({ message: "User does not belongs to any Agency" });
+        .json({ message: 'User does not belongs to any Agency' });
     }
 
     // Step 2: Build filter clause
@@ -58,9 +58,9 @@ const getCities = async (req, res, next) => {
       take: limit,
       // orderBy: { [sortBy]: sortOrder },
       orderBy:
-        sortBy === "stateName"
+        sortBy === 'stateName'
           ? { state: { stateName: sortOrder } }
-          : sortBy === "countryName"
+          : sortBy === 'countryName'
           ? { state: { country: { countryName: sortOrder } } }
           : { [sortBy]: sortOrder },
     });
@@ -88,23 +88,23 @@ const createCity = async (req, res, next) => {
     .object({
       cityName: z
         .string()
-        .min(1, "City name cannot be left blank.") // Ensuring minimum length of 2
-        .max(100, "City name must not exceed 100 characters.")
+        .min(1, 'City name cannot be left blank.') // Ensuring minimum length of 2
+        .max(100, 'City name must not exceed 100 characters.')
         .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-          message: "City name can only contain letters.",
+          message: 'City name can only contain letters.',
         }),
       stateId: z
         .number({
-          required_error: "State ID is required.",
-          invalid_type_error: "State ID must be a number.",
+          required_error: 'State ID is required.',
+          invalid_type_error: 'State ID must be a number.',
         })
-        .int("State ID must be an integer."),
+        .int('State ID must be an integer.'),
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
         return res
           .status(404)
-          .json({ message: "User does not belongs to any Agency" });
+          .json({ message: 'User does not belongs to any Agency' });
       }
       const existingCity = await prisma.city.findFirst({
         where: {
@@ -117,7 +117,7 @@ const createCity = async (req, res, next) => {
 
       if (existingCity) {
         ctx.addIssue({
-          path: ["cityName"],
+          path: ['cityName'],
           message: `City with name ${data.cityName} already exists.`,
         });
       }
@@ -129,7 +129,7 @@ const createCity = async (req, res, next) => {
 
       if (!existingState) {
         ctx.addIssue({
-          path: ["stateId"],
+          path: ['stateId'],
           message: `State with ID ${data.stateId} does not exist.`,
         });
       }
@@ -177,13 +177,13 @@ const getCityById = async (req, res, next) => {
     });
 
     if (!city) {
-      return res.status(404).json({ errors: { message: "City not found" } });
+      return res.status(404).json({ errors: { message: 'City not found' } });
     }
 
     res.status(200).json(city);
   } catch (error) {
     res.status(500).json({
-      errors: { message: "Failed to fetch city", details: error.message },
+      errors: { message: 'Failed to fetch city', details: error.message },
     });
   }
 };
@@ -195,24 +195,24 @@ const updateCity = async (req, res, next) => {
     .object({
       cityName: z
         .string()
-        .min(1, "City name cannot be left blank.") // Ensuring minimum length of 2
-        .max(100, "City name must not exceed 100 characters.")
+        .min(1, 'City name cannot be left blank.') // Ensuring minimum length of 2
+        .max(100, 'City name must not exceed 100 characters.')
         .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-          message: "City name can only contain letters.",
+          message: 'City name can only contain letters.',
         }),
       stateId: z
         .number({
-          required_error: "State ID is required.",
-          invalid_type_error: "State ID must be a number.",
+          required_error: 'State ID is required.',
+          invalid_type_error: 'State ID must be a number.',
         })
-        .int("State ID must be an integer."),
+        .int('State ID must be an integer.'),
     })
     .superRefine(async (data, ctx) => {
       const { id } = req.params;
       if (!req.user.agencyId) {
         return res
           .status(404)
-          .json({ message: "User does not belongs to any Agency" });
+          .json({ message: 'User does not belongs to any Agency' });
       }
 
       const existingCity = await prisma.city.findFirst({
@@ -227,7 +227,7 @@ const updateCity = async (req, res, next) => {
 
       if (existingCity && existingCity.id !== parseInt(id)) {
         ctx.addIssue({
-          path: ["cityName"],
+          path: ['cityName'],
           message: `City with name ${data.cityName} already exists.`,
         });
       }
@@ -239,7 +239,7 @@ const updateCity = async (req, res, next) => {
 
       if (!existingState) {
         ctx.addIssue({
-          path: ["stateId"],
+          path: ['stateId'],
           message: `State with ID ${data.stateId} does not exist.`,
         });
       }
@@ -259,8 +259,8 @@ const updateCity = async (req, res, next) => {
 
     res.status(200).json(updatedCity);
   } catch (error) {
-    if (error.code === "P2025") {
-      return next(createError(404, "City not found"));
+    if (error.code === 'P2025') {
+      return next(createError(404, 'City not found'));
     }
     next(error);
   }
@@ -277,11 +277,11 @@ const deleteCity = async (req, res, next) => {
 
     res.status(204).send();
   } catch (error) {
-    if (error.code === "P2025") {
-      return res.status(404).json({ errors: { message: "City not found" } });
+    if (error.code === 'P2025') {
+      return res.status(404).json({ errors: { message: 'City not found' } });
     }
     res.status(500).json({
-      errors: { message: "Failed to delete city", details: error.message },
+      errors: { message: 'Failed to delete city', details: error.message },
     });
   }
 };
@@ -293,7 +293,7 @@ const getAllCities = async (req, res, next) => {
     if (!req.user.agencyId) {
       return res
         .status(404)
-        .json({ message: "User does not belongs to any Agency" });
+        .json({ message: 'User does not belongs to any Agency' });
     }
 
     const cities = await prisma.city.findMany({
@@ -318,6 +318,35 @@ const getAllCities = async (req, res, next) => {
   }
 };
 
+// Get all states without pagination, sorting, and search
+const getAllCitiesByStateId = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Step 1: Get agencyId of the current user
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: 'User does not belongs to any Agency' });
+    }
+
+    const cities = await prisma.city.findMany({
+      where: {
+        agencyId: req.user.agencyId,
+        stateId: parseInt(id, 10),
+      },
+      select: {
+        id: true,
+        cityName: true,
+      },
+    });
+
+    res.status(200).json(cities);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCities,
   createCity,
@@ -325,4 +354,5 @@ module.exports = {
   updateCity,
   deleteCity,
   getAllCities,
+  getAllCitiesByStateId,
 };

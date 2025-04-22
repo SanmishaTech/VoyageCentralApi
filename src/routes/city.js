@@ -1,4 +1,4 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 const {
   getCities,
@@ -7,9 +7,10 @@ const {
   updateCity,
   deleteCity,
   getAllCities,
-} = require("../controllers/cityController");
-const auth = require("../middleware/auth");
-const acl = require("../middleware/acl");
+  getAllCitiesByStateId,
+} = require('../controllers/cityController');
+const auth = require('../middleware/auth');
+const acl = require('../middleware/acl');
 
 /**
  * @swagger
@@ -106,7 +107,7 @@ const acl = require("../middleware/acl");
  *       500:
  *         description: Failed to fetch cities
  */
-router.get("/", auth, acl("cities.read"), getCities);
+router.get('/', auth, acl('cities.read'), getCities);
 
 /**
  * @swagger
@@ -137,7 +138,50 @@ router.get("/", auth, acl("cities.read"), getCities);
  *       500:
  *         description: Failed to create city
  */
-router.post("/", auth, acl("cities.write"), createCity);
+router.post('/', auth, acl('cities.write'), createCity);
+
+/**
+ * @swagger
+ * /cities/by-state/{id}:
+ *   get:
+ *     summary: Get all cities by state ID
+ *     tags: [Cities]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: State ID
+ *     responses:
+ *       200:
+ *         description: List of all cities for the specified state
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   cityName:
+ *                     type: string
+ *                   country:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       countryName:
+ *                         type: string
+ *       404:
+ *         description: State not found
+ *       500:
+ *         description: Failed to fetch city
+ */
+router.get('/by-state/:id', auth, acl('cities.read'), getAllCitiesByStateId);
 
 /**
  * @swagger
@@ -171,7 +215,7 @@ router.post("/", auth, acl("cities.write"), createCity);
  *       500:
  *         description: Failed to fetch cities
  */
-router.get("/all", auth, acl("cities.read"), getAllCities);
+router.get('/all', auth, acl('cities.read'), getAllCities);
 
 /**
  * @swagger
@@ -218,7 +262,7 @@ router.get("/all", auth, acl("cities.read"), getAllCities);
  *       500:
  *         description: Failed to fetch city
  */
-router.get("/:id", auth, acl("cities.read"), getCityById);
+router.get('/:id', auth, acl('cities.read'), getCityById);
 
 /**
  * @swagger
@@ -258,7 +302,7 @@ router.get("/:id", auth, acl("cities.read"), getCityById);
  *       500:
  *         description: Failed to update city
  */
-router.put("/:id", auth, acl("cities.write"), updateCity);
+router.put('/:id', auth, acl('cities.write'), updateCity);
 
 /**
  * @swagger
@@ -283,6 +327,6 @@ router.put("/:id", auth, acl("cities.write"), updateCity);
  *       500:
  *         description: Failed to delete city
  */
-router.delete("/:id", auth, acl("cities.delete"), deleteCity);
+router.delete('/:id', auth, acl('cities.delete'), deleteCity);
 
 module.exports = router;
