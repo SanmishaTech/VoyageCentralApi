@@ -1,23 +1,24 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const { z } = require('zod');
-const validateRequest = require('../utils/validateRequest');
-const createError = require('http-errors'); // For consistent error handling
+const dayjs = require("dayjs");
+const { z } = require("zod");
+const validateRequest = require("../utils/validateRequest");
+const createError = require("http-errors"); // For consistent error handling
 
 // Get all clients with pagination, sorting, and search
 const getClients = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  const search = req.query.search || '';
-  const sortBy = req.query.sortBy || 'id';
-  const sortOrder = req.query.sortOrder === 'desc' ? 'desc' : 'asc';
+  const search = req.query.search || "";
+  const sortBy = req.query.sortBy || "id";
+  const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
   try {
     if (!req.user.agencyId) {
       return res
         .status(404)
-        .json({ message: 'User does not belong to any Agency' });
+        .json({ message: "User does not belong to any Agency" });
     }
 
     const whereClause = {
@@ -26,7 +27,7 @@ const getClients = async (req, res, next) => {
         { clientName: { contains: search } },
         { mobile1: { contains: search } },
         { email: { contains: search } },
-        { address1: { contains: search } },
+        { gender: { contains: search } },
       ],
     };
 
@@ -51,7 +52,7 @@ const getClients = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({
       errors: {
-        message: 'Failed to fetch clients',
+        message: "Failed to fetch clients",
         details: error.message,
       },
     });
@@ -63,12 +64,12 @@ const createClient = async (req, res, next) => {
   const schema = z.object({
     clientName: z
       .string()
-      .min(1, 'Client name cannot be left blank.')
-      .max(100, 'Client name must not exceed 100 characters.'),
+      .min(1, "Client name cannot be left blank.")
+      .max(100, "Client name must not exceed 100 characters."),
     familyFriends: z
       .array(
         z.object({
-          name: z.string().min(1, 'Name cannot be blank.'),
+          name: z.string().min(1, "Name cannot be blank."),
         })
       )
       .optional(),
@@ -80,8 +81,12 @@ const createClient = async (req, res, next) => {
     if (!req.user.agencyId) {
       return res
         .status(404)
-        .json({ message: 'User does not belong to any Agency' });
+        .json({ message: "User does not belong to any Agency" });
     }
+    const parseDate = (value) => {
+      if (typeof value !== "string" || value.trim() === "") return undefined;
+      return dayjs(value).isValid() ? new Date(value) : undefined;
+    };
     const {
       clientName,
       gender,
@@ -99,6 +104,7 @@ const createClient = async (req, res, next) => {
       getSelection,
       passportNo,
       panNo,
+      gstin,
       aadharNo,
       familyFriends,
     } = req.body;
@@ -109,8 +115,8 @@ const createClient = async (req, res, next) => {
         agencyId: req.user.agencyId,
         gender,
         email,
-        dateOfBirth,
-        marriageDate,
+        dateOfBirth: parseDate(dateOfBirth),
+        marriageDate: parseDate(marriageDate),
         referBy,
         address1,
         address2,
@@ -120,11 +126,22 @@ const createClient = async (req, res, next) => {
         mobile1,
         mobile2,
         getSelection,
+        gstin,
         passportNo,
         panNo,
         aadharNo,
         familyFriends: {
-          create: familyFriends || [],
+          create: (familyFriends || []).map((friend) => ({
+            name: friend.name,
+            gender: friend.gender,
+            relation: friend.relation,
+            aadharNo: friend.aadharNo,
+            dateOfBirth: parseDate(friend.dateOfBirth),
+            anniversaryDate: parseDate(friend.anniversaryDate),
+            foodType: friend.foodType,
+            mobile: friend.mobile,
+            email: friend.email,
+          })),
         },
       },
     });
@@ -133,7 +150,7 @@ const createClient = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({
       errors: {
-        message: 'Failed to create client',
+        message: "Failed to create client",
         details: error.message,
       },
     });
@@ -158,14 +175,14 @@ const getClientById = async (req, res, next) => {
     });
 
     if (!client) {
-      return res.status(404).json({ errors: { message: 'Client not found' } });
+      return res.status(404).json({ errors: { message: "Client not found" } });
     }
 
     res.status(200).json(client);
   } catch (error) {
     res.status(500).json({
       errors: {
-        message: 'Failed to fetch client',
+        message: "Failed to fetch client",
         details: error.message,
       },
     });
@@ -177,13 +194,13 @@ const updateClient = async (req, res, next) => {
   const schema = z.object({
     clientName: z
       .string()
-      .min(1, 'Client name cannot be left blank.')
-      .max(100, 'Client name must not exceed 100 characters.'),
+      .min(1, "Client name cannot be left blank.")
+      .max(100, "Client name must not exceed 100 characters."),
     familyFriends: z
       .array(
         z.object({
           id: z.number().optional(), // Include ID for existing familyFriends
-          name: z.string().min(1, 'Name cannot be blank.'),
+          name: z.string().min(1, "Name cannot be blank."),
           gender: z.string().optional(),
           relation: z.string().optional(),
           aadharNo: z.string().optional(),
@@ -191,14 +208,16 @@ const updateClient = async (req, res, next) => {
           anniversaryDate: z.string().optional(),
           foodType: z.string().optional(),
           mobile: z.string().optional(),
-          email: z.string().email('Invalid email address').optional(),
         })
       )
       .optional(),
   });
 
   const validationErrors = await validateRequest(schema, req.body, res);
-
+  const parseDate = (value) => {
+    if (typeof value !== "string" || value.trim() === "") return undefined;
+    return dayjs(value).isValid() ? new Date(value) : undefined;
+  };
   const { id } = req.params;
   const {
     clientName,
@@ -213,103 +232,114 @@ const updateClient = async (req, res, next) => {
     cityId,
     pincode,
     mobile1,
+    gstin,
     mobile2,
     getSelection,
     passportNo,
     panNo,
     aadharNo,
-    familyFriends,
+    familyFriends = [],
   } = req.body;
   try {
     if (!req.user.agencyId) {
       return res
         .status(404)
-        .json({ message: 'User does not belong to any Agency' });
+        .json({ message: "User does not belong to any Agency" });
     }
-    // First, delete familyFriends that are not in the new familyFriends array
-    await prisma.familyFriend.deleteMany({
-      where: {
-        clientId: parseInt(id, 10),
-        id: {
-          notIn: familyFriends.filter((f) => f.id).map((f) => f.id), // Only keep existing friends in the list
-        },
-      },
-    });
 
-    // Now, proceed to update the client and upsert familyFriends
-    const updatedClient = await prisma.client.update({
-      where: { id: parseInt(id, 10) },
-      data: {
-        clientName,
-        gender,
-        email,
-        dateOfBirth,
-        marriageDate,
-        referBy,
-        address1,
-        address2,
-        stateId: parseInt(stateId, 10),
-        cityId: parseInt(cityId, 10),
-        pincode,
-        mobile1,
-        mobile2,
-        getSelection,
-        passportNo,
-        panNo,
-        aadharNo,
-        familyFriends: {
-          upsert: familyFriends
-            .filter((friend) => !!friend.id) // Only existing friends
-            .map((friend) => ({
-              where: { id: friend.id },
-              update: {
+    const result = await prisma.$transaction(async (tx) => {
+      // First, delete familyFriends that are not in the new familyFriends array
+      await tx.familyFriends.deleteMany({
+        where: {
+          clientId: parseInt(id, 10),
+          id: {
+            notIn: familyFriends
+              .filter((f) => parseInt(f.friendId))
+              .map((f) => parseInt(f.friendId)), // Only keep existing friends in the list
+          },
+        },
+      });
+
+      // Now, proceed to update the client and upsert familyFriends
+      const updatedClient = await tx.client.update({
+        where: { id: parseInt(id, 10) },
+        data: {
+          clientName,
+          gender,
+          email,
+          dateOfBirth: parseDate(dateOfBirth),
+          marriageDate: parseDate(marriageDate),
+          referBy,
+          gstin,
+          address1,
+          address2,
+          stateId: parseInt(stateId, 10),
+          cityId: parseInt(cityId, 10),
+          pincode,
+          mobile1,
+          mobile2,
+          getSelection,
+          passportNo,
+          panNo,
+          aadharNo,
+          familyFriends: {
+            upsert: familyFriends
+              .filter((friend) => !!parseInt(friend.friendId)) // Only existing friends
+              .map((friend) => ({
+                where: { id: parseInt(friend.friendId) },
+                update: {
+                  name: friend.name,
+                  gender: friend.gender,
+                  relation: friend.relation,
+                  aadharNo: friend.aadharNo,
+                  dateOfBirth: parseDate(friend.dateOfBirth),
+                  anniversaryDate: parseDate(friend.anniversaryDate),
+                  foodType: friend.foodType,
+                  mobile: friend.mobile,
+                  email: friend.email,
+                },
+                create: {
+                  name: friend.name,
+                  gender: friend.gender,
+                  relation: friend.relation,
+                  aadharNo: friend.aadharNo,
+                  dateOfBirth: parseDate(friend.dateOfBirth),
+                  anniversaryDate: parseDate(friend.anniversaryDate),
+                  foodType: friend.foodType,
+                  mobile: friend.mobile,
+                  email: friend.email,
+                },
+              })),
+            create: familyFriends
+              .filter((friend) => !parseInt(friend.friendId)) // Only new friends
+              .map((friend) => ({
                 name: friend.name,
                 gender: friend.gender,
                 relation: friend.relation,
                 aadharNo: friend.aadharNo,
-                dateOfBirth: friend.dateOfBirth,
-                anniversaryDate: friend.anniversaryDate,
+                dateOfBirth: parseDate(friend.dateOfBirth),
+                anniversaryDate: parseDate(friend.anniversaryDate),
                 foodType: friend.foodType,
                 mobile: friend.mobile,
                 email: friend.email,
-              },
-              create: {
-                name: friend.name,
-                gender: friend.gender,
-                relation: friend.relation,
-                aadharNo: friend.aadharNo,
-                dateOfBirth: friend.dateOfBirth,
-                anniversaryDate: friend.anniversaryDate,
-                foodType: friend.foodType,
-                mobile: friend.mobile,
-                email: friend.email,
-              },
-            })),
-          create: familyFriends
-            .filter((friend) => !friend.id) // Only new friends
-            .map((friend) => ({
-              name: friend.name,
-              gender: friend.gender,
-              relation: friend.relation,
-              aadharNo: friend.aadharNo,
-              dateOfBirth: friend.dateOfBirth,
-              anniversaryDate: friend.anniversaryDate,
-              foodType: friend.foodType,
-              mobile: friend.mobile,
-              email: friend.email,
-            })),
+              })),
+          },
         },
-      },
+      });
+
+      return {
+        updatedClient: updatedClient,
+      };
     });
 
-    res.status(200).json(updatedClient);
+    res.status(200).json(result.updatedClient);
   } catch (error) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ errors: { message: 'Client not found' } });
+    if (error.code === "P2025") {
+      return res.status(404).json({ errors: { message: "Client not found" } });
     }
     return res.status(500).json({
       errors: {
-        message: 'Failed to update client',
+        message: "Failed to update client",
         details: error.message,
       },
     });
@@ -327,12 +357,12 @@ const deleteClient = async (req, res, next) => {
 
     res.status(204).send();
   } catch (error) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ errors: { message: 'Client not found' } });
+    if (error.code === "P2025") {
+      return res.status(404).json({ errors: { message: "Client not found" } });
     }
     res.status(500).json({
       errors: {
-        message: 'Failed to delete client',
+        message: "Failed to delete client",
         details: error.message,
       },
     });

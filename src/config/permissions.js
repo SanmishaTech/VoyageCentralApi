@@ -57,4 +57,8 @@ module.exports = {
   "hotels.write": ["super_admin", "admin"],
   "hotels.delete": ["super_admin", "admin"],
   "hotels.read": ["super_admin", "admin"],
+  //clients
+  "clients.write": ["super_admin", "admin"],
+  "clients.delete": ["super_admin", "admin"],
+  "clients.read": ["super_admin", "admin"],
 };
