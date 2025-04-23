@@ -15,6 +15,7 @@ const accommodationRoutes = require("./routes/accommodation");
 const vehicleRoutes = require("./routes/vehicle");
 const airlineRoutes = require("./routes/airline");
 const hotelRoutes = require("./routes/hotel");
+const clientRoutes = require("./routes/client");
 const staffRoutes = require("./routes/staff");
 const stateRoutes = require("./routes/state");
 const agencyRoutes = require("./routes/agency");
@@ -60,6 +61,7 @@ app.use("/accommodations", accommodationRoutes);
 app.use("/vehicles", vehicleRoutes);
 app.use("/airlines", airlineRoutes);
 app.use("/hotels", hotelRoutes);
+app.use("/clients", clientRoutes);
 app.use(swaggerRouter); // Add this line to include Swagger documentation
 
 app.use((req, res, next) => {
