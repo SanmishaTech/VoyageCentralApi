@@ -7,6 +7,7 @@ const {
   getAllStatesByCountryId,
   updateState,
   deleteState,
+  getStatesOfIndia,
   getAllStates,
 } = require("../controllers/stateController");
 const auth = require("../middleware/auth");
@@ -139,6 +140,35 @@ router.get("/", auth, acl("states.read"), getStates);
  *         description: Failed to create state
  */
 router.post("/", auth, acl("states.write"), createState);
+
+/**
+ * @swagger
+ * /states/india:
+ *   get:
+ *     summary: Get all states of India
+ *     tags: [States]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all states in India
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   stateName:
+ *                     type: string
+ *       404:
+ *         description: Country "India" not found
+ *       500:
+ *         description: Failed to fetch states
+ */
+router.get("/india", auth, acl("states.read"), getStatesOfIndia);
 
 /**
  * @swagger
