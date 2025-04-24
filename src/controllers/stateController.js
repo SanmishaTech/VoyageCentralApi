@@ -324,6 +324,41 @@ const getAllStatesByCountryId = async (req, res, next) => {
   }
 };
 
+const getStatesOfIndia = async (req, res, next) => {
+  try {
+    // Step 1: Check if the country "India" exists
+    const india = await prisma.country.findFirst({
+      where: {
+        countryName: "India",
+        agencyId: req.user.agencyId, // Ensure the country belongs to the user's agency
+      },
+      select: { id: true },
+    });
+
+    if (!india) {
+      // If "India" does not exist, return an empty array
+      return res.status(200).json([]);
+    }
+
+    // Step 2: Fetch all states of "India"
+    const states = await prisma.state.findMany({
+      where: {
+        agencyId: req.user.agencyId,
+        countryId: india.id,
+      },
+      select: {
+        id: true,
+        stateName: true,
+      },
+    });
+
+    // Step 3: Return the states
+    res.status(200).json(states);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStates,
   createState,
@@ -331,4 +366,5 @@ module.exports = {
   updateState,
   deleteState,
   getAllStatesByCountryId,
+  getStatesOfIndia,
 };
