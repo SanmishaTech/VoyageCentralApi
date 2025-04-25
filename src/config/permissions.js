@@ -61,4 +61,12 @@ module.exports = {
   "clients.write": ["super_admin", "admin"],
   "clients.delete": ["super_admin", "admin"],
   "clients.read": ["super_admin", "admin"],
+  //banks
+  "banks.write": ["super_admin", "admin"],
+  "banks.delete": ["super_admin", "admin"],
+  "banks.read": ["super_admin", "admin"],
+  //fairs
+  "fairs.write": ["super_admin", "admin"],
+  "fairs.delete": ["super_admin", "admin"],
+  "fairs.read": ["super_admin", "admin"],
 };

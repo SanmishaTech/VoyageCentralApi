@@ -1,23 +1,23 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const { z } = require('zod');
-const validateRequest = require('../utils/validateRequest');
-const createError = require('http-errors'); // For consistent error handling
+const { z } = require("zod");
+const validateRequest = require("../utils/validateRequest");
+const createError = require("http-errors"); // For consistent error handling
 
 // Get all hotels with pagination, sorting, and search
 const getHotels = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  const search = req.query.search || '';
-  const sortBy = req.query.sortBy || 'id';
-  const sortOrder = req.query.sortOrder === 'desc' ? 'desc' : 'asc';
+  const search = req.query.search || "";
+  const sortBy = req.query.sortBy || "id";
+  const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
   try {
     if (!req.user.agencyId) {
       return res
         .status(404)
-        .json({ message: 'User does not belong to any Agency' });
+        .json({ message: "User does not belong to any Agency" });
     }
 
     const whereClause = {
@@ -52,7 +52,7 @@ const getHotels = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({
       errors: {
-        message: 'Failed to fetch hotels',
+        message: "Failed to fetch hotels",
         details: error.message,
       },
     });
@@ -65,14 +65,14 @@ const createHotel = async (req, res, next) => {
     .object({
       hotelName: z
         .string()
-        .min(1, 'Hotel name cannot be left blank.')
-        .max(100, 'Hotel name must not exceed 100 characters.'),
+        .min(1, "Hotel name cannot be left blank.")
+        .max(100, "Hotel name must not exceed 100 characters."),
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
         return res
           .status(404)
-          .json({ message: 'User does not belong to any Agency' });
+          .json({ message: "User does not belong to any Agency" });
       }
       const existingHotel = await prisma.hotel.findFirst({
         where: {
@@ -85,7 +85,7 @@ const createHotel = async (req, res, next) => {
 
       if (existingHotel) {
         ctx.addIssue({
-          path: ['hotelName'],
+          path: ["hotelName"],
           message: `Hotel with name ${data.hotelName} already exists.`,
         });
       }
@@ -114,15 +114,13 @@ const createHotel = async (req, res, next) => {
         email2: req.body.email2,
         website: req.body.website,
         panNumber: req.body.panNumber,
-
-        bankName1: req.body.bankName1,
         bankAccountNumber1: req.body.bankAccountNumber1,
         branch1: req.body.branch1,
         beneficiaryName1: req.body.beneficiaryName1,
         ifsc_code1: req.body.ifsc_code1,
         swiftCode1: req.body.swiftCode1,
-
-        bankName2: req.body.bankName2,
+        bank1Id: parseInt(req.body.bank1Id),
+        bank2Id: parseInt(req.body.bank2Id),
         bankAccountNumber2: req.body.bankAccountNumber2,
         branch2: req.body.branch2,
         beneficiaryName2: req.body.beneficiaryName2,
@@ -143,7 +141,7 @@ const createHotel = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({
       errors: {
-        message: 'Failed to create hotel',
+        message: "Failed to create hotel",
         details: error.message,
       },
     });
@@ -165,14 +163,14 @@ const getHotelById = async (req, res, next) => {
     });
 
     if (!hotel) {
-      return res.status(404).json({ errors: { message: 'Hotel not found' } });
+      return res.status(404).json({ errors: { message: "Hotel not found" } });
     }
 
     res.status(200).json(hotel);
   } catch (error) {
     res.status(500).json({
       errors: {
-        message: 'Failed to fetch hotel',
+        message: "Failed to fetch hotel",
         details: error.message,
       },
     });
@@ -185,14 +183,14 @@ const updateHotel = async (req, res, next) => {
     .object({
       hotelName: z
         .string()
-        .min(1, 'Hotel name cannot be left blank.')
-        .max(100, 'Hotel name must not exceed 100 characters.'),
+        .min(1, "Hotel name cannot be left blank.")
+        .max(100, "Hotel name must not exceed 100 characters."),
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
         return res
           .status(404)
-          .json({ message: 'User does not belong to any Agency' });
+          .json({ message: "User does not belong to any Agency" });
       }
       const { id } = req.params;
 
@@ -208,7 +206,7 @@ const updateHotel = async (req, res, next) => {
 
       if (existingHotel && existingHotel.id !== parseInt(id)) {
         ctx.addIssue({
-          path: ['hotelName'],
+          path: ["hotelName"],
           message: `Hotel with name ${data.hotelName} already exists.`,
         });
       }
@@ -240,15 +238,13 @@ const updateHotel = async (req, res, next) => {
         email2: req.body.email2,
         website: req.body.website,
         panNumber: req.body.panNumber,
-
-        bankName1: req.body.bankName1,
         bankAccountNumber1: req.body.bankAccountNumber1,
         branch1: req.body.branch1,
         beneficiaryName1: req.body.beneficiaryName1,
         ifsc_code1: req.body.ifsc_code1,
         swiftCode1: req.body.swiftCode1,
-
-        bankName2: req.body.bankName2,
+        bank1Id: parseInt(req.body.bank1Id),
+        bank2Id: parseInt(req.body.bank2Id),
         bankAccountNumber2: req.body.bankAccountNumber2,
         branch2: req.body.branch2,
         beneficiaryName2: req.body.beneficiaryName2,
@@ -266,12 +262,12 @@ const updateHotel = async (req, res, next) => {
 
     res.status(200).json(updatedHotel);
   } catch (error) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ errors: { message: 'Hotel not found' } });
+    if (error.code === "P2025") {
+      return res.status(404).json({ errors: { message: "Hotel not found" } });
     }
     return res.status(500).json({
       errors: {
-        message: 'Failed to update hotel',
+        message: "Failed to update hotel",
         details: error.message,
       },
     });
@@ -289,12 +285,12 @@ const deleteHotel = async (req, res, next) => {
 
     res.status(204).send();
   } catch (error) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ errors: { message: 'Hotel not found' } });
+    if (error.code === "P2025") {
+      return res.status(404).json({ errors: { message: "Hotel not found" } });
     }
     res.status(500).json({
       errors: {
-        message: 'Failed to delete hotel',
+        message: "Failed to delete hotel",
         details: error.message,
       },
     });
@@ -307,7 +303,7 @@ const getAllHotels = async (req, res, next) => {
     if (!req.user.agencyId) {
       return res
         .status(404)
-        .json({ message: 'User does not belong to any Agency' });
+        .json({ message: "User does not belong to any Agency" });
     }
 
     const hotels = await prisma.hotel.findMany({
@@ -320,7 +316,7 @@ const getAllHotels = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({
       errors: {
-        message: 'Failed to fetch hotels',
+        message: "Failed to fetch hotels",
         details: error.message,
       },
     });
