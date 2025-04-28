@@ -21,6 +21,7 @@ const clientRoutes = require("./routes/client");
 const staffRoutes = require("./routes/staff");
 const stateRoutes = require("./routes/state");
 const agencyRoutes = require("./routes/agency");
+const tourRoutes = require("./routes/tour");
 const sectorRoutes = require("./routes/sector");
 const subscriptionRoutes = require("./routes/subscription");
 const branchRoutes = require("./routes/branch"); // Import branch routes
@@ -66,6 +67,7 @@ app.use("/hotels", hotelRoutes);
 app.use("/clients", clientRoutes);
 app.use("/banks", bankRoutes);
 app.use("/fairs", fairRoutes);
+app.use("/tours", tourRoutes);
 app.use(swaggerRouter); // Add this line to include Swagger documentation
 
 app.use((req, res, next) => {
