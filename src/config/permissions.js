@@ -69,4 +69,8 @@ module.exports = {
   "fairs.write": ["super_admin", "admin"],
   "fairs.delete": ["super_admin", "admin"],
   "fairs.read": ["super_admin", "admin"],
+  //tours
+  "tours.write": ["super_admin", "admin"],
+  "tours.delete": ["super_admin", "admin"],
+  "tours.read": ["super_admin", "admin"],
 };

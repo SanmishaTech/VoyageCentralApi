@@ -76,6 +76,7 @@ model Agency {
   clients               Client[]
   banks               Bank[]
   fairs               Fair[]
+  tours               Tour[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -158,7 +159,7 @@ model City {
  hotelAddresses  Hotel[] @relation("HotelCity")
 officeAddresses Hotel[] @relation("OfficeCity")
   clients         Client[]  // One-to-many relationship with Client
-
+itineraries  Itinerary[] // One-to-many relationship with Itinerary
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -168,8 +169,9 @@ officeAddresses Hotel[] @relation("OfficeCity")
 model Sector {
   id        Int      @id @default(autoincrement())
    agencyId  Int
-  agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
-  sectorName    String  
+  agency     Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
+  sectorName   String
+  tours      Tour[]    
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
@@ -345,4 +347,39 @@ model Fair {
   updatedAt DateTime @updatedAt
 
   @@map("fairs")
+}
+
+model Tour {
+  id          Int      @id @default(autoincrement())
+  agencyId    Int      // Foreign key to the Agency table
+  agency      Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  tourTitle   String   // Title of the tour
+  tourType    String?   // Type of the tour (e.g., Adventure, Leisure)
+  destination String?   // Destination of the tour
+  status      String?   // Status of the tour (e.g., Active, Inactive)
+  sectorId    Int?     // Foreign key to the Sector table
+  sector      Sector?  @relation(fields: [sectorId], references: [id], onDelete: SetNull)
+  uploadUUID  String?  // Stores the UUID directory name
+  attachment  String?  // File attachment (optional)
+  notes       String?  // Notes about the tour (optional)
+  itineraries Itinerary[] // One-to-many relationship with Itinerary
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("tours") // Map the table name to "tours"
+}
+
+model Itinerary {
+  id          Int      @id @default(autoincrement())
+  tourId      Int      // Foreign key to the Tour table
+  tour        Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  day         Int      // Day number of the itinerary
+  description String   // Description of the itinerary for the day
+  cityId      Int?     // Foreign key to the City table
+  city        City?    @relation(fields: [cityId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("itineraries") // Map the table name to "itineraries"
 }
