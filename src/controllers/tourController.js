@@ -104,7 +104,7 @@ const createTour = async (req, res, next) => {
                 required_error: "Day is required.",
                 invalid_type_error: "Day must be a number.",
               })
-              .int("Package ID must be an integer."),
+              .int("Day must be an integer."),
             description: z.string().min(1, "Description cannot be blank."),
             cityId: z.string().optional(),
           })
@@ -843,10 +843,35 @@ const deleteTour = async (req, res, next) => {
   }
 };
 
+const getAllTours = async (req, res, next) => {
+  try {
+    // Step 1: Get agencyId of the current user
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belongs to any Agency" });
+    }
+
+    const tours = await prisma.tour.findMany({
+      where: {
+        agencyId: req.user.agencyId,
+      },
+      include: {
+        itineraries: true,
+      },
+    });
+
+    res.status(200).json(tours);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTours,
   createTour,
   getTourById,
   updateTour,
   deleteTour,
+  getAllTours,
 };

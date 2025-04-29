@@ -6,6 +6,7 @@ const {
   getClientById,
   updateClient,
   deleteClient,
+  getAllClients,
 } = require("../controllers/clientController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
@@ -215,6 +216,33 @@ router.get("/", auth, acl("clients.read"), getClients);
  *         description: Failed to create client
  */
 router.post("/", auth, acl("clients.write"), createClient);
+
+/**
+ * @swagger
+ * /clients/all:
+ *   get:
+ *     summary: Get all clients without pagination, sorting, and search
+ *     tags: [clients]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all clients
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   name:
+ *                     type: string
+ *       500:
+ *         description: Failed to fetch clients
+ */
+router.get("/all", auth, acl("clients.read"), getAllClients);
 
 /**
  * @swagger

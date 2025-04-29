@@ -73,4 +73,8 @@ module.exports = {
   "tours.write": ["super_admin", "admin"],
   "tours.delete": ["super_admin", "admin"],
   "tours.read": ["super_admin", "admin"],
+  //tourEnquiries
+  "tourEnquiries.write": ["super_admin", "admin", "user"],
+  "tourEnquiries.delete": ["super_admin", "admin", "user"],
+  "tourEnquiries.read": ["super_admin", "admin", "user"],
 };
