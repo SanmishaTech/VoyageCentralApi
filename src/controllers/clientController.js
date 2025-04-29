@@ -365,10 +365,36 @@ const deleteClient = async (req, res, next) => {
   }
 };
 
+const getAllClients = async (req, res, next) => {
+  try {
+    // Step 1: Get agencyId of the current user
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belongs to any Agency" });
+    }
+
+    const clients = await prisma.client.findMany({
+      where: {
+        agencyId: req.user.agencyId,
+      },
+      select: {
+        id: true,
+        clientName: true,
+      },
+    });
+
+    res.status(200).json(clients);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getClients,
   createClient,
   getClientById,
   updateClient,
   deleteClient,
+  getAllClients,
 };

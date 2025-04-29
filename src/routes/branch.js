@@ -6,8 +6,10 @@ const {
   getBranchById,
   updateBranch,
   deleteBranch,
+  getAllBranches,
 } = require("../controllers/branchController");
 const auth = require("../middleware/auth");
+const acl = require("../middleware/acl");
 
 /**
  * @swagger
@@ -81,6 +83,33 @@ router.post("/", auth, createBranch);
  *         description: Internal server error
  */
 router.get("/", auth, getBranches);
+
+/**
+ * @swagger
+ * /branches/all:
+ *   get:
+ *     summary: Get all branches without pagination, sorting, and search
+ *     tags: [branches]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all branches
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   name:
+ *                     type: string
+ *       500:
+ *         description: Failed to fetch branches
+ */
+router.get("/all", auth, acl("branches.read"), getAllBranches);
 
 /**
  * @swagger

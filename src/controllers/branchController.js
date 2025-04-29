@@ -274,10 +274,36 @@ const deleteBranch = async (req, res, next) => {
   }
 };
 
+const getAllBranches = async (req, res, next) => {
+  try {
+    // Step 1: Get agencyId of the current user
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belongs to any Agency" });
+    }
+
+    const branches = await prisma.branch.findMany({
+      where: {
+        agencyId: req.user.agencyId,
+      },
+      select: {
+        id: true,
+        branchName: true,
+      },
+    });
+
+    res.status(200).json(branches);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createBranch,
   getBranches,
   getBranchById,
   updateBranch,
   deleteBranch,
+  getAllBranches,
 };
