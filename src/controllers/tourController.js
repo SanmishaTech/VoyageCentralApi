@@ -5,7 +5,7 @@ const { z } = require("zod");
 const validateRequest = require("../utils/validateUpload");
 const createError = require("http-errors"); // For consistent error handling
 const path = require("path");
-
+const { STATUS_OPEN } = require("../config/data");
 const UPLOAD_DIR_BASE = "uploads"; // Base directory - MUST MATCH STATIC SERVING and middleware config
 const TOUR_MODULE_NAME = "tour"; // Define module name consistently
 
@@ -854,7 +854,7 @@ const getAllTours = async (req, res, next) => {
 
     const tours = await prisma.tour.findMany({
       where: {
-        agencyId: req.user.agencyId,
+        AND: [{ agencyId: req.user.agencyId }, { status: STATUS_OPEN }],
       },
       include: {
         itineraries: true,
