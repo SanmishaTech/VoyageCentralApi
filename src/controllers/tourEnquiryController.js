@@ -66,7 +66,9 @@ const getTourEnquiries = async (req, res, next) => {
       ],
       OR: [
         { bookingNumber: { contains: search } },
-        { enquiryStatus: { contains: search } },
+        { branch: { branchName: { contains: search } } },
+        { client: { clientName: { contains: search } } },
+        { tour: { tourTitle: { contains: search } } },
       ],
     };
 
@@ -116,7 +118,7 @@ const getTourEnquiries = async (req, res, next) => {
 // Create a new tour enquiry
 const createTourEnquiry = async (req, res, next) => {
   const schema = z.object({
-    clientId: z.string().min(1, "Client ID cannot be blank."),
+    clientId: z.number().min(1, "Client ID cannot be blank."),
     tourBookingDetails: z
       .array(
         z.object({
@@ -149,7 +151,6 @@ const createTourEnquiry = async (req, res, next) => {
     };
 
     const {
-      bookingNumber,
       bookingDate,
       journeyDate,
       departureDate,
@@ -180,9 +181,13 @@ const createTourEnquiry = async (req, res, next) => {
           departureDate: parseDate(departureDate),
           budgetField: budgetField || null,
           clientId: parseInt(clientId, 10),
-          numberOfAdults: numberOfAdults || null,
-          numberOfChildren5To11: numberOfChildren5To11 || null,
-          numberOfChildrenUnder5: numberOfChildrenUnder5 || null,
+          numberOfAdults: numberOfAdults ? parseInt(numberOfAdults, 10) : null, // Parse as integer
+          numberOfChildren5To11: numberOfChildren5To11
+            ? parseInt(numberOfChildren5To11, 10)
+            : null, // Parse as integer
+          numberOfChildrenUnder5: numberOfChildrenUnder5
+            ? parseInt(numberOfChildrenUnder5, 10)
+            : null, // Parse as integer
           branchId: req.user.branchId
             ? req.user.branchId
             : branchId
@@ -190,17 +195,17 @@ const createTourEnquiry = async (req, res, next) => {
             : null,
           tourId: tourId ? parseInt(tourId, 10) : null,
           bookingDetails: bookingDetails || null,
-          isJourney: isJourney || false,
-          isHotel: isHotel || false,
-          isVehicle: isVehicle || false,
-          isPackage: isPackage || false,
+          isJourney: !!isJourney, // Convert to boolean
+          isHotel: !!isHotel, // Convert to boolean
+          isVehicle: !!isVehicle, // Convert to boolean
+          isPackage: !!isPackage, // Convert to boolean
           enquiryStatus: enquiryStatus || null,
           tourBookingDetails: {
             create: (tourBookingDetails || []).map((detail) => ({
-              day: detail.day,
+              day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
               date: parseDate(detail.date),
-              description: detail.description,
-              cityId: detail.cityId ? parseInt(detail.cityId, 10) : null,
+              description: detail.description || "",
+              cityId: detail.cityId ? parseInt(detail.cityId, 10) : null, // Parse as integer
             })),
           },
         },
@@ -260,7 +265,6 @@ const getTourEnquiryById = async (req, res, next) => {
 const updateTourEnquiry = async (req, res, next) => {
   const schema = z.object({
     budgetField: z.string().optional(),
-    clientId: z.string().min(1, "Client ID cannot be blank."),
     tourBookingDetails: z
       .array(
         z.object({
@@ -268,7 +272,6 @@ const updateTourEnquiry = async (req, res, next) => {
           day: z.number().min(1, "Day must be at least 1."),
           date: z.string().min(1, "Date cannot be blank."),
           description: z.string().min(1, "Description cannot be blank."),
-          cityId: z.string().optional(),
         })
       )
       .optional(),
@@ -312,7 +315,7 @@ const updateTourEnquiry = async (req, res, next) => {
 
     const result = await prisma.$transaction(async (tx) => {
       // First, delete familyFriends that are not in the new familyFriends array
-      await tx.tourBookingDetails.deleteMany({
+      await tx.tourBookingDetail.deleteMany({
         where: {
           tourEnquiryId: parseInt(id, 10),
           id: {
@@ -332,9 +335,13 @@ const updateTourEnquiry = async (req, res, next) => {
           departureDate: parseDate(departureDate),
           budgetField: budgetField || null,
           clientId: parseInt(clientId, 10),
-          numberOfAdults: numberOfAdults || null,
-          numberOfChildren5To11: numberOfChildren5To11 || null,
-          numberOfChildrenUnder5: numberOfChildrenUnder5 || null,
+          numberOfAdults: numberOfAdults ? parseInt(numberOfAdults, 10) : null, // Parse as integer
+          numberOfChildren5To11: numberOfChildren5To11
+            ? parseInt(numberOfChildren5To11, 10)
+            : null, // Parse as integer
+          numberOfChildrenUnder5: numberOfChildrenUnder5
+            ? parseInt(numberOfChildrenUnder5, 10)
+            : null, // Parse as integer
           ...(req.user.branchId
             ? {}
             : {
@@ -342,24 +349,24 @@ const updateTourEnquiry = async (req, res, next) => {
               }),
           tourId: tourId ? parseInt(tourId, 10) : null,
           bookingDetails: bookingDetails || null,
-          isJourney: isJourney || false,
-          isHotel: isHotel || false,
-          isVehicle: isVehicle || false,
-          isPackage: isPackage || false,
+          isJourney: !!isJourney, // Convert to boolean
+          isHotel: !!isHotel, // Convert to boolean
+          isVehicle: !!isVehicle, // Convert to boolean
+          isPackage: !!isPackage, // Convert to boolean
           enquiryStatus: enquiryStatus || null,
           tourBookingDetails: {
             upsert: tourBookingDetails
               .filter((detail) => !!parseInt(detail.tourBookingDetailId)) // Only existing friends
               .map((detail) => ({
-                where: { id: parseInt(detail.detailId) },
+                where: { id: parseInt(detail.tourBookingDetailId) },
                 update: {
-                  day: detail.day,
+                  day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
                   description: detail.description,
                   date: parseDate(detail.date),
                   cityId: detail.cityId ? parseInt(detail.cityId, 10) : null,
                 },
                 create: {
-                  day: detail.day,
+                  day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
                   description: detail.description,
                   date: parseDate(detail.date),
                   cityId: detail.cityId ? parseInt(detail.cityId, 10) : null,
@@ -368,7 +375,7 @@ const updateTourEnquiry = async (req, res, next) => {
             create: tourBookingDetails
               .filter((detail) => !parseInt(detail.tourBookingDetailId)) // Only new friends
               .map((detail) => ({
-                day: detail.day,
+                day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
                 description: detail.description,
                 date: parseDate(detail.date),
                 cityId: detail.cityId ? parseInt(detail.cityId, 10) : null,
