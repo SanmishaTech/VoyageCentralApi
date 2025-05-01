@@ -392,21 +392,21 @@ model Itinerary {
 model TourEnquiry {
   id                      Int       @id @default(autoincrement())
   agencyId                Int       // Foreign key to the Agency table
-  agency                  Agency    @relation(fields: [agencyId], references: [id])
+  agency                  Agency    @relation(fields: [agencyId], references: [id], onDelete:Cascade)
   bookingNumber           String    
   bookingDate             DateTime  // Date of booking
   journeyDate             DateTime?  // Journey date
   departureDate           DateTime? // Optional departure date
   budgetField              String?   // Budget field with precision and scale
   clientId                Int?       // Foreign key to the Client table
-  client                  Client?    @relation(fields: [clientId], references: [id])
+  client                  Client?    @relation(fields: [clientId], references: [id],onDelete:Cascade)
   numberOfAdults          Int?       // Number of adults
   numberOfChildren5To11   Int?       // Number of children between age 5-11
   numberOfChildrenUnder5  Int?       // Number of children under age 5
   branchId                Int?      // Foreign key to the Branch table
-  branch                  Branch?   @relation(fields: [branchId], references: [id])
+  branch                  Branch?   @relation(fields: [branchId], references: [id],onDelete:SetNull)
   tourId                  Int?      // Foreign key to the Tour table
-  tour                    Tour?     @relation(fields: [tourId], references: [id])
+  tour                    Tour?     @relation(fields: [tourId], references: [id], onDelete: Restrict)
   bookingDetails          String?   // Booking details (optional)
   isJourney               Boolean   @default(false) // Indicates if it's a journey
   isHotel                 Boolean   @default(false) // Indicates if a hotel is included
@@ -428,7 +428,7 @@ model TourBookingDetail {
   date            DateTime  // Date of the booking
   description     String    // Description of the booking
   cityId          Int?      // Foreign key to the City table
-  city            City?     @relation(fields: [cityId], references: [id])
+  city            City?     @relation(fields: [cityId], references: [id],onDelete: SetNull)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

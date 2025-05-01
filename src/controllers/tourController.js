@@ -767,6 +767,9 @@ const deleteTour = async (req, res, next) => {
 
   try {
     // 1. Fetch agency UUID BEFORE deleting
+
+    // Foreign key constraint failed (tour is referenced in other tables)
+
     const tourToDelete = await prisma.tour.findUnique({
       where: { id: tourId },
       select: { uploadUUID: true }, // Need UUID for file cleanup
@@ -830,6 +833,18 @@ const deleteTour = async (req, res, next) => {
     // 4. Success Response
     res.status(204).send();
   } catch (error) {
+    if (
+      error.code === "P2003" ||
+      error.message.includes("Foreign key constraint failed")
+    ) {
+      return res.status(409).json({
+        errors: {
+          message:
+            "Cannot delete this tour because it is referenced in related data (e.g., itineraries or enquiries). Please remove those first.",
+        },
+      });
+    }
+
     console.error(`Error deleting tour ${tourId}:`, error);
     if (error.code === "P2025") {
       return next(createError(404, `Tour with ID ${tourId} not found.`));

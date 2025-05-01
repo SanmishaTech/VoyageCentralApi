@@ -82,21 +82,21 @@ const createBranch = async (req, res, next) => {
         .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
           message: "Branch Name can only contain letters.",
         }),
-      contactName: z
-        .string()
-        .min(1, "Contact Name cannot be left blank.") // Ensuring minimum length of 2
-        .max(100, "Contact Name must not exceed 100 characters.")
-        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-          message: "Contact Name can only contain letters.",
-        }),
-      contactMobile: z.string().refine((val) => /^[0-9]{10}$/.test(val), {
-        message: "Mobile number must contain exact 10 digits.",
-      }),
-      contactEmail: z.string().email("email field is required"),
-      address: z
-        .string()
-        .min(1, "Address field is required")
-        .max(100, "Address field should not exceed 100 characters"),
+      // contactName: z
+      //   .string()
+      //   .min(1, "Contact Name cannot be left blank.") // Ensuring minimum length of 2
+      //   .max(100, "Contact Name must not exceed 100 characters.")
+      //   .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+      //     message: "Contact Name can only contain letters.",
+      //   }),
+      // contactMobile: z.string().refine((val) => /^[0-9]{10}$/.test(val), {
+      //   message: "Mobile number must contain exact 10 digits.",
+      // }),
+      // contactEmail: z.string().email("email field is required"),
+      // address: z
+      //   .string()
+      //   .min(1, "Address field is required")
+      //   .max(100, "Address field should not exceed 100 characters"),
     })
     .superRefine(async (data, ctx) => {
       const existingBranchName = await prisma.branch.findFirst({
@@ -179,25 +179,25 @@ const updateBranch = async (req, res, next) => {
         .string()
         .min(1, "Branch name is required.")
         .max(100, "Branch name must be less than 100 characters."),
-      address: z
-        .string()
-        .min(1, "Address is required.")
-        .max(255, "Address must be less than 255 characters."),
-      contactName: z
-        .string()
-        .min(1, "Name cannot be left blank.") // Ensuring minimum length of 2
-        .max(100, "Name must not exceed 100 characters.")
-        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-          message: "Name can only contain letters.",
-        }),
-      contactEmail: z
-        .string()
-        .email("Contact email must be a valid email address.")
-        .nonempty("Contact email is required."),
-      contactMobile: z
-        .string()
-        .min(10, "Contact number must be 10 digits.")
-        .max(10, "Contact number must be 10 digits."),
+      //   address: z
+      //     .string()
+      //     .min(1, "Address is required.")
+      //     .max(255, "Address must be less than 255 characters."),
+      //   contactName: z
+      //     .string()
+      //     .min(1, "Name cannot be left blank.") // Ensuring minimum length of 2
+      //     .max(100, "Name must not exceed 100 characters.")
+      //     .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+      //       message: "Name can only contain letters.",
+      //     }),
+      //   contactEmail: z
+      //     .string()
+      //     .email("Contact email must be a valid email address.")
+      //     .nonempty("Contact email is required."),
+      //   contactMobile: z
+      //     .string()
+      //     .min(10, "Contact number must be 10 digits.")
+      //     .max(10, "Contact number must be 10 digits."),
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
