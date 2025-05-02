@@ -19,7 +19,7 @@ async function generateBookingNumber(tx, agencyId) {
   )}`;
 
   // Get the latest booking number for the current financial year
-  const lastBooking = await tx.tourEnquiry.findFirst({
+  const lastBooking = await tx.booking.findFirst({
     where: {
       AND: [
         {

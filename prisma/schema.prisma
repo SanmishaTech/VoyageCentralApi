@@ -77,7 +77,7 @@ model Agency {
   banks               Bank[]
   fairs               Fair[]
   tours               Tour[]
-  tourEnquiries       TourEnquiry[]
+  bookings           Booking[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -111,7 +111,7 @@ model Branch {
   contactMobile String
   agency        Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   users         User[]
-  tourEnquiries TourEnquiry[] // One-to-many relationship with TourEnquiry
+  bookings Booking[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -162,7 +162,7 @@ model City {
 officeAddresses Hotel[] @relation("OfficeCity")
   clients         Client[]  // One-to-many relationship with Client
 itineraries  Itinerary[] // One-to-many relationship with Itinerary
-tourBookingDetails TourBookingDetail[] // One-to-many relationship with TourEnquiry
+bookingDetails BookingDetail[] // One-to-many relationship with TourEnquiry
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -300,7 +300,7 @@ model Client {
   panNo       String?  // PAN number (optional)
   aadharNo    String?
   familyFriends   FamilyFriends[]  // One-to-many relationship with FamilyFriends
-  tourEnquiries TourEnquiry[] // One-to-many relationship with TourEnquiry
+  bookings Booking[] // One-to-many relationship with TourEnquiry
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -367,7 +367,7 @@ model Tour {
   attachment  String?  // File attachment (optional)
   notes       String?  // Notes about the tour (optional)
   itineraries Itinerary[] // One-to-many relationship with Itinerary
-  tourEnquiries TourEnquiry[] // One-to-many relationship with TourEnquiry
+  bookings Booking[] // One-to-many relationship with TourEnquiry
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -389,7 +389,7 @@ model Itinerary {
   @@map("itineraries") // Map the table name to "itineraries"
 }
 
-model TourEnquiry {
+model Booking {
   id                      Int       @id @default(autoincrement())
   agencyId                Int       // Foreign key to the Agency table
   agency                  Agency    @relation(fields: [agencyId], references: [id], onDelete:Cascade)
@@ -407,23 +407,25 @@ model TourEnquiry {
   branch                  Branch?   @relation(fields: [branchId], references: [id],onDelete:SetNull)
   tourId                  Int?      // Foreign key to the Tour table
   tour                    Tour?     @relation(fields: [tourId], references: [id], onDelete: Restrict)
-  bookingDetails          String?   // Booking details (optional)
+  bookingDetail          String?   // Booking details (optional)
   isJourney               Boolean   @default(false) // Indicates if it's a journey
   isHotel                 Boolean   @default(false) // Indicates if a hotel is included
   isVehicle               Boolean   @default(false) // Indicates if a vehicle is included
   isPackage               Boolean   @default(false) // Indicates if it's a package
-  enquiryStatus           String?    // Status of the enquiry (e.g., Pending, Confirmed, Cancelled)
-  tourBookingDetails      TourBookingDetail[] // One-to-many relationship with TourBookingDetail
+  bookingDetails      BookingDetail[] // One-to-many relationship with TourBookingDetail
+  followUpDate     DateTime?  // Date of the follow-up
+  remarks          String?   // Remarks for the follow-up
+  FollowUps       FollowUp[]
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
-  @@map("tour_enquiries") // Map the table name to "tour_enquiries"
+  @@map("bookings") // Map the table name to "tour_enquiries"
 }
 
-model TourBookingDetail {
+model BookingDetail {
   id              Int       @id @default(autoincrement())
-  tourEnquiryId   Int       // Foreign key to the TourEnquiry table
-  tourEnquiry     TourEnquiry @relation(fields: [tourEnquiryId], references: [id], onDelete: Cascade)
+  bookingId   Int       // Foreign key to the TourEnquiry table
+  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   day             Int       // Day number of the booking
   date            DateTime  // Date of the booking
   description     String    // Description of the booking
@@ -432,5 +434,18 @@ model TourBookingDetail {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  @@map("tour_booking_details") // Map the table name to "tour_booking_details"
+  @@map("booking_details") // Map the table name to "tour_booking_details"
+}
+
+model FollowUp {
+  id               Int       @id @default(autoincrement())
+  bookingId        Int       // Foreign key to the Booking table
+  booking          Booking   @relation(fields: [bookingId], references: [id])
+  followUpDate     DateTime  // Date of the follow-up
+  nextFollowUpDate DateTime? // Optional next follow-up date
+  remarks          String   // Remarks for the follow-up
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("follow_ups") // Map the table name to "follow_ups"
 }

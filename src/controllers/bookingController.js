@@ -6,7 +6,7 @@ const validateRequest = require("../utils/validateRequest");
 const createError = require("http-errors"); // For consistent error handling
 const generateBookingNumber = require("../utils/generateBookingNumber");
 // Get all tour enquiries with pagination, sorting, and search
-const getTourEnquiries = async (req, res, next) => {
+const getBookings = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -82,7 +82,7 @@ const getTourEnquiries = async (req, res, next) => {
         ? { tour: { tourTitle: sortOrder } }
         : { [sortBy]: sortOrder };
 
-    const tourEnquiries = await prisma.tourEnquiry.findMany({
+    const bookings = await prisma.booking.findMany({
       where: whereClause,
       skip,
       take: limit,
@@ -94,21 +94,21 @@ const getTourEnquiries = async (req, res, next) => {
       },
     });
 
-    const totalTourEnquiries = await prisma.tourEnquiry.count({
+    const totalBookings = await prisma.booking.count({
       where: whereClause,
     });
-    const totalPages = Math.ceil(totalTourEnquiries / limit);
+    const totalPages = Math.ceil(totalBookings / limit);
 
     res.json({
-      tourEnquiries,
+      bookings,
       page,
       totalPages,
-      totalTourEnquiries,
+      totalBookings,
     });
   } catch (error) {
     return res.status(500).json({
       errors: {
-        message: "Failed to fetch tour enquiries",
+        message: "Failed to fetch bookings",
         details: error.message,
       },
     });
@@ -116,10 +116,10 @@ const getTourEnquiries = async (req, res, next) => {
 };
 
 // Create a new tour enquiry
-const createTourEnquiry = async (req, res, next) => {
+const createBooking = async (req, res, next) => {
   const schema = z.object({
     clientId: z.number().min(1, "Client ID cannot be blank."),
-    tourBookingDetails: z
+    bookingDetails: z
       .array(
         z.object({
           day: z
@@ -161,18 +161,18 @@ const createTourEnquiry = async (req, res, next) => {
       numberOfChildrenUnder5,
       branchId,
       tourId,
-      bookingDetails,
+      bookingDetail,
       isJourney,
       isHotel,
       isVehicle,
       isPackage,
       enquiryStatus,
-      tourBookingDetails,
+      bookingDetails,
     } = req.body;
 
     const result = await prisma.$transaction(async (tx) => {
       const bookingNumber = await generateBookingNumber(tx, req.user.agencyId);
-      const newTourEnquiry = await tx.tourEnquiry.create({
+      const newBooking = await tx.booking.create({
         data: {
           bookingNumber: bookingNumber,
           agencyId: req.user.agencyId,
@@ -194,14 +194,13 @@ const createTourEnquiry = async (req, res, next) => {
             ? parseInt(branchId, 10)
             : null,
           tourId: tourId ? parseInt(tourId, 10) : null,
-          bookingDetails: bookingDetails || null,
+          bookingDetail: bookingDetail || null,
           isJourney: !!isJourney, // Convert to boolean
           isHotel: !!isHotel, // Convert to boolean
           isVehicle: !!isVehicle, // Convert to boolean
           isPackage: !!isPackage, // Convert to boolean
-          enquiryStatus: enquiryStatus || null,
-          tourBookingDetails: {
-            create: (tourBookingDetails || []).map((detail) => ({
+          bookingDetails: {
+            create: (bookingDetails || []).map((detail) => ({
               day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
               date: parseDate(detail.date),
               description: detail.description || "",
@@ -212,15 +211,15 @@ const createTourEnquiry = async (req, res, next) => {
       });
 
       return {
-        newTourEnquiry: newTourEnquiry,
+        newBooking: newBooking,
       };
     });
 
-    res.status(201).json(result.newTourEnquiry);
+    res.status(201).json(result.newBooking);
   } catch (error) {
     return res.status(500).json({
       errors: {
-        message: "Failed to create tour enquiry",
+        message: "Failed to create booking",
         details: error.message,
       },
     });
@@ -228,11 +227,11 @@ const createTourEnquiry = async (req, res, next) => {
 };
 
 // Get a tour enquiry by ID
-const getTourEnquiryById = async (req, res, next) => {
+const getBookingById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    const tourEnquiry = await prisma.tourEnquiry.findFirst({
+    const booking = await prisma.booking.findFirst({
       where: {
         AND: [
           { id: parseInt(id, 10) },
@@ -240,21 +239,19 @@ const getTourEnquiryById = async (req, res, next) => {
         ],
       },
       include: {
-        tourBookingDetails: true, // Include tourBookingDetails in the response
+        bookingDetails: true, // Include tourBookingDetails in the response
       },
     });
 
-    if (!tourEnquiry) {
-      return res
-        .status(404)
-        .json({ errors: { message: "Tour enquiry not found" } });
+    if (!booking) {
+      return res.status(404).json({ errors: { message: "Booking not found" } });
     }
 
-    res.status(200).json(tourEnquiry);
+    res.status(200).json(booking);
   } catch (error) {
     res.status(500).json({
       errors: {
-        message: "Failed to fetch tour enquiry",
+        message: "Failed to fetch booking",
         details: error.message,
       },
     });
@@ -262,13 +259,13 @@ const getTourEnquiryById = async (req, res, next) => {
 };
 
 // Update a tour enquiry
-const updateTourEnquiry = async (req, res, next) => {
+const updateBooking = async (req, res, next) => {
   const schema = z.object({
     budgetField: z.string().optional(),
-    tourBookingDetails: z
+    bookingDetails: z
       .array(
         z.object({
-          tourBookingDetailId: z.string().optional(), // Include ID for existing booking details
+          bookingDetailId: z.string().optional(), // Include ID for existing booking details
           day: z.number().min(1, "Day must be at least 1."),
           date: z.string().min(1, "Date cannot be blank."),
           description: z.string().min(1, "Description cannot be blank."),
@@ -292,13 +289,13 @@ const updateTourEnquiry = async (req, res, next) => {
     numberOfChildrenUnder5,
     branchId,
     tourId,
-    bookingDetails,
+    bookingDetail,
     isJourney,
     isHotel,
     isVehicle,
     isPackage,
     enquiryStatus,
-    tourBookingDetails = [],
+    bookingDetails = [],
   } = req.body;
 
   try {
@@ -315,19 +312,19 @@ const updateTourEnquiry = async (req, res, next) => {
 
     const result = await prisma.$transaction(async (tx) => {
       // First, delete familyFriends that are not in the new familyFriends array
-      await tx.tourBookingDetail.deleteMany({
+      await tx.bookingDetail.deleteMany({
         where: {
-          tourEnquiryId: parseInt(id, 10),
+          bookingId: parseInt(id, 10),
           id: {
-            notIn: tourBookingDetails
-              .filter((d) => parseInt(d.tourBookingDetailId))
-              .map((d) => parseInt(d.tourBookingDetailId)), // Only keep existing friends in the list
+            notIn: bookingDetails
+              .filter((d) => parseInt(d.bookingDetailId))
+              .map((d) => parseInt(d.bookingDetailId)), // Only keep existing friends in the list
           },
         },
       });
 
       // Now, proceed to update the client and upsert familyFriends
-      const updatedTourEnquiry = await tx.tourEnquiry.update({
+      const updatedBooking = await tx.booking.update({
         where: { id: parseInt(id, 10) },
         data: {
           bookingDate: parseDate(bookingDate),
@@ -348,17 +345,16 @@ const updateTourEnquiry = async (req, res, next) => {
                 branchId: branchId ? parseInt(branchId, 10) : null,
               }),
           tourId: tourId ? parseInt(tourId, 10) : null,
-          bookingDetails: bookingDetails || null,
+          bookingDetail: bookingDetail || null,
           isJourney: !!isJourney, // Convert to boolean
           isHotel: !!isHotel, // Convert to boolean
           isVehicle: !!isVehicle, // Convert to boolean
           isPackage: !!isPackage, // Convert to boolean
-          enquiryStatus: enquiryStatus || null,
-          tourBookingDetails: {
-            upsert: tourBookingDetails
-              .filter((detail) => !!parseInt(detail.tourBookingDetailId)) // Only existing friends
+          bookingDetails: {
+            upsert: bookingDetails
+              .filter((detail) => !!parseInt(detail.bookingDetailId)) // Only existing friends
               .map((detail) => ({
-                where: { id: parseInt(detail.tourBookingDetailId) },
+                where: { id: parseInt(detail.bookingDetailId) },
                 update: {
                   day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
                   description: detail.description,
@@ -372,8 +368,8 @@ const updateTourEnquiry = async (req, res, next) => {
                   cityId: detail.cityId ? parseInt(detail.cityId, 10) : null,
                 },
               })),
-            create: tourBookingDetails
-              .filter((detail) => !parseInt(detail.tourBookingDetailId)) // Only new friends
+            create: bookingDetails
+              .filter((detail) => !parseInt(detail.bookingDetailId)) // Only new friends
               .map((detail) => ({
                 day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
                 description: detail.description,
@@ -385,45 +381,41 @@ const updateTourEnquiry = async (req, res, next) => {
       });
 
       return {
-        updatedTourEnquiry: updatedTourEnquiry,
+        updatedBooking: updatedBooking,
       };
     });
 
     res.status(200).json(result);
   } catch (error) {
     if (error.code === "P2025") {
-      return res
-        .status(404)
-        .json({ errors: { message: "Tour enquiry not found" } });
+      return res.status(404).json({ errors: { message: "Booking not found" } });
     }
     return res.status(500).json({
       errors: {
-        message: "Failed to update tour enquiry",
+        message: "Failed to update booking",
         details: error.message,
       },
     });
   }
 };
 //tour booking number generate.
-// Delete a tour enquiry
-const deleteTourEnquiry = async (req, res, next) => {
+// Delete a booking
+const deleteBooking = async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    await prisma.tourEnquiry.delete({
+    await prisma.booking.delete({
       where: { id: parseInt(id, 10) },
     });
 
     res.status(204).send();
   } catch (error) {
     if (error.code === "P2025") {
-      return res
-        .status(404)
-        .json({ errors: { message: "Tour enquiry not found" } });
+      return res.status(404).json({ errors: { message: "Booking not found" } });
     }
     res.status(500).json({
       errors: {
-        message: "Failed to delete tour enquiry",
+        message: "Failed to delete booking",
         details: error.message,
       },
     });
@@ -431,9 +423,9 @@ const deleteTourEnquiry = async (req, res, next) => {
 };
 
 module.exports = {
-  getTourEnquiries,
-  createTourEnquiry,
-  getTourEnquiryById,
-  deleteTourEnquiry,
-  updateTourEnquiry,
+  getBookings,
+  createBooking,
+  getBookingById,
+  deleteBooking,
+  updateBooking,
 };
