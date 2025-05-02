@@ -1,20 +1,20 @@
 const express = require("express");
 const router = express.Router();
 const {
-  getTourEnquiries,
-  createTourEnquiry,
-  getTourEnquiryById,
-  updateTourEnquiry,
-  deleteTourEnquiry,
-} = require("../controllers/tourEnquiryController");
+  getBookings,
+  createBooking,
+  getBookingById,
+  updateBooking,
+  deleteBooking,
+} = require("../controllers/bookingController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
 
 /**
  * @swagger
  * tags:
- *   name: Tour Enquiries
- *   description: Tour enquiry management endpoints
+ *   name: Bookings
+ *   description: Booking management endpoints
  */
 
 /**
@@ -29,10 +29,10 @@ const acl = require("../middleware/acl");
 
 /**
  * @swagger
- * /tour-enquiries:
+ * /bookings:
  *   get:
- *     summary: Get all tour enquiries with pagination, sorting, and search
- *     tags: [Tour Enquiries]
+ *     summary: Get all bookings with pagination, sorting, and search
+ *     tags: [Bookings]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -47,7 +47,7 @@ const acl = require("../middleware/acl");
  *         schema:
  *           type: integer
  *           default: 10
- *         description: Number of tour enquiries per page
+ *         description: Number of bookings per page
  *       - in: query
  *         name: search
  *         schema:
@@ -90,13 +90,13 @@ const acl = require("../middleware/acl");
  *         description: Filter by client name
  *     responses:
  *       200:
- *         description: List of all tour enquiries
+ *         description: List of all bookings
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 tourEnquiries:
+ *                 bookings:
  *                   type: array
  *                   items:
  *                     type: object
@@ -128,7 +128,7 @@ const acl = require("../middleware/acl");
  *                         type: integer
  *                       tourId:
  *                         type: integer
- *                       bookingDetails:
+ *                       bookingDetail:
  *                         type: string
  *                       isJourney:
  *                         type: boolean
@@ -150,19 +150,19 @@ const acl = require("../middleware/acl");
  *                   type: integer
  *                 totalPages:
  *                   type: integer
- *                 totalTourEnquiries:
+ *                 totalBookings:
  *                   type: integer
  *       500:
- *         description: Failed to fetch tour enquiries
+ *         description: Failed to fetch bookings
  */
-router.get("/", auth, acl("tourEnquiries.read"), getTourEnquiries);
+router.get("/", auth, acl("bookings.read"), getBookings);
 
 /**
  * @swagger
- * /tour-enquiries:
+ * /bookings:
  *   post:
- *     summary: Create a new tour enquiry
- *     tags: [Tour Enquiries]
+ *     summary: Create a new booking
+ *     tags: [Bookings]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -195,8 +195,6 @@ router.get("/", auth, acl("tourEnquiries.read"), getTourEnquiries);
  *                 type: integer
  *               tourId:
  *                 type: integer
- *               bookingDetails:
- *                 type: string
  *               isJourney:
  *                 type: boolean
  *               isHotel:
@@ -207,36 +205,22 @@ router.get("/", auth, acl("tourEnquiries.read"), getTourEnquiries);
  *                 type: boolean
  *               enquiryStatus:
  *                 type: string
- *               tourBookingDetails:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     day:
- *                       type: integer
- *                     date:
- *                       type: string
- *                       format: date-time
- *                     description:
- *                       type: string
- *                     cityId:
- *                       type: integer
  *     responses:
  *       201:
- *         description: Tour enquiry created successfully
+ *         description: Booking created successfully
  *       400:
  *         description: Bad request
  *       500:
- *         description: Failed to create tour enquiry
+ *         description: Failed to create booking
  */
-router.post("/", auth, acl("tourEnquiries.write"), createTourEnquiry);
+router.post("/", auth, acl("bookings.write"), createBooking);
 
 /**
  * @swagger
- * /tour-enquiries/{id}:
+ * /bookings/{id}:
  *   get:
- *     summary: Get tour enquiry by ID
- *     tags: [Tour Enquiries]
+ *     summary: Get booking by ID
+ *     tags: [Bookings]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -245,10 +229,10 @@ router.post("/", auth, acl("tourEnquiries.write"), createTourEnquiry);
  *         schema:
  *           type: integer
  *         required: true
- *         description: Tour enquiry ID
+ *         description: Booking ID
  *     responses:
  *       200:
- *         description: Tour enquiry details
+ *         description: Booking details
  *         content:
  *           application/json:
  *             schema:
@@ -281,7 +265,7 @@ router.post("/", auth, acl("tourEnquiries.write"), createTourEnquiry);
  *                   type: integer
  *                 tourId:
  *                   type: integer
- *                 bookingDetails:
+ *                 bookingDetail:
  *                   type: string
  *                 isJourney:
  *                   type: boolean
@@ -293,7 +277,7 @@ router.post("/", auth, acl("tourEnquiries.write"), createTourEnquiry);
  *                   type: boolean
  *                 enquiryStatus:
  *                   type: string
- *                 tourBookingDetails:
+ *                 bookingDetails:
  *                   type: array
  *                   items:
  *                     type: object
@@ -316,18 +300,17 @@ router.post("/", auth, acl("tourEnquiries.write"), createTourEnquiry);
  *                   type: string
  *                   format: date-time
  *       404:
- *         description: Tour enquiry not found
+ *         description: Booking not found
  *       500:
- *         description: Failed to fetch tour enquiry
+ *         description: Failed to fetch booking
  */
-router.get("/:id", auth, acl("tourEnquiries.read"), getTourEnquiryById);
-
+router.get("/:id", auth, acl("bookings.read"), getBookingById);
 /**
  * @swagger
- * /tour-enquiries/{id}:
+ * /bookings/{id}:
  *   put:
- *     summary: Update tour enquiry by ID
- *     tags: [Tour Enquiries]
+ *     summary: Update booking by ID
+ *     tags: [Bookings]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -336,7 +319,7 @@ router.get("/:id", auth, acl("tourEnquiries.read"), getTourEnquiryById);
  *         schema:
  *           type: integer
  *         required: true
- *         description: Tour enquiry ID
+ *         description: Booking ID
  *     requestBody:
  *       required: true
  *       content:
@@ -367,8 +350,6 @@ router.get("/:id", auth, acl("tourEnquiries.read"), getTourEnquiryById);
  *                 type: integer
  *               tourId:
  *                 type: integer
- *               bookingDetails:
- *                 type: string
  *               isJourney:
  *                 type: boolean
  *               isHotel:
@@ -379,40 +360,24 @@ router.get("/:id", auth, acl("tourEnquiries.read"), getTourEnquiryById);
  *                 type: boolean
  *               enquiryStatus:
  *                 type: string
- *               tourBookingDetails:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                     day:
- *                       type: integer
- *                     date:
- *                       type: string
- *                       format: date-time
- *                     description:
- *                       type: string
- *                     cityId:
- *                       type: integer
  *     responses:
  *       200:
- *         description: Tour enquiry updated successfully
+ *         description: Booking updated successfully
  *       400:
  *         description: Bad request
  *       404:
- *         description: Tour enquiry not found
+ *         description: Booking not found
  *       500:
- *         description: Failed to update tour enquiry
+ *         description: Failed to update booking
  */
-router.put("/:id", auth, acl("tourEnquiries.write"), updateTourEnquiry);
+router.put("/:id", auth, acl("bookings.write"), updateBooking);
 
 /**
  * @swagger
- * /tour-enquiries/{id}:
+ * /bookings/{id}:
  *   delete:
- *     summary: Delete tour enquiry by ID
- *     tags: [Tour Enquiries]
+ *     summary: Delete booking by ID
+ *     tags: [Bookings]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -421,15 +386,15 @@ router.put("/:id", auth, acl("tourEnquiries.write"), updateTourEnquiry);
  *         schema:
  *           type: integer
  *         required: true
- *         description: Tour enquiry ID
+ *         description: Booking ID
  *     responses:
  *       204:
- *         description: Tour enquiry deleted successfully
+ *         description: Booking deleted successfully
  *       404:
- *         description: Tour enquiry not found
+ *         description: Booking not found
  *       500:
- *         description: Failed to delete tour enquiry
+ *         description: Failed to delete booking
  */
-router.delete("/:id", auth, acl("tourEnquiries.delete"), deleteTourEnquiry);
+router.delete("/:id", auth, acl("bookings.delete"), deleteBooking);
 
 module.exports = router;
