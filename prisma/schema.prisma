@@ -163,6 +163,7 @@ officeAddresses Hotel[] @relation("OfficeCity")
   clients         Client[]  // One-to-many relationship with Client
 itineraries  Itinerary[] // One-to-many relationship with Itinerary
 bookingDetails BookingDetail[] // One-to-many relationship with TourEnquiry
+  hotelBookings    HotelBooking[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -187,6 +188,7 @@ model Accommodation {
   agencyId  Int
   agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
   accommodationName    String  
+  hotelBookings    HotelBooking[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -209,6 +211,7 @@ model Airline {
   agencyId  Int
   agency   Agency   @relation(fields:[agencyId],references:[id],onDelete:Cascade)
   airlineName String
+  journeyBookings  JourneyBooking[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -269,7 +272,7 @@ officeCity       City?    @relation("OfficeCity", fields: [officeCityId], refere
   beneficiaryName2     String?
   ifsc_code2           String?
   swiftCode2           String?
-
+  hotelBookings    HotelBooking[]
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -335,6 +338,7 @@ model Bank {
   bankName String
   hotels1  Hotel[]  @relation("Bank1")
   hotels2  Hotel[]  @relation("Bank2")
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -416,6 +420,8 @@ model Booking {
   followUpDate     DateTime?  // Date of the follow-up
   remarks          String?   // Remarks for the follow-up
   FollowUps       FollowUp[]
+  journeyBookings  JourneyBooking[]
+  hotelBookings    HotelBooking[]
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
@@ -448,4 +454,68 @@ model FollowUp {
   updatedAt        DateTime  @updatedAt
 
   @@map("follow_ups") // Map the table name to "follow_ups"
+}
+
+model JourneyBooking {
+  id                Int       @id @default(autoincrement())
+  bookingId         Int       // Foreign key to the Booking table
+  booking           Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  mode              String    // Mode of transport (e.g., Train, Bus, Flight)
+  fromPlace         String    // Starting place
+  toPlace           String    // Destination place
+  journeyBookingDate DateTime // Date of booking the journey
+  fromDepartureDate DateTime  // Departure date from the starting place
+  toArrivalDate     DateTime  // Arrival date at the destination
+  foodType          String?   // Food type (e.g., Vegetarian, Non-Vegetarian)
+  billDescription   String?   // Description of the bill
+  trainName         String?   // Train name (optional)
+  class             String?   // Class (e.g., Sleeper, AC)
+  pnrNumber         String?   // PNR number (optional)
+  trainNumber       String?   // Train number (optional)
+  busName           String?   // Bus name (optional)
+  flightNumber      String?   // Flight number (optional)
+  airlineId         Int?      // Foreign key to the Airline table
+  airline           Airline?  @relation(fields: [airlineId], references: [id], onDelete: Restrict)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("journey_bookings") // Map the table name to "journey_bookings"
+}
+
+
+model HotelBooking {
+  id                  Int       @id @default(autoincrement())
+  bookingId           Int       // Foreign key to the Booking table
+  booking             Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hrvNumber           Int       // HRV number
+  partyComingFrom     String    // Party coming from
+  checkInDate         DateTime  // Check-in date
+  checkOutDate        DateTime  // Check-out date
+  nights              Int?       // Number of nights
+  cityId              Int       // Foreign key to the City table
+  city                City      @relation(fields: [cityId], references: [id],onDelete: Restrict)
+  hotelId             Int       // Foreign key to the Hotel table
+  hotel               Hotel     @relation(fields: [hotelId], references: [id],onDelete: Restrict)
+  plan                String?    // Plan (e.g., CP, MAP, AP)
+  rooms               Int?       // Number of rooms
+  accommodationId     Int?       // Foreign key to the Accommodation table
+  accommodation       Accommodation? @relation(fields: [accommodationId], references: [id], onDelete: Restrict)
+  tariffPackage       String?    // Tariff package
+  accommodationNote   String?   // Accommodation note (optional)
+  extraBed            Boolean   @default(false) // Indicates if extra bed is required
+  beds                Int?      // Number of beds (optional)
+  extraBedCost        Decimal?  @db.Decimal(10, 2) // Cost of extra bed
+  hotelBookingDate    DateTime  // Date of hotel booking
+  bookingConfirmedBy  String?   // Booking confirmed by (optional)
+  confirmationNumber  String?   // Confirmation number (optional)
+  billingInstructions String?   // Billing instructions (optional)
+  specialRequirement  String?   // Special requirements (optional)
+  notes               String?   // Notes (optional)
+  billDescription     String?   // Bill description (optional)
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@map("hotel_bookings") // Map the table name to "hotel_bookings"
 }

@@ -80,4 +80,12 @@ module.exports = {
   // followUps
   "followUps.write": ["super_admin", "admin", "user"],
   "followUps.read": ["super_admin", "admin", "user"],
+  //hotelBookings
+  "hotelBookings.write": ["super_admin", "admin", "user"],
+  "hotelBookings.delete": ["super_admin", "admin", "user"],
+  "hotelBookings.read": ["super_admin", "admin", "user"],
+  //journeyBookings
+  "journeyBookings.write": ["super_admin", "admin", "user"],
+  "journeyBookings.delete": ["super_admin", "admin", "user"],
+  "journeyBookings.read": ["super_admin", "admin", "user"],
 };
