@@ -23,6 +23,8 @@ const stateRoutes = require("./routes/state");
 const agencyRoutes = require("./routes/agency");
 const tourRoutes = require("./routes/tour");
 const bookingRoutes = require("./routes/booking");
+const journeyBookingRoutes = require("./routes/journeyBooking");
+const hotelBookingRoutes = require("./routes/hotelBooking");
 const followUpRoutes = require("./routes/followUp");
 const sectorRoutes = require("./routes/sector");
 const subscriptionRoutes = require("./routes/subscription");
@@ -72,6 +74,8 @@ app.use("/fairs", fairRoutes);
 app.use("/tours", tourRoutes);
 app.use("/bookings", bookingRoutes);
 app.use("/follow-ups", followUpRoutes);
+app.use("/journey-bookings", journeyBookingRoutes);
+app.use("/hotel-bookings", hotelBookingRoutes);
 app.use(swaggerRouter); // Add this line to include Swagger documentation
 
 app.use((req, res, next) => {
