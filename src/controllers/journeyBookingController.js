@@ -28,13 +28,21 @@ const createJourneyBooking = async (req, res, next) => {
       foodType,
       billDescription,
       trainName,
-      class: travelClass,
+      trainClass,
+      flightClass,
       pnrNumber,
       trainNumber,
       busName,
       flightNumber,
       airlineId,
     } = req.body;
+
+    let classVal = null;
+    if (mode === "Train") {
+      classVal = trainClass;
+    } else if (mode === "Flight") {
+      classVal = flightClass;
+    }
 
     const newJourneyBooking = await prisma.journeyBooking.create({
       data: {
@@ -48,7 +56,7 @@ const createJourneyBooking = async (req, res, next) => {
         foodType: foodType || null,
         billDescription: billDescription || null,
         trainName: trainName || null,
-        class: travelClass || null,
+        class: classVal,
         pnrNumber: pnrNumber || null,
         trainNumber: trainNumber || null,
         busName: busName || null,
@@ -119,13 +127,21 @@ const updateJourneyBooking = async (req, res, next) => {
       foodType,
       billDescription,
       trainName,
-      class: travelClass,
+      trainClass,
+      flightClass,
       pnrNumber,
       trainNumber,
       busName,
       flightNumber,
       airlineId,
     } = req.body;
+
+    let classVal = null;
+    if (mode === "Train") {
+      classVal = trainClass;
+    } else if (mode === "Flight") {
+      classVal = flightClass;
+    }
 
     const updatedJourneyBooking = await prisma.journeyBooking.update({
       where: { id: parseInt(id, 10) },
@@ -139,7 +155,7 @@ const updateJourneyBooking = async (req, res, next) => {
         foodType: foodType || null,
         billDescription: billDescription || null,
         trainName: trainName || null,
-        class: travelClass || null,
+        class: classVal,
         pnrNumber: pnrNumber || null,
         trainNumber: trainNumber || null,
         busName: busName || null,
@@ -196,7 +212,7 @@ const getAllJourneyBookingsByBookingId = async (req, res, next) => {
       where: { bookingId: parseInt(id) },
     });
 
-    res.status(200).json(journeyBookings);
+    res.status(200).json({ journeyBookings });
   } catch (error) {
     return res.status(500).json({
       errors: {

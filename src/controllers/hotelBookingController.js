@@ -216,9 +216,13 @@ const getAllHotelBookingsByBookingId = async (req, res) => {
   try {
     const hotelBookings = await prisma.hotelBooking.findMany({
       where: { bookingId: parseInt(id) },
+      include: {
+        hotel: true,
+        accommodation: true,
+      },
     });
 
-    res.status(200).json(hotelBookings);
+    res.status(200).json({ hotelBookings });
   } catch (error) {
     res.status(500).json({
       errors: {

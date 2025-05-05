@@ -513,9 +513,7 @@ model HotelBooking {
   specialRequirement  String?   // Special requirements (optional)
   notes               String?   // Notes (optional)
   billDescription     String?   // Bill description (optional)
-
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
-
   @@map("hotel_bookings") // Map the table name to "hotel_bookings"
 }
