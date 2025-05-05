@@ -240,6 +240,16 @@ const getBookingById = async (req, res, next) => {
       },
       include: {
         bookingDetails: true, // Include tourBookingDetails in the response
+        client: {
+          select: {
+            clientName: true,
+          },
+        },
+        tour: {
+          select: {
+            tourTitle: true,
+          },
+        },
       },
     });
 
