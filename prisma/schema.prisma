@@ -78,6 +78,7 @@ model Agency {
   fairs               Fair[]
   tours               Tour[]
   bookings           Booking[]
+  hotelBookings     HotelBooking[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -261,8 +262,6 @@ officeCity       City?    @relation("OfficeCity", fields: [officeCityId], refere
   beneficiaryName1     String?
   ifsc_code1           String?
   swiftCode1           String?
-  // bankName1            String?
-  // bankName2            String?
   bank1Id  Int?        
   bank2Id  Int?
   bank1    Bank? @relation("Bank1", fields: [bank1Id], references: [id], onDelete: SetNull)
@@ -422,6 +421,7 @@ model Booking {
   FollowUps       FollowUp[]
   journeyBookings  JourneyBooking[]
   hotelBookings    HotelBooking[]
+  serviceBookings  ServiceBooking[]
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
@@ -486,9 +486,11 @@ model JourneyBooking {
 
 model HotelBooking {
   id                  Int       @id @default(autoincrement())
+  agencyId                Int       // Foreign key to the Agency table
+  agency                  Agency    @relation(fields: [agencyId], references: [id], onDelete:Restrict)
   bookingId           Int       // Foreign key to the Booking table
   booking             Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  hrvNumber           Int       // HRV number
+  hrvNumber           String       // HRV number
   partyComingFrom     String    // Party coming from
   checkInDate         DateTime  // Check-in date
   checkOutDate        DateTime  // Check-out date
@@ -516,4 +518,15 @@ model HotelBooking {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   @@map("hotel_bookings") // Map the table name to "hotel_bookings"
+}
+
+model ServiceBooking {
+  id                  Int       @id @default(autoincrement())
+  bookingId           Int       // Foreign key to the Booking table
+  booking             Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  description         String
+  cost                Decimal?  @db.Decimal(10, 2)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  @@map("service_bookings")
 }

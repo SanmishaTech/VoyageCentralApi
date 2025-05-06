@@ -4,18 +4,119 @@ const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
 const createError = require("http-errors"); // For consistent error handling
 const dayjs = require("dayjs");
+const parseDate = require("../utils/parseDate");
 
 const createJourneyBooking = async (req, res, next) => {
-  const schema = z.object({
-    mode: z.string().min(1, "Mode of transport is required."),
-  });
+  const schema = z
+    .object({
+      mode: z.string().min(1, "Mode of transport is required."),
+      fromPlace: z.string().min(1, "From place is required."),
+      toPlace: z.string().min(1, "To place is required."),
+      journeyBookingDate: z.string().min(1, "booking date is required."),
+      fromDepartureDate: z.string().min(1, "booking date is required."),
+      toArrivalDate: z.string().min(1, "booking date is required."),
+      foodType: z.string().optional(),
+      billDescription: z.string().optional(),
+      trainName: z.string().optional(),
+      trainNumber: z.string().optional(),
+      trainClass: z.string().optional(),
+      flightClass: z.string().optional(),
+      pnrNumber: z.string().optional(),
+      busName: z.string().optional(),
+      flightNumber: z.string().optional(),
+      airlineId: z.number().nullable().optional(),
+    })
+    .superRefine((data, ctx) => {
+      // If the mode is "Train", ensure trainName and trainNumber are provided
+      if (data.mode === "Train") {
+        if (!data.trainName) {
+          ctx.addIssue({
+            path: ["trainName"], // Path to the trainName field
+            message: "Train Name is required when mode is 'Train'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.trainNumber) {
+          ctx.addIssue({
+            path: ["trainNumber"], // Path to the trainNumber field
+            message: "Train Number is required when mode is 'Train'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.pnrNumber) {
+          ctx.addIssue({
+            path: ["pnrNumber"], // Path to the trainNumber field
+            message: "PNR Number is required when mode is 'Train'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.trainClass) {
+          ctx.addIssue({
+            path: ["trainClass"], // Path to the trainNumber field
+            message: "Class is required when mode is 'Train'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+      }
+
+      // flight
+      if (data.mode === "Flight") {
+        if (!data.airlineId) {
+          ctx.addIssue({
+            path: ["airlineId"], // Path to the trainName field
+            message: "Flight Name is required when mode is 'Flight'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.flightNumber) {
+          ctx.addIssue({
+            path: ["flightNumber"], // Path to the trainNumber field
+            message: "Flight Number is required when mode is 'Flight'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.pnrNumber) {
+          ctx.addIssue({
+            path: ["pnrNumber"], // Path to the trainNumber field
+            message: "PNR Number is required when mode is 'Flight'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.flightClass) {
+          ctx.addIssue({
+            path: ["flightClass"], // Path to the trainNumber field
+            message: "Class is required when mode is 'Flight'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+      }
+      // flight end
+      // bus start
+      if (data.mode === "Bus") {
+        if (!data.busName) {
+          ctx.addIssue({
+            path: ["busName"], // Path to the trainName field
+            message: "Bus Name is required when mode is 'Bus'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+      }
+      // bus end
+    });
+
   const { id } = req.params;
   const validationErrors = await validateRequest(schema, req.body, res);
 
-  const parseDate = (value) => {
-    if (typeof value !== "string" || value.trim() === "") return undefined;
-    return dayjs(value).isValid() ? new Date(value) : undefined;
-  };
+  // const parseDate = (value) => {
+  //   if (typeof value !== "string" || value.trim() === "") return undefined;
+  //   return dayjs(value).isValid() ? new Date(value) : undefined;
+  // };
 
   try {
     const {
@@ -104,14 +205,116 @@ const getJourneyBookingById = async (req, res, next) => {
 
 // Update a journey booking
 const updateJourneyBooking = async (req, res, next) => {
-  const schema = z.object({
-    mode: z.string().min(1, "Mode of transport is required."),
-  });
+  // const schema = z.object({
+  //   mode: z.string().min(1, "Mode of transport is required."),
+  // });
+  const schema = z
+    .object({
+      mode: z.string().min(1, "Mode of transport is required."),
+      fromPlace: z.string().min(1, "From place is required."),
+      toPlace: z.string().min(1, "To place is required."),
+      journeyBookingDate: z.string().min(1, "booking date is required."),
+      fromDepartureDate: z.string().min(1, "booking date is required."),
+      toArrivalDate: z.string().min(1, "booking date is required."),
+      foodType: z.string().optional(),
+      billDescription: z.string().optional(),
+      trainName: z.string().optional(),
+      trainNumber: z.string().optional(),
+      trainClass: z.string().optional(),
+      flightClass: z.string().optional(),
+      pnrNumber: z.string().optional(),
+      busName: z.string().optional(),
+      flightNumber: z.string().optional(),
+      airlineId: z.number().nullable().optional(),
+    })
+    .superRefine((data, ctx) => {
+      // If the mode is "Train", ensure trainName and trainNumber are provided
+      if (data.mode === "Train") {
+        if (!data.trainName) {
+          ctx.addIssue({
+            path: ["trainName"], // Path to the trainName field
+            message: "Train Name is required when mode is 'Train'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
 
-  const parseDate = (value) => {
-    if (typeof value !== "string" || value.trim() === "") return undefined;
-    return dayjs(value).isValid() ? new Date(value) : undefined;
-  };
+        if (!data.trainNumber) {
+          ctx.addIssue({
+            path: ["trainNumber"], // Path to the trainNumber field
+            message: "Train Number is required when mode is 'Train'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.pnrNumber) {
+          ctx.addIssue({
+            path: ["pnrNumber"], // Path to the trainNumber field
+            message: "PNR Number is required when mode is 'Train'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.trainClass) {
+          ctx.addIssue({
+            path: ["trainClass"], // Path to the trainNumber field
+            message: "Class is required when mode is 'Train'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+      }
+
+      // flight
+      if (data.mode === "Flight") {
+        if (!data.airlineId) {
+          ctx.addIssue({
+            path: ["airlineId"], // Path to the trainName field
+            message: "Flight Name is required when mode is 'Flight'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.flightNumber) {
+          ctx.addIssue({
+            path: ["flightNumber"], // Path to the trainNumber field
+            message: "Flight Number is required when mode is 'Flight'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.pnrNumber) {
+          ctx.addIssue({
+            path: ["pnrNumber"], // Path to the trainNumber field
+            message: "PNR Number is required when mode is 'Flight'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+
+        if (!data.flightClass) {
+          ctx.addIssue({
+            path: ["flightClass"], // Path to the trainNumber field
+            message: "Class is required when mode is 'Flight'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+      }
+      // flight end
+      // bus start
+      if (data.mode === "Bus") {
+        if (!data.busName) {
+          ctx.addIssue({
+            path: ["busName"], // Path to the trainName field
+            message: "Bus Name is required when mode is 'Bus'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+      }
+      // bus end
+    });
+
+  // const parseDate = (value) => {
+  //   if (typeof value !== "string" || value.trim() === "") return undefined;
+  //   return dayjs(value).isValid() ? new Date(value) : undefined;
+  // };
   const validationErrors = await validateRequest(schema, req.body, res);
 
   const { id } = req.params;

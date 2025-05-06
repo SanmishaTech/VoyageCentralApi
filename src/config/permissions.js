@@ -88,4 +88,8 @@ module.exports = {
   "journeyBookings.write": ["super_admin", "admin", "user"],
   "journeyBookings.delete": ["super_admin", "admin", "user"],
   "journeyBookings.read": ["super_admin", "admin", "user"],
+  //serviceBookings
+  "serviceBookings.write": ["super_admin", "admin", "user"],
+  "serviceBookings.delete": ["super_admin", "admin", "user"],
+  "serviceBookings.read": ["super_admin", "admin", "user"],
 };
