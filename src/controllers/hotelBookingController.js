@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
 const dayjs = require("dayjs");
+const generateHRVNumber = require("../utils/generateHRVNumber");
 
 const parseDate = (value) => {
   if (typeof value !== "string" || value.trim() === "") return undefined;
@@ -19,7 +20,6 @@ const createHotelBooking = async (req, res) => {
 
   try {
     const {
-      hrvNumber,
       partyComingFrom,
       checkInDate,
       checkOutDate,
@@ -43,35 +43,49 @@ const createHotelBooking = async (req, res) => {
       billDescription,
     } = req.body;
 
-    const newHotelBooking = await prisma.hotelBooking.create({
-      data: {
-        bookingId: parseInt(id),
-        hrvNumber,
-        partyComingFrom,
-        checkInDate: parseDate(checkInDate),
-        checkOutDate: parseDate(checkOutDate),
-        nights: parseInt(nights) || null,
-        cityId: parseInt(cityId),
-        hotelId: parseInt(hotelId),
-        plan: plan || null,
-        rooms: parseInt(rooms) || null,
-        accommodationId: parseInt(accommodationId) || null,
-        tariffPackage: tariffPackage || null,
-        accommodationNote: accommodationNote || null,
-        extraBed: extraBed ? true : false,
-        beds: parseInt(beds) || null,
-        extraBedCost: parseFloat(extraBedCost) || null,
-        hotelBookingDate: parseDate(hotelBookingDate),
-        bookingConfirmedBy: bookingConfirmedBy || null,
-        confirmationNumber: confirmationNumber || null,
-        billingInstructions: billingInstructions || null,
-        specialRequirement: specialRequirement || null,
-        notes: notes || null,
-        billDescription: billDescription || null,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const hrvNumber = await generateHRVNumber(tx, req.user.agencyId);
+
+      const newHotelBooking = await tx.hotelBooking.create({
+        data: {
+          bookingId: parseInt(id),
+          agencyId: parseInt(req.user.agencyId),
+          hrvNumber,
+          partyComingFrom,
+          checkInDate: parseDate(checkInDate),
+          checkOutDate: parseDate(checkOutDate),
+          nights: parseInt(nights),
+          cityId: parseInt(cityId),
+          hotelId: parseInt(hotelId),
+          plan: plan || null,
+          rooms: parseInt(rooms),
+          accommodationId: parseInt(accommodationId),
+          tariffPackage: tariffPackage || null,
+          accommodationNote: accommodationNote || null,
+          extraBed: extraBed ? true : false,
+          beds: parseInt(beds),
+          // extraBedCost: parseFloat(extraBedCost) || null,
+          extraBedCost:
+            extraBedCost !== undefined && extraBedCost !== ""
+              ? parseFloat(extraBedCost)
+              : null,
+
+          hotelBookingDate: parseDate(hotelBookingDate),
+          bookingConfirmedBy: bookingConfirmedBy || null,
+          confirmationNumber: confirmationNumber || null,
+          billingInstructions: billingInstructions || null,
+          specialRequirement: specialRequirement || null,
+          notes: notes || null,
+          billDescription: billDescription || null,
+        },
+      });
+
+      return {
+        newHotelBooking: newHotelBooking,
+      };
     });
 
-    res.status(201).json(newHotelBooking);
+    res.status(201).json(result.newHotelBooking);
   } catch (error) {
     res.status(500).json({
       errors: {
@@ -117,7 +131,6 @@ const updateHotelBooking = async (req, res) => {
 
   try {
     const {
-      hrvNumber,
       partyComingFrom,
       checkInDate,
       checkOutDate,
@@ -147,17 +160,21 @@ const updateHotelBooking = async (req, res) => {
         partyComingFrom,
         checkInDate: parseDate(checkInDate),
         checkOutDate: parseDate(checkOutDate),
-        nights: parseInt(nights) || null,
+        nights: parseInt(nights),
         cityId: parseInt(cityId),
         hotelId: parseInt(hotelId),
         plan: plan || null,
-        rooms: parseInt(rooms) || null,
-        accommodationId: parseInt(accommodationId) || null,
+        rooms: parseInt(rooms),
+        accommodationId: parseInt(accommodationId),
         tariffPackage: tariffPackage || null,
         accommodationNote: accommodationNote || null,
         extraBed: extraBed ? true : false,
-        beds: parseInt(beds) || null,
-        extraBedCost: parseFloat(extraBedCost) || null,
+        beds: parseInt(beds),
+        // extraBedCost: parseFloat(extraBedCost) || null,
+        extraBedCost:
+          extraBedCost !== undefined && extraBedCost !== ""
+            ? parseFloat(extraBedCost)
+            : null,
         hotelBookingDate: parseDate(hotelBookingDate),
         bookingConfirmedBy: bookingConfirmedBy || null,
         confirmationNumber: confirmationNumber || null,
@@ -219,6 +236,7 @@ const getAllHotelBookingsByBookingId = async (req, res) => {
       include: {
         hotel: true,
         accommodation: true,
+        city: true,
       },
     });
 

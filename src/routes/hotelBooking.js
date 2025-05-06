@@ -126,7 +126,7 @@ router.get(
  *       500:
  *         description: Failed to create hotel booking
  */
-router.post("/", auth, acl("hotelBookings.write"), createHotelBooking);
+router.post("/:id", auth, acl("hotelBookings.write"), createHotelBooking);
 
 /**
  * @swagger
