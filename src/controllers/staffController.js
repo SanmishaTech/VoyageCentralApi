@@ -2,9 +2,9 @@ const createError = require("http-errors");
 const bcrypt = require("bcrypt");
 const ExcelJS = require("exceljs");
 const prisma = require("../config/db");
-const validateRequest = require("../utils/validateRequest");
 const roles = require("../config/roles");
 const { z } = require("zod");
+const validateRequest = require("../utils/validateRequest");
 
 const getStaff = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
@@ -170,72 +170,97 @@ const getStaffById = async (req, res, next) => {
 };
 
 const createStaff = async (req, res, next) => {
-  const schema = z.object({
-    name: z
-      .string()
-      .min(1, "Name cannot be left blank.")
-      .max(100, "Name must not exceed 100 characters.")
-      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-        message: "Name can only contain letters.",
-      }),
-    email: z
-      .string()
-      .email("Email must be a valid email address.")
-      .nonempty("Email is required."),
-    communicationEmail: z
-      .string()
-      .email("Communication email must be a valid email address.")
-      .optional()
-      .nullable(),
-    mobile1: z
-      .string()
-      .min(10, "Mobile number must be 10 digits")
-      .max(10, "Mobile number must be 10 digits")
-      .optional()
-      .nullable(),
-    mobile2: z
-      .string()
-      .min(10, "Mobile number must be 10 digits")
-      .max(10, "Mobile number must be 10 digits")
-      .optional()
-      .nullable(),
-    password: z
-      .string()
-      .min(6, "Password must be at least 6 characters long.")
-      .nonempty("Password is required."),
-    role: z.enum(Object.values(roles), "Invalid role."),
-    active: z.boolean().optional(),
-    branchId: z.number().optional(),
-  });
-
-  try {
-    const validation = schema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({
-        errors: validation.error.errors.reduce((acc, error) => {
-          acc[error.path[0]] = {
-            type: "server",
-            message: error.message,
-          };
-          return acc;
-        }, {}),
+  const schema = z
+    .object({
+      name: z
+        .string()
+        .min(1, "Name cannot be left blank.")
+        .max(100, "Name must not exceed 100 characters.")
+        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+          message: "Name can only contain letters.",
+        }),
+      email: z
+        .string()
+        .email("Email must be a valid email address.")
+        .nonempty("Email is required."),
+      communicationEmail: z
+        .string()
+        .email("Communication email must be a valid email address.")
+        .optional()
+        .nullable(),
+      mobile1: z
+        .string()
+        .min(10, "Mobile number must be 10 digits")
+        .max(10, "Mobile number must be 10 digits")
+        .optional()
+        .nullable(),
+      mobile2: z
+        .string()
+        .min(10, "Mobile number must be 10 digits")
+        .max(10, "Mobile number must be 10 digits")
+        .optional()
+        .nullable(),
+      password: z
+        .string()
+        .min(6, "Password must be at least 6 characters long.")
+        .nonempty("Password is required."),
+      role: z.enum(Object.values(roles), "Invalid role."),
+      active: z.boolean().optional(),
+      branchId: z.number().min(1, "Branch is required"),
+    })
+    .superRefine(async (data, ctx) => {
+      if (!req.user.agencyId) {
+        return res
+          .status(404)
+          .json({ message: "User does not belong to any Agency" });
+      }
+      const existingUser = await prisma.user.findUnique({
+        where: { email: req.body.email },
       });
-    }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: req.body.email },
+      if (existingUser) {
+        ctx.addIssue({
+          path: ["email"],
+          message: `Email already exists.`,
+        });
+      }
     });
 
-    if (existingUser) {
-      return res.status(409).json({
-        errors: {
-          email: {
-            type: "server",
-            message: "Email already exists",
+  try {
+    const validationErrors = await validateRequest(schema, req.body, res);
+
+    // start
+    const packageData = await prisma.agency.findUnique({
+      where: { id: parseInt(req.user.agencyId) },
+      include: {
+        currentSubscription: {
+          include: {
+            package: true, // ✅ Correct usage of nested include
           },
+        },
+      },
+    });
+    const usersPerBranch =
+      packageData?.currentSubscription?.package?.usersPerBranch || 0;
+
+    const branchData = await prisma.branch.findUnique({
+      where: { id: parseInt(req.body.branchId) },
+      include: {
+        users: true,
+      },
+    });
+
+    const totalUsers = branchData?.users?.length || 0;
+
+    if (totalUsers >= usersPerBranch) {
+      return res.status(500).json({
+        errors: {
+          message: "User limit reached for your package.",
         },
       });
     }
+
+    // end
 
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
 

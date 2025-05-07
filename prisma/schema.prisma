@@ -238,17 +238,19 @@ hotelCityId      Int?
 officeCountryId  Int?
 officeStateId    Int?
 officeCityId     Int?
-
 hotelCountry     Country? @relation("HotelCountry", fields: [hotelCountryId], references: [id], onDelete: SetNull)
 hotelState       State?   @relation("HotelState", fields: [hotelStateId], references: [id], onDelete: SetNull)
 hotelCity        City?    @relation("HotelCity", fields: [hotelCityId], references: [id], onDelete: SetNull)
-
 officeCountry    Country? @relation("OfficeCountry", fields: [officeCountryId], references: [id], onDelete: SetNull)
 officeState      State?   @relation("OfficeState", fields: [officeStateId], references: [id], onDelete: SetNull)
 officeCity       City?    @relation("OfficeCity", fields: [officeCityId], references: [id], onDelete: SetNull)
-
   officePincode       String?
   contactPerson       String?
+  contactPersonEmail       String?
+  contactPersonMobile       String?
+  contactPersonName2       String?
+  contactPersonEmail2       String?
+  contactPersonMobile2       String?
   hotelContactNo1     String?
   hotelContactNo2     String?
   officeContactNo1    String?
