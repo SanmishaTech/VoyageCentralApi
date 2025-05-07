@@ -82,26 +82,14 @@ const createBranch = async (req, res, next) => {
         .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
           message: "Branch Name can only contain letters.",
         }),
-      // contactName: z
-      //   .string()
-      //   .min(1, "Contact Name cannot be left blank.") // Ensuring minimum length of 2
-      //   .max(100, "Contact Name must not exceed 100 characters.")
-      //   .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-      //     message: "Contact Name can only contain letters.",
-      //   }),
-      // contactMobile: z.string().refine((val) => /^[0-9]{10}$/.test(val), {
-      //   message: "Mobile number must contain exact 10 digits.",
-      // }),
-      // contactEmail: z.string().email("email field is required"),
-      // address: z
-      //   .string()
-      //   .min(1, "Address field is required")
-      //   .max(100, "Address field should not exceed 100 characters"),
     })
     .superRefine(async (data, ctx) => {
       const existingBranchName = await prisma.branch.findFirst({
         where: {
-          branchName: data.branchName,
+          AND: [
+            { branchName: data.branchName },
+            { agencyId: parseInt(req.user.agencyId) },
+          ],
         },
       });
 
@@ -115,6 +103,38 @@ const createBranch = async (req, res, next) => {
 
   try {
     const validationErrors = await validateRequest(schema, req.body, res);
+
+    // start
+    const packageData = await prisma.agency.findUnique({
+      where: { id: parseInt(req.user.agencyId) },
+      include: {
+        currentSubscription: {
+          include: {
+            package: true, // ✅ Correct usage of nested include
+          },
+        },
+      },
+    });
+    const numberOfBranches =
+      packageData?.currentSubscription?.package?.numberOfBranches || 0;
+
+    const branchData = await prisma.agency.findUnique({
+      where: { id: parseInt(req.user.agencyId) },
+      include: {
+        branches: true,
+      },
+    });
+
+    const totalBranches = branchData?.branches?.length || 0;
+
+    if (totalBranches >= numberOfBranches) {
+      return res.status(500).json({
+        errors: {
+          message: "Branch Creation limit reached for your package.",
+        },
+      });
+    }
+    // end
 
     const { branchName, address, contactName, contactEmail, contactMobile } =
       req.body;
@@ -179,25 +199,6 @@ const updateBranch = async (req, res, next) => {
         .string()
         .min(1, "Branch name is required.")
         .max(100, "Branch name must be less than 100 characters."),
-      //   address: z
-      //     .string()
-      //     .min(1, "Address is required.")
-      //     .max(255, "Address must be less than 255 characters."),
-      //   contactName: z
-      //     .string()
-      //     .min(1, "Name cannot be left blank.") // Ensuring minimum length of 2
-      //     .max(100, "Name must not exceed 100 characters.")
-      //     .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-      //       message: "Name can only contain letters.",
-      //     }),
-      //   contactEmail: z
-      //     .string()
-      //     .email("Contact email must be a valid email address.")
-      //     .nonempty("Contact email is required."),
-      //   contactMobile: z
-      //     .string()
-      //     .min(10, "Contact number must be 10 digits.")
-      //     .max(10, "Contact number must be 10 digits."),
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
