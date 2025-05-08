@@ -51,8 +51,10 @@ model Agency {
   businessName         String    // Business name
   addressLine1         String    // Address Line 1
   addressLine2         String?   // Address Line 2 (optional)
-  state                String?    
-  city                 String?    
+  stateId  Int?
+  state                State?    @relation("AgencyState", fields: [stateId], references: [id], onDelete: SetNull)
+  cityId  Int?
+  city   City?   @relation("AgencyCity", fields:[cityId],references: [id], onDelete: SetNull)
   pincode              String?    
   currentSubscription  Subscription? @relation("CurrentSubscription", fields: [currentSubscriptionId], references: [id])
  uploadUUID          String?  // Stores the UUID directory name
@@ -66,8 +68,8 @@ model Agency {
   users                User[]         
   branches             Branch[]
   countries            Country[]
-  states               State[]
-  cities               City[]
+  states               State[]  @relation("stateAgency") 
+  cities               City[]   @relation("cityAgency") 
   sectors              Sector[]
   accommodations       Accommodation[]
   vehicles             Vehicle[]
@@ -121,8 +123,8 @@ model Branch {
 
 model Country {
   id        Int      @id @default(autoincrement())
-  agencyId  Int
-  agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
+  agencyId  Int?
+  agency   Agency?   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
   countryName      String   //@unique
   states    State[]  // One-to-many relationship with State
  hotelAddresses  Hotel[] @relation("HotelCountry")
@@ -136,8 +138,8 @@ officeAddresses Hotel[] @relation("OfficeCountry")
 
 model State {
   id        Int      @id @default(autoincrement())
-   agencyId  Int
-  agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
+   agencyId  Int?
+  agency   Agency?   @relation("stateAgency",fields:[agencyId],references: [id], onDelete: Cascade)
    countryId Int      // Foreign key to the Country table
   country   Country  @relation(fields: [countryId], references: [id],onDelete: Cascade) //onDelete cascade
   stateName      String   
@@ -145,6 +147,7 @@ model State {
 hotelAddresses  Hotel[] @relation("HotelState")
 officeAddresses Hotel[] @relation("OfficeState")
   clients         Client[]  // One-to-many relationship with Client
+  agencies         Agency[]  @relation("AgencyState")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -154,8 +157,8 @@ officeAddresses Hotel[] @relation("OfficeState")
 
 model City {
   id        Int      @id @default(autoincrement())
-   agencyId  Int
-  agency   Agency   @relation(fields:[agencyId],references: [id], onDelete: Cascade)
+   agencyId  Int?
+  agency   Agency?   @relation("cityAgency",fields:[agencyId],references: [id], onDelete: Cascade)
   stateId   Int      // Foreign key to the State table
   state     State    @relation(fields: [stateId], references: [id],onDelete: Cascade) //onDelete caascade
   cityName      String   
@@ -165,6 +168,7 @@ officeAddresses Hotel[] @relation("OfficeCity")
 itineraries  Itinerary[] // One-to-many relationship with Itinerary
 bookingDetails BookingDetail[] // One-to-many relationship with TourEnquiry
   hotelBookings    HotelBooking[]
+  agencies         Agency[]   @relation("AgencyCity")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

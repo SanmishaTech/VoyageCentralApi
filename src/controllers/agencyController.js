@@ -41,14 +41,22 @@ const createAgencyBodySchema = z.object({
     .max(255, "Address line 2 must not exceed 255 characters.")
     .optional()
     .nullable(),
-  state: z
-    .string({ required_error: "State is required." })
-    .min(1, "State cannot be empty.")
-    .max(100, "State must not exceed 100 characters."),
-  city: z
-    .string({ required_error: "City is required." })
-    .min(1, "City cannot be empty.")
-    .max(100, "City must not exceed 100 characters."),
+  // state: z
+  //   .string({ required_error: "State is required." })
+  //   .min(1, "State cannot be empty.")
+  //   .max(100, "State must not exceed 100 characters."),
+  // city: z
+  //   .string({ required_error: "City is required." })
+  //   .min(1, "City cannot be empty.")
+  //   .max(100, "City must not exceed 100 characters."),
+  cityId: z.union([
+    z.string().min(1, "City field is required."),
+    z.number().min(1, "City Field is required"),
+  ]),
+  stateId: z.union([
+    z.string().min(1, "State field is required."),
+    z.number().min(1, "State Field is required"),
+  ]),
   pincode: z
     .string({ required_error: "Pincode is required." })
     .min(1, "Pincode cannot be empty.")
@@ -164,8 +172,16 @@ const updateAgencyBodySchema = z
     businessName: z.string().min(1).max(100).optional(),
     addressLine1: z.string().min(1).max(255).optional(),
     addressLine2: z.string().max(255).optional().nullable(),
-    state: z.string().min(1).max(100).optional(),
-    city: z.string().min(1).max(100).optional(),
+    // state: z.string().min(1).max(100).optional(),
+    // city: z.string().min(1).max(100).optional(),
+    cityId: z.union([
+      z.string().min(1, "City field is required."),
+      z.number().min(1, "City Field is required"),
+    ]),
+    stateId: z.union([
+      z.string().min(1, "State field is required."),
+      z.number().min(1, "State Field is required"),
+    ]),
     pincode: z.string().min(1).max(10).optional(),
     contactPersonName: z
       .string()
@@ -207,8 +223,8 @@ const getAgencies = async (req, res, next) => {
             { contactPersonName: { contains: search, mode: "insensitive" } },
             { addressLine1: { contains: search, mode: "insensitive" } },
             { addressLine2: { contains: search, mode: "insensitive" } },
-            { state: { contains: search, mode: "insensitive" } },
-            { city: { contains: search, mode: "insensitive" } },
+            // { state: { contains: search, mode: "insensitive" } },
+            // { city: { contains: search, mode: "insensitive" } },
             { contactPersonEmail: { contains: search, mode: "insensitive" } },
             { contactPersonPhone: { contains: search } },
             { gstin: { contains: search, mode: "insensitive" } },
@@ -222,8 +238,8 @@ const getAgencies = async (req, res, next) => {
       businessName: true,
       addressLine1: true,
       addressLine2: true,
-      state: true,
-      city: true,
+      stateId: true,
+      cityId: true,
       pincode: true,
       contactPersonName: true,
       contactPersonEmail: true,
@@ -287,8 +303,8 @@ const getAgencies = async (req, res, next) => {
         { header: "Business Name", key: "businessName", width: 30 },
         { header: "Address Line 1", key: "addressLine1", width: 30 },
         { header: "Address Line 2", key: "addressLine2", width: 30 },
-        { header: "State", key: "state", width: 15 },
-        { header: "City", key: "city", width: 15 },
+        { header: "StateId", key: "StateId", width: 15 },
+        { header: "CityId", key: "CityId", width: 15 },
         { header: "Pincode", key: "pincode", width: 10 },
         { header: "Contact Person", key: "contactPersonName", width: 25 },
         { header: "Contact Email", key: "contactPersonEmail", width: 30 },
@@ -331,8 +347,8 @@ const getAgencies = async (req, res, next) => {
           businessName: agency.businessName,
           addressLine1: agency.addressLine1,
           addressLine2: agency.addressLine2 ?? "", // Handle null
-          state: agency.state,
-          city: agency.city,
+          stateId: agency.stateId,
+          cityId: agency.cityId,
           pincode: agency.pincode,
           contactPersonName: agency.contactPersonName,
           contactPersonEmail: agency.contactPersonEmail,
@@ -426,8 +442,8 @@ const createAgency = async (req, res, next) => {
       businessName,
       addressLine1,
       addressLine2,
-      state,
-      city,
+      stateId,
+      cityId,
       pincode,
       contactPersonName,
       contactPersonPhone,
@@ -441,7 +457,9 @@ const createAgency = async (req, res, next) => {
     const letterheadFile = req.files?.letterHead?.[0];
     const logoFilename = logoFile ? logoFile.filename : null;
     const letterheadFilename = letterheadFile ? letterheadFile.filename : null;
-
+    console.log("state ANd city id", stateId, cityId);
+    console.log("Type of stateId:", typeof stateId);
+    console.log("Type of cityId:", typeof cityId);
     // --- Database Transaction (remains largely the same) ---
     const result = await prisma.$transaction(async (tx) => {
       // 4. Create Agency - Store UUID and filenames
@@ -450,8 +468,8 @@ const createAgency = async (req, res, next) => {
           businessName,
           addressLine1,
           addressLine2: addressLine2 ?? null,
-          state,
-          city,
+          stateId: parseInt(stateId),
+          cityId: parseInt(cityId),
           pincode,
           contactPersonName,
           contactPersonPhone,
@@ -564,7 +582,12 @@ const createAgency = async (req, res, next) => {
         errors: { "subscription.packageId": "Related package not found." },
       });
     }
-    next(createError(500, "Failed to create agency."));
+    return res.status(500).json({
+      errors: {
+        message: "Failed to create agency",
+        details: error.message,
+      },
+    });
   }
 };
 
@@ -895,7 +918,7 @@ const updateAgency = async (req, res, next) => {
       dataToUpdate.contactPersonEmail &&
       dataToUpdate.contactPersonEmail !== existingAgency.contactPersonEmail
     ) {
-      const conflictingAgency = await prisma.agency.findUnique({
+      const conflictingAgency = await prisma.agency.findFirst({
         where: { contactPersonEmail: dataToUpdate.contactPersonEmail },
         select: { id: true },
       });
@@ -973,7 +996,11 @@ const updateAgency = async (req, res, next) => {
     // 6. Perform Database Update
     const updatedAgency = await prisma.agency.update({
       where: { id: agencyId },
-      data: dataToUpdate,
+      data: {
+        ...dataToUpdate,
+        stateId: parseInt(dataToUpdate.stateId),
+        cityId: parseInt(dataToUpdate.cityId),
+      },
     });
     console.log(`[Update DB Success:${requestUploadUUID}] DB updated.`);
 
@@ -1045,7 +1072,9 @@ const updateAgency = async (req, res, next) => {
     const responsePayload = {
       message: "Agency updated successfully.",
       agency: {
-        ...updatedAgency, // Use the final state from DB
+        ...updatedAgency,
+        stateId: parseInt(updatedAgency.stateId),
+        cityId: parseInt(updatedAgency.cityId),
         logoUrl: getFileUrl(
           AGENCY_MODULE_NAME,
           "logo",
@@ -1104,7 +1133,12 @@ const updateAgency = async (req, res, next) => {
         },
       });
     }
-    next(createError(500, `Failed to update agency ${agencyId}.`));
+    return res.status(500).json({
+      errors: {
+        message: "Failed to create airline",
+        details: error.message,
+      },
+    });
   }
 };
 
