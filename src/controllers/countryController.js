@@ -14,18 +14,16 @@ const getCountries = async (req, res, next) => {
   const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
   try {
-    // Step 1: Get agencyId of the current user
-    if (!req.user.agencyId) {
-      return res
-        .status(404)
-        .json({ message: "User does not belongs to any Agency" });
-    }
-
-    // Step 2: Build filter clause
-    const whereClause = {
-      agencyId: req.user.agencyId,
+    let whereClause = {
       countryName: { contains: search },
     };
+
+    if (req.user.agencyId) {
+      whereClause.agencyId = req.user.agencyId;
+    } else if (req.user.role === "super_admin") {
+      whereClause.agencyId = null;
+    }
+    // Step 2: Build filter clause
 
     // Step 3: Fetch paginated & sorted countries
     const countries = await prisma.country.findMany({
@@ -70,16 +68,16 @@ const createCountry = async (req, res, next) => {
         }),
     })
     .superRefine(async (data, ctx) => {
-      if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
-      }
+      // if (!req.user.agencyId) {
+      //   return res
+      //     .status(404)
+      //     .json({ message: "User does not belongs to any Agency" });
+      // }
       const existingCountry = await prisma.country.findFirst({
         where: {
           AND: [
             { countryName: data.countryName },
-            { agencyId: parseInt(req.user.agencyId) },
+            { agencyId: parseInt(req.user.agencyId) || null },
           ],
         },
       });
@@ -98,7 +96,7 @@ const createCountry = async (req, res, next) => {
     const { countryName } = req.body;
 
     const newCountry = await prisma.country.create({
-      data: { countryName, agencyId: req.user.agencyId },
+      data: { countryName, agencyId: req.user.agencyId || null },
     });
 
     res.status(201).json(newCountry);
@@ -142,11 +140,11 @@ const updateCountry = async (req, res, next) => {
         }),
     })
     .superRefine(async (data, ctx) => {
-      if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User does not belongs to any Agency" });
-      }
+      // if (!req.user.agencyId) {
+      //   return res
+      //     .status(404)
+      //     .json({ message: "User does not belongs to any Agency" });
+      // }
       const { id } = req.params; // Get the current user's ID from the URL params
 
       // Check if a user with the same email already exists, excluding the current user
@@ -154,7 +152,7 @@ const updateCountry = async (req, res, next) => {
         where: {
           AND: [
             { countryName: data.countryName },
-            { agencyId: parseInt(req.user.agencyId) },
+            { agencyId: parseInt(req.user.agencyId) || null },
           ],
         },
         select: { id: true }, // We only need the id to compare
@@ -222,7 +220,7 @@ const getAllCountries = async (req, res, next) => {
 
     const countries = await prisma.country.findMany({
       where: {
-        agencyId: req.user.agencyId,
+        agencyId: req.user.agencyId || null,
       },
       select: {
         id: true,
