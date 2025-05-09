@@ -81,6 +81,8 @@ model Agency {
   tours               Tour[]
   bookings           Booking[]
   hotelBookings     HotelBooking[]
+  agents             Agent[]  
+  vehicleBookings    VehicleBooking[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -129,6 +131,7 @@ model Country {
   states    State[]  // One-to-many relationship with State
  hotelAddresses  Hotel[] @relation("HotelCountry")
 officeAddresses Hotel[] @relation("OfficeCountry")
+agents             Agent[]  
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -148,7 +151,7 @@ hotelAddresses  Hotel[] @relation("HotelState")
 officeAddresses Hotel[] @relation("OfficeState")
   clients         Client[]  // One-to-many relationship with Client
   agencies         Agency[]  @relation("AgencyState")
-
+  agents             Agent[]  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -169,6 +172,10 @@ itineraries  Itinerary[] // One-to-many relationship with Itinerary
 bookingDetails BookingDetail[] // One-to-many relationship with TourEnquiry
   hotelBookings    HotelBooking[]
   agencies         Agency[]   @relation("AgencyCity")
+    agents             Agent[]  
+      vehicleBookings    VehicleBooking[]
+  vehicleItineraries VehicleItinerary[]
+  vehicleHotelBookings VehicleHotelBooking[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -205,6 +212,8 @@ model Vehicle {
   agencyId  Int
   agency   Agency   @relation(fields:[agencyId],references:[id],onDelete:Cascade)
   vehicleName String
+    vehicleBookings    VehicleBooking[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -278,6 +287,8 @@ officeCity       City?    @relation("OfficeCity", fields: [officeCityId], refere
   ifsc_code2           String?
   swiftCode2           String?
   hotelBookings    HotelBooking[]
+    vehicleHotelBookings VehicleHotelBooking[]
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -343,6 +354,8 @@ model Bank {
   bankName String
   hotels1  Hotel[]  @relation("Bank1")
   hotels2  Hotel[]  @relation("Bank2")
+  agents1  Agent[]  @relation("Bank1_Agent")
+  agents2  Agent[]  @relation("Bank2_Agent")
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -428,6 +441,8 @@ model Booking {
   journeyBookings  JourneyBooking[]
   hotelBookings    HotelBooking[]
   serviceBookings  ServiceBooking[]
+    vehicleBookings    VehicleBooking[]
+
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
@@ -536,3 +551,118 @@ model ServiceBooking {
   updatedAt           DateTime  @updatedAt
   @@map("service_bookings")
 }
+
+// start
+model Agent {
+  id                    Int      @id @default(autoincrement())
+  agencyId              Int
+  agency                Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agentName             String
+  addressLine1          String @db.VarChar(500)
+  addressLine2          String? @db.VarChar(500)
+  addressLine3          String? @db.VarChar(500)
+  countryId             Int
+  country               Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  stateId               Int
+  state                 State   @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  cityId                Int
+  city                  City    @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  pincode               String?
+  contactPersonName    String
+  mobile1  String
+  mobile2  String?
+  email1   String
+  email2   String?
+  websiteName           String?
+  panNumber             String
+  landlineNumber1       String?
+  landlineNumber2       String?
+  bank1Id               Int
+  bank1                 Bank    @relation("Bank1_Agent", fields: [bank1Id], references: [id], onDelete: Restrict)
+  bankAccountNumber1    String
+  branch1               String
+  beneficiaryName1      String
+  ifscCode1             String
+  swiftCode1            String
+  bank2Id               Int?
+  bank2                 Bank?    @relation("Bank2_Agent", fields: [bank2Id], references: [id], onDelete: SetNull)
+  bankAccountNumber2    String?
+  branch2               String?  // Named branch3 as specified. Adjust if needed.
+  beneficiaryName2      String?
+  ifscCode2             String?
+  swiftCode2            String?
+  vehicleBookings    VehicleBooking[]
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("agents")
+}
+
+model VehicleBooking {
+  id                  Int       @id @default(autoincrement())
+  bookingId           Int
+  booking             Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  agencyId            Int
+  agency              Agency    @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  vehicleHrvNumber    String    // HRV number for vehicle booking
+  vehicleBookingDate  DateTime
+  vehicleId           Int       // Assuming vehicleId refers to an existing Vehicle
+  vehicle             Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  numberOfVehicles    Int
+  fromDate            DateTime
+  toDate              DateTime
+  days                Int
+  cityId              Int
+  city                City      @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  agentId             Int       // Agent responsible for the booking
+  agent               Agent     @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  pickupPlace         String
+  terms               String?
+  specialRequest      String?
+  vehicleNote         String?
+  specialNote         String?
+  summaryNote         String?
+  billDescription     String?
+  vehicleItineraries VehicleItinerary[]
+  vehicleHotelBookings VehicleHotelBooking[]
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@map("vehicle_bookings")
+}
+
+model VehicleItinerary {
+  id                 Int       @id @default(autoincrement())
+  vehicleBookingId   Int
+  vehicleBooking     VehicleBooking @relation(fields: [vehicleBookingId], references: [id], onDelete: Cascade)
+  day                Int       // Day number of the itinerary
+  date               DateTime
+  description        String
+  cityId             Int?
+  city               City?      @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@map("vehicle_itineraries")
+}
+
+model VehicleHotelBooking {
+  id                 Int       @id @default(autoincrement())
+  vehicleBookingId   Int
+  vehicleBooking     VehicleBooking @relation(fields: [vehicleBookingId], references: [id], onDelete: Cascade)
+  cityId             Int
+  city               City      @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  hotelId            Int
+  hotel              Hotel     @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  checkInDate        DateTime
+  checkOutDate       DateTime
+  numberOfRooms      Int
+  plan               String
+  numberOfNights     Int
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  
+  @@map("vehicle_hotel_bookings")
+}
+// end
