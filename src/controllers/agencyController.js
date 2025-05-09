@@ -219,15 +219,15 @@ const getAgencies = async (req, res, next) => {
     const whereClause = search
       ? {
           OR: [
-            { businessName: { contains: search, mode: "insensitive" } },
-            { contactPersonName: { contains: search, mode: "insensitive" } },
-            { addressLine1: { contains: search, mode: "insensitive" } },
-            { addressLine2: { contains: search, mode: "insensitive" } },
-            // { state: { contains: search, mode: "insensitive" } },
-            // { city: { contains: search, mode: "insensitive" } },
-            { contactPersonEmail: { contains: search, mode: "insensitive" } },
+            { businessName: { contains: search } },
+            { contactPersonName: { contains: search } },
+            { addressLine1: { contains: search } },
+            { addressLine2: { contains: search } },
+            { state: { stateName: { contains: search } } },
+            { city: { cityName: { contains: search } } },
+            { contactPersonEmail: { contains: search } },
             { contactPersonPhone: { contains: search } },
-            { gstin: { contains: search, mode: "insensitive" } },
+            { gstin: { contains: search } },
           ],
         }
       : {};
@@ -238,8 +238,8 @@ const getAgencies = async (req, res, next) => {
       businessName: true,
       addressLine1: true,
       addressLine2: true,
-      stateId: true,
-      cityId: true,
+      state: true,
+      city: true,
       pincode: true,
       contactPersonName: true,
       contactPersonEmail: true,
@@ -273,7 +273,14 @@ const getAgencies = async (req, res, next) => {
       select: selectFields,
       skip: exportToExcel ? undefined : skip,
       take: exportToExcel ? undefined : limit,
-      orderBy: exportToExcel ? undefined : { [sortBy]: sortOrder },
+      // orderBy: exportToExcel ? undefined : { [sortBy]: sortOrder },
+      orderBy: exportToExcel
+        ? undefined
+        : sortBy === "stateName"
+        ? { state: { stateName: sortOrder } }
+        : sortBy === "cityName"
+        ? { city: { cityName: sortOrder } }
+        : { [sortBy]: sortOrder },
     });
 
     // Map to include URLs using the updated getFileUrl
@@ -400,7 +407,12 @@ const getAgencies = async (req, res, next) => {
     });
   } catch (error) {
     console.error("Error fetching agencies:", error);
-    next(createError(500, "Failed to fetch agencies."));
+    return res.status(500).json({
+      errors: {
+        message: "Failed to create airline",
+        details: error.message,
+      },
+    });
   }
 };
 

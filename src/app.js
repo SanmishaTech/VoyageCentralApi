@@ -28,6 +28,7 @@ const hotelBookingRoutes = require("./routes/hotelBooking");
 const serviceBookingRoutes = require("./routes/serviceBooking");
 const followUpRoutes = require("./routes/followUp");
 const sectorRoutes = require("./routes/sector");
+const agentRoutes = require("./routes/agent");
 const subscriptionRoutes = require("./routes/subscription");
 const branchRoutes = require("./routes/branch"); // Import branch routes
 const swaggerRouter = require("./swagger");
@@ -73,6 +74,7 @@ app.use("/clients", clientRoutes);
 app.use("/banks", bankRoutes);
 app.use("/fairs", fairRoutes);
 app.use("/tours", tourRoutes);
+app.use("/agents", agentRoutes);
 app.use("/bookings", bookingRoutes);
 app.use("/follow-ups", followUpRoutes);
 app.use("/journey-bookings", journeyBookingRoutes);
