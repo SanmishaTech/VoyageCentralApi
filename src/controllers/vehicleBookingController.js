@@ -67,7 +67,7 @@ const createVehicleBooking = async (req, res) => {
           billDescription: billDescription || null,
           vehicleItineraries: {
             create: (vehicleItineraries || []).map((itinerary) => ({
-              day: itinerary.day,
+              day: parseInt(itinerary.day),
               date: parseDate(itinerary.date),
               description: itinerary.description,
               cityId: itinerary.cityId ? parseInt(itinerary.cityId) : null,
@@ -105,6 +105,22 @@ const getVehicleBookingById = async (req, res) => {
   try {
     const vehicleBooking = await prisma.vehicleBooking.findUnique({
       where: { id: parseInt(id) },
+      include: {
+        vehicle: true,
+        city: true,
+        agent: true,
+        vehicleItineraries: {
+          include: {
+            city: true,
+          },
+        },
+        vehicleHotelBookings: {
+          include: {
+            hotel: true,
+            city: true,
+          },
+        },
+      },
     });
     if (!vehicleBooking) {
       return res
@@ -153,7 +169,7 @@ const updateVehicleBooking = async (req, res) => {
     // satrt
     const result = await prisma.$transaction(async (tx) => {
       // First, delete familyFriends that are not in the new familyFriends array
-      await tx.vehicleItineraries.deleteMany({
+      await tx.vehicleItinerary.deleteMany({
         where: {
           vehicleBookingId: parseInt(id, 10),
           id: {
@@ -164,13 +180,13 @@ const updateVehicleBooking = async (req, res) => {
         },
       });
 
-      await tx.vehicleHotelBookings.deleteMany({
+      await tx.vehicleHotelBooking.deleteMany({
         where: {
           vehicleBookingId: parseInt(id, 10),
           id: {
             notIn: vehicleHotelBookings
-              .filter((v) => parseInt(v.hotelId))
-              .map((v) => parseInt(v.hotelId)), // Only keep existing friends in the list
+              .filter((v) => parseInt(v.vehicleHotelId))
+              .map((v) => parseInt(v.vehicleHotelId)), // Only keep existing friends in the list
           },
         },
       });
@@ -223,9 +239,9 @@ const updateVehicleBooking = async (req, res) => {
           },
           vehicleHotelBookings: {
             upsert: vehicleHotelBookings
-              .filter((hotel) => !!parseInt(hotel.hotelId)) // Only existing friends
+              .filter((hotel) => !!parseInt(hotel.vehicleHotelId)) // Only existing friends
               .map((hotel) => ({
-                where: { id: parseInt(hotel.hotelId) },
+                where: { id: parseInt(hotel.vehicleHotelId) },
                 update: {
                   cityId: parseInt(hotel.cityId),
                   hotelId: parseInt(hotel.hotelId),
@@ -245,8 +261,8 @@ const updateVehicleBooking = async (req, res) => {
                   numberOfNights: parseInt(hotel.numberOfNights),
                 },
               })),
-            create: vehicleItineraries
-              .filter((hotel) => !parseInt(hotel.hotelId)) // Only new friends
+            create: vehicleHotelBookings
+              .filter((hotel) => !parseInt(hotel.vehicleHotelId)) // Only new friends
               .map((hotel) => ({
                 cityId: parseInt(hotel.cityId),
                 hotelId: parseInt(hotel.hotelId),
@@ -261,33 +277,13 @@ const updateVehicleBooking = async (req, res) => {
       });
 
       return {
-        updatedClient: updatedClient,
+        updatedVehicleBooking: updatedVehicleBooking,
       };
     });
 
     // end
 
-    const updatedVehicleBooking = await prisma.vehicleBooking.update({
-      where: { id: parseInt(id) },
-      data: {
-        vehicleBookingDate: parseDate(vehicleBookingDate),
-        vehicleId: parseInt(vehicleId),
-        numberOfVehicles: parseInt(numberOfVehicles),
-        fromDate: parseDate(fromDate),
-        toDate: parseDate(toDate),
-        days: parseInt(days),
-        cityId: parseInt(cityId),
-        agentId: parseInt(agentId),
-        pickupPlace,
-        terms: terms || null,
-        specialRequest: specialRequest || null,
-        vehicleNote: vehicleNote || null,
-        specialNote: specialNote || null,
-        summaryNote: summaryNote || null,
-        billDescription: billDescription || null,
-      },
-    });
-    res.status(200).json(updatedVehicleBooking);
+    res.status(200).json(result.updatedVehicleBooking);
   } catch (error) {
     if (error.code === "P2025") {
       return res

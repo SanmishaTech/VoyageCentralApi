@@ -96,4 +96,8 @@ module.exports = {
   "serviceBookings.write": ["super_admin", "admin", "user"],
   "serviceBookings.delete": ["super_admin", "admin", "user"],
   "serviceBookings.read": ["super_admin", "admin", "user"],
+  //vehicleBookings
+  "vehicleBookings.write": ["super_admin", "admin", "user"],
+  "vehicleBookings.delete": ["super_admin", "admin", "user"],
+  "vehicleBookings.read": ["super_admin", "admin", "user"],
 };
