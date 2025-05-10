@@ -239,6 +239,7 @@ const getBookingById = async (req, res, next) => {
         ],
       },
       include: {
+        hotelBookings: true,
         bookingDetails: {
           include: {
             city: {
