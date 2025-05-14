@@ -100,4 +100,12 @@ module.exports = {
   "vehicleBookings.write": ["super_admin", "admin", "user"],
   "vehicleBookings.delete": ["super_admin", "admin", "user"],
   "vehicleBookings.read": ["super_admin", "admin", "user"],
+  //tourMembers
+  "tourMembers.write": ["super_admin", "admin", "user"],
+  "tourMembers.delete": ["super_admin", "admin", "user"],
+  "tourMembers.read": ["super_admin", "admin", "user"],
+  //travelDocuments
+  "travelDocuments.write": ["super_admin", "admin", "user"],
+  "travelDocuments.delete": ["super_admin", "admin", "user"],
+  "travelDocuments.read": ["super_admin", "admin", "user"],
 };
