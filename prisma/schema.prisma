@@ -442,6 +442,8 @@ model Booking {
   hotelBookings    HotelBooking[]
   serviceBookings  ServiceBooking[]
     vehicleBookings    VehicleBooking[]
+  travelDocuments TravelDocument[]
+  tourMembers      TourMember[] // One-to-many relationship with TourMember
 
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
@@ -665,4 +667,38 @@ model VehicleHotelBooking {
   
   @@map("vehicle_hotel_bookings")
 }
-// end
+
+
+model TravelDocument {
+  id             Int      @id @default(autoincrement())
+  bookingId      Int
+  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  description    String?   @db.VarChar(2000) // Up to 2000 characters
+  isPrivate      Boolean  @default(false)
+  uploadUUID     String?  // Stores the UUID directory name (optional)
+  attachment String?  // Stores only the filename for the attachment (optional)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("travel_documents")
+}
+
+model TourMember {
+  id               Int       @id @default(autoincrement())
+  bookingId        Int
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  title            String?    // Title (e.g., Mr., Ms., etc.)
+  name             String?    // Name of the tour member
+  gender           String?    // Gender
+  relation         String?    // Relation to the booking/client
+  dateOfBirth      DateTime? // Date of birth (optional)
+  anniversaryDate  DateTime? // Anniversary date (optional)
+  foodType         String?   // Food type (e.g., Vegetarian, Non-Vegetarian) (optional)
+  mobile           String?   // Mobile number (optional)
+  email            String?   // Email (optional)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("tour_members")
+}
+
