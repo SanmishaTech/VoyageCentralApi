@@ -8,6 +8,7 @@ const path = require("path");
 const { STATUS_OPEN } = require("../config/data");
 const UPLOAD_DIR_BASE = "uploads"; // Base directory - MUST MATCH STATIC SERVING and middleware config
 const TOUR_MODULE_NAME = "tour"; // Define module name consistently
+const fs = require("fs").promises; // Use promises API
 
 // --- Helper to construct URLs (Updated for new structure) ---
 const getFileUrl = (moduleName, fieldName, uuid, filename) => {

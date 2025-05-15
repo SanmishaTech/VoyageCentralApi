@@ -9,6 +9,18 @@ const {
 } = require("../controllers/travelDocumentController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
+const createUploadMiddleware = require("../middleware/uploadMiddleware");
+const tourUploadConfig = [
+  {
+    name: "attachment",
+    allowedTypes: ["image/jpeg", "image/png", "image/jpg"],
+    maxSize: 2 * 1024 * 1024, // 2MB
+  },
+];
+const uploadMiddleware = createUploadMiddleware(
+  "booking/travelDocuments",
+  tourUploadConfig
+);
 
 /**
  * @swagger
@@ -113,7 +125,13 @@ router.get(
  *       500:
  *         description: Failed to create travel document
  */
-router.post("/:id", auth, acl("travelDocuments.write"), createTravelDocument);
+router.post(
+  "/:id",
+  auth,
+  acl("travelDocuments.write"),
+  ...uploadMiddleware, // Spread the array of middleware functions
+  createTravelDocument
+);
 
 /**
  * @swagger
@@ -180,7 +198,13 @@ router.get("/:id", auth, acl("travelDocuments.read"), getTravelDocumentById);
  *       500:
  *         description: Failed to update travel document
  */
-router.put("/:id", auth, acl("travelDocuments.write"), updateTravelDocument);
+router.put(
+  "/:id",
+  auth,
+  acl("travelDocuments.write"),
+  ...uploadMiddleware, // Spread the array of middleware functions
+  updateTravelDocument
+);
 
 /**
  * @swagger

@@ -252,6 +252,7 @@ const getBookingById = async (req, res, next) => {
         client: {
           select: {
             clientName: true,
+            familyFriends: true,
           },
         },
         tour: {
