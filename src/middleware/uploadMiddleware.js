@@ -29,7 +29,9 @@ function createUploadMiddleware(moduleName, fields, uploadDir = "uploads") {
     throw new Error("Invalid moduleName provided. Must be a non-empty string.");
   }
   // Basic sanitization for moduleName to prevent path traversal issues
-  const safeModuleName = moduleName.replace(/[^a-zA-Z0-9_-]/g, "_");
+  // const safeModuleName = moduleName.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeModuleName = moduleName.replace(/[^a-zA-Z0-9/_-]/g, "_");
+
   if (safeModuleName !== moduleName) {
     console.warn(
       `Original moduleName "${moduleName}" sanitized to "${safeModuleName}" for directory usage.`

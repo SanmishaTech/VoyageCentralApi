@@ -7,6 +7,7 @@ const createError = require("http-errors"); // For consistent error handling
 const path = require("path");
 const UPLOAD_DIR_BASE = "uploads"; // Base directory - MUST MATCH STATIC SERVING and middleware config
 const TRAVEL_DOCUMENT_MODULE_NAME = "booking/travelDocuments"; // Define module name consistently
+const fs = require("fs").promises; // Use promises API
 
 // --- Helper to construct URLs (Updated for new structure) ---
 const getFileUrl = (moduleName, fieldName, uuid, filename) => {
@@ -27,7 +28,7 @@ const createTravelDocument = async (req, res, next) => {
       .string()
       .min(1, "Description cannot be left blank.")
       .max(2000, "Description must not exceed 2000 characters."),
-    isPrivate: z.boolean(),
+    isPrivate: z.coerce.boolean(),
   });
 
   // satrt
@@ -45,7 +46,7 @@ const createTravelDocument = async (req, res, next) => {
   }
 
   // 3. Extract Data and File Info (remains the same)
-  const { description, isPrivate } = req.body;
+  const { description, isPrivate } = validationResult.data;
   const { id } = req.params;
 
   const uploadUUID = req.uploadUUID;
@@ -57,7 +58,7 @@ const createTravelDocument = async (req, res, next) => {
     const newTravelDocument = await prisma.travelDocument.create({
       data: {
         bookingId: parseInt(id, 10),
-        description: description || null,
+        description: description,
         isPrivate: isPrivate,
         attachment: attachmentFilename || null,
         uploadUUID: uploadUUID || null,
@@ -133,7 +134,12 @@ const updateTravelDocument = async (req, res, next) => {
       .string()
       .min(1, "Description cannot be left blank.")
       .max(2000, "Description must not exceed 2000 characters."),
-    isPrivate: z.boolean(),
+    isPrivate: z
+      .string()
+      .refine((val) => val === "true" || val === "false", {
+        message: "isPrivate must be either 'true' or 'false' as a string.",
+      })
+      .transform((val) => val === "true"),
   });
 
   // start
@@ -299,9 +305,36 @@ const updateTravelDocument = async (req, res, next) => {
     }
 
     // 5. Check if any actual changes (DB fields or file operations)
-    const hasDbFieldChanges = Object.keys(dataToUpdate).some(
-      (key) => dataToUpdate[key] !== existingTour[key]
-    );
+    // const hasDbFieldChanges = Object.keys(dataToUpdate).some(
+    //   (key) => dataToUpdate[key] !== existingTravelDocument[key]
+    // );
+    const hasDbFieldChanges = Object.keys(dataToUpdate).some((key) => {
+      const oldValue = existingTravelDocument[key];
+      const newValue = dataToUpdate[key];
+
+      // Normalize both values
+      if (typeof oldValue === "boolean" || typeof newValue === "boolean") {
+        return Boolean(oldValue) !== Boolean(newValue);
+      }
+
+      if (typeof oldValue === "number" || typeof newValue === "number") {
+        return Number(oldValue) !== Number(newValue);
+      }
+
+      // Handle null vs undefined vs string
+      if (
+        (oldValue === null || oldValue === undefined) &&
+        (newValue === null || newValue === undefined)
+      ) {
+        return false; // Both null-ish
+      }
+
+      return oldValue !== newValue;
+    });
+    console.log("isPrivate from client:", req.body.isPrivate);
+    console.log("isPrivate parsed:", validationResult.data.isPrivate);
+    console.log("existing isPrivate:", existingTravelDocument.isPrivate);
+
     // File actions include copies, deletes, or simply updating the filename/UUID ref in DB
     const hasFileActions =
       filesToCopy.length > 0 ||
@@ -350,7 +383,7 @@ const updateTravelDocument = async (req, res, next) => {
     );
     // end
 
-    const { description, isPrivate } = req.body;
+    const { description, isPrivate } = validationResult.data;
 
     // try {
     if (!req.user.agencyId) {
@@ -367,6 +400,7 @@ const updateTravelDocument = async (req, res, next) => {
       data: {
         description: description || null,
         isPrivate: isPrivate,
+        // ...dataToUpdate,
         attachment: finalAttachmentFilename || null,
         uploadUUID: targetUploadUUID || null,
       },

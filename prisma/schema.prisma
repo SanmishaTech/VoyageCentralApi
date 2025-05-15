@@ -687,9 +687,9 @@ model TourMember {
   id               Int       @id @default(autoincrement())
   bookingId        Int
   booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
-  title            String?    // Title (e.g., Mr., Ms., etc.)
   name             String?    // Name of the tour member
   gender           String?    // Gender
+  aadharNo        String?  // AADHAR number (optional)
   relation         String?    // Relation to the booking/client
   dateOfBirth      DateTime? // Date of birth (optional)
   anniversaryDate  DateTime? // Anniversary date (optional)
