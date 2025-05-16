@@ -16,6 +16,10 @@ model User {
   communicationEmail String?   // Added: Optional email for communications
   mobile1            String?   // Added: Primary mobile number
   mobile2            String?   // Added: Secondary mobile number
+  address            String?  
+  bloodGroup         String?   
+  gender             String?   
+  dateOfBirth        DateTime?
   password           String
   role               String
   active             Boolean   @default(true)
@@ -63,6 +67,9 @@ model Agency {
   contactPersonName    String    // Contact person name
   contactPersonEmail   String    // Contact person email
   contactPersonPhone   String    // Contact person phone
+  contactPersonName2    String?    // Contact person name
+  contactPersonEmail2   String?    // Contact person email
+  contactPersonPhone2   String?    // Contact person phone
   gstin                String    // GSTIN
   subscriptions        Subscription[] @relation("AgencySubscriptions") 
   users                User[]         
@@ -110,10 +117,11 @@ model Branch {
   id            Int       @id @default(autoincrement())
   agencyId      Int      // Foreign key to Agency
   branchName    String
-  address       String
-  contactName   String
-  contactEmail  String
-  contactMobile String
+  address       String?
+  contactName   String?
+  contactEmail  String?
+  contactMobile String?
+  pincode       String?
   agency        Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   users         User[]
   bookings Booking[]
