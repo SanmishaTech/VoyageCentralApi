@@ -69,26 +69,24 @@ const createAgencyBodySchema = z.object({
       /^[A-Za-z\s\u0900-\u097F]+$/,
       "Contact name can only contain letters and spaces."
     ),
+  contactPersonName2: z
+    .string()
+    .regex(
+      /^([A-Za-z\s\u0900-\u097F]+)?$/,
+      "Contact name can only contain letters and spaces or be empty."
+    )
+    .refine((val) => val === "" || val.trim().length > 0, {
+      message: "Contact name cannot be only spaces.",
+    }),
+  contactPersonPhone2: z.string().optional(),
+  contactPersonEmail2: z.string().optional(),
   contactPersonPhone: z
     .string({ required_error: "Contact person phone is required." })
     .length(10, "Contact person phone must be exactly 10 digits."),
+
   contactPersonEmail: z
     .string({ required_error: "Contact person email is required." })
-    .email("Contact person email must be a valid email address.")
-    // Refine for Agency Contact Email Uniqueness
-    .refine(
-      async (email) => {
-        // Check only if email is provided and valid so far
-        if (!email) return true; // Allow empty/invalid emails handled by previous rules
-        const existingAgencyContact = await prisma.agency.findFirst({
-          where: { contactPersonEmail: email },
-        });
-        return !existingAgencyContact; // Return true if no existing contact found (valid)
-      },
-      {
-        message: "An agency with this contact email already exists.", // Zod automatically uses the value in error messages where appropriate
-      }
-    ),
+    .email("Contact person email must be a valid email address."),
   gstin: z
     .string()
     .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/, {
@@ -197,6 +195,17 @@ const updateAgencyBodySchema = z
       .or(z.literal(""))
       .or(z.null())
       .optional(),
+    contactPersonName2: z
+      .string()
+      .regex(
+        /^([A-Za-z\s\u0900-\u097F]+)?$/,
+        "Contact name can only contain letters and spaces or be empty."
+      )
+      .refine((val) => val === "" || val.trim().length > 0, {
+        message: "Contact name cannot be only spaces.",
+      }),
+    contactPersonPhone2: z.string().optional(),
+    contactPersonEmail2: z.string().optional(),
     // Add explicit null types for file fields to indicate removal intent
     logoFilename: z.string().nullable().optional(),
     letterheadFilename: z.string().nullable().optional(),
@@ -228,6 +237,7 @@ const getAgencies = async (req, res, next) => {
             { contactPersonEmail: { contains: search } },
             { contactPersonPhone: { contains: search } },
             { gstin: { contains: search } },
+            // { currentSubscription: { endDate: { contains: search } } },
           ],
         }
       : {};
@@ -280,6 +290,8 @@ const getAgencies = async (req, res, next) => {
         ? { state: { stateName: sortOrder } }
         : sortBy === "cityName"
         ? { city: { cityName: sortOrder } }
+        : sortBy === "endDate"
+        ? { currentSubscription: { endDate: sortOrder } }
         : { [sortBy]: sortOrder },
     });
 
@@ -460,6 +472,9 @@ const createAgency = async (req, res, next) => {
       contactPersonName,
       contactPersonPhone,
       contactPersonEmail,
+      contactPersonName2,
+      contactPersonPhone2,
+      contactPersonEmail2,
       gstin,
       subscription,
       user,
@@ -486,6 +501,9 @@ const createAgency = async (req, res, next) => {
           contactPersonName,
           contactPersonPhone,
           contactPersonEmail,
+          contactPersonName2: contactPersonName2 || null,
+          contactPersonPhone2: contactPersonPhone2 || null,
+          contactPersonEmail2: contactPersonEmail2 || null,
           gstin: gstin ?? null,
           uploadUUID: uploadUUID, // Store the UUID from the request
           logoFilename: logoFilename,

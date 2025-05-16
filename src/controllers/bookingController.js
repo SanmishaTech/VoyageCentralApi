@@ -430,6 +430,17 @@ const deleteBooking = async (req, res, next) => {
 
     res.status(204).send();
   } catch (error) {
+    if (
+      error.code === "P2003" ||
+      error.message.includes("Foreign key constraint failed")
+    ) {
+      return res.status(409).json({
+        errors: {
+          message:
+            "Cannot delete this Booking because it is referenced in related data (e.g. hotel booking,vehicle booking, etc). Please remove those first.",
+        },
+      });
+    }
     if (error.code === "P2025") {
       return res.status(404).json({ errors: { message: "Booking not found" } });
     }

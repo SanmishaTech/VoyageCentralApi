@@ -136,17 +136,24 @@ const createBranch = async (req, res, next) => {
     }
     // end
 
-    const { branchName, address, contactName, contactEmail, contactMobile } =
-      req.body;
+    const {
+      branchName,
+      address,
+      contactName,
+      contactEmail,
+      contactMobile,
+      pincode,
+    } = req.body;
 
     const newBranch = await prisma.branch.create({
       data: {
         agencyId: req.user.agencyId,
-        branchName,
-        address,
-        contactName,
-        contactEmail,
-        contactMobile,
+        branchName: branchName || null,
+        address: address || null,
+        contactName: contactName || null,
+        contactEmail: contactEmail || null,
+        contactMobile: contactMobile || null,
+        pincode: pincode || null,
       },
     });
 
@@ -232,17 +239,24 @@ const updateBranch = async (req, res, next) => {
     const validationErrors = await validateRequest(schema, req.body, res);
 
     const { id } = req.params;
-    const { branchName, address, contactName, contactEmail, contactMobile } =
-      req.body;
+    const {
+      branchName,
+      address,
+      contactName,
+      contactEmail,
+      contactMobile,
+      pincode,
+    } = req.body;
 
     const updatedBranch = await prisma.branch.update({
       where: { id: parseInt(id, 10) },
       data: {
-        ...(branchName && { branchName }),
-        ...(address && { address }),
-        ...(contactName && { contactName }),
-        ...(contactEmail && { contactEmail }),
-        ...(contactMobile && { contactMobile }),
+        branchName: branchName || null,
+        address: address || null,
+        contactName: contactName || null,
+        contactEmail: contactEmail || null,
+        contactMobile: contactMobile || null,
+        pincode: pincode || null,
       },
     });
 
