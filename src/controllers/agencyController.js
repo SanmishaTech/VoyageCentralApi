@@ -1245,6 +1245,17 @@ const deleteAgency = async (req, res, next) => {
     // 4. Success Response
     res.status(204).send();
   } catch (error) {
+    if (
+      error.code === "P2003" ||
+      error.message.includes("Foreign key constraint failed")
+    ) {
+      return res.status(409).json({
+        errors: {
+          message:
+            "Cannot delete this Agency because it is referenced in related data. Please remove the related references before deleting.",
+        },
+      });
+    }
     console.error(`Error deleting agency ${agencyId}:`, error);
     if (error.code === "P2025") {
       return next(createError(404, `Agency with ID ${agencyId} not found.`));

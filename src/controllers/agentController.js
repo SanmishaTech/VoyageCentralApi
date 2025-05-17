@@ -328,6 +328,17 @@ const deleteAgent = async (req, res, next) => {
 
     res.status(204).send();
   } catch (error) {
+    if (
+      error.code === "P2003" ||
+      error.message.includes("Foreign key constraint failed")
+    ) {
+      return res.status(409).json({
+        errors: {
+          message:
+            "Cannot delete this Agent because it is referenced in related data. Please remove the related references before deleting.",
+        },
+      });
+    }
     if (error.code === "P2025") {
       return res.status(404).json({ errors: { message: "Agent not found" } });
     }

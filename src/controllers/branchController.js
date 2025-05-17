@@ -84,10 +84,14 @@ const createBranch = async (req, res, next) => {
         }),
     })
     .superRefine(async (data, ctx) => {
+      const normalizedName = data.branchName
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLowerCase();
       const existingBranchName = await prisma.branch.findFirst({
         where: {
           AND: [
-            { branchName: data.branchName },
+            { branchName: { equals: normalizedName } },
             { agencyId: parseInt(req.user.agencyId) },
           ],
         },
@@ -135,6 +139,8 @@ const createBranch = async (req, res, next) => {
       });
     }
     // end
+    const parsed = await schema.parseAsync(req.body);
+    parsed.branchName = parsed.branchName.trim().replace(/\s+/g, " ");
 
     const {
       branchName,
@@ -143,7 +149,7 @@ const createBranch = async (req, res, next) => {
       contactEmail,
       contactMobile,
       pincode,
-    } = req.body;
+    } = parsed;
 
     const newBranch = await prisma.branch.create({
       data: {
@@ -280,6 +286,17 @@ const deleteBranch = async (req, res, next) => {
 
     res.status(204).send();
   } catch (error) {
+    if (
+      error.code === "P2003" ||
+      error.message.includes("Foreign key constraint failed")
+    ) {
+      return res.status(409).json({
+        errors: {
+          message:
+            "Cannot delete this Branch because it is referenced in related data. Please remove the related references before deleting.",
+        },
+      });
+    }
     if (error.code === "P2025") {
       return res.status(404).json({ errors: { message: "Branch not found" } });
     }
