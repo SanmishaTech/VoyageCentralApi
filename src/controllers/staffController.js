@@ -206,7 +206,7 @@ const createStaff = async (req, res, next) => {
         .nonempty("Password is required."),
       role: z.enum(Object.values(roles), "Invalid role."),
       active: z.boolean().optional(),
-      branchId: z.number().min(1, "Branch is required"),
+      branchId: z.string().min(1, "Branch is required"),
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
@@ -261,26 +261,27 @@ const createStaff = async (req, res, next) => {
     }
 
     // end
-
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
+
+    let branchId = null;
+    if (req.user.role === roles.ADMIN) {
+      branchId = req.body.branchId;
+    } else if (req.user.role === roles.BRANCH_ADMIN) {
+      branchId = req.user.branchId;
+    } else {
+      if (!req.user.agencyId) {
+        return res
+          .status(404)
+          .json({ message: "User is not allowed to enter staff" });
+      }
+    }
 
     const staff = await prisma.user.create({
       data: {
         ...req.body,
         password: hashedPassword,
         agencyId: req.user.agencyId,
-        branchId: req.user.branchId || req.body.branchId,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        communicationEmail: true,
-        mobile1: true,
-        mobile2: true,
-        role: true,
-        active: true,
-        branchId: true,
+        branchId: parseInt(branchId),
       },
     });
 
@@ -340,7 +341,7 @@ const updateStaff = async (req, res, next) => {
       .nullable(),
     role: z.enum(Object.values(roles), "Invalid role."),
     active: z.boolean().optional(),
-    branchId: z.number().optional(),
+    branchId: z.string().min(1, "Branch field is required"),
   });
 
   try {
@@ -367,12 +368,28 @@ const updateStaff = async (req, res, next) => {
       }
     }
 
+    let branchId = null;
+    if (req.user.role === roles.ADMIN) {
+      branchId = req.body.branchId;
+    } else if (req.user.role === roles.BRANCH_ADMIN) {
+      branchId = req.user.branchId;
+    } else {
+      if (!req.user.agencyId) {
+        return res
+          .status(404)
+          .json({ message: "User is not allowed to enter staff" });
+      }
+    }
+
     const updatedStaff = await prisma.user.update({
       where: {
         id: parseInt(req.params.id),
         agencyId: req.user.agencyId,
       },
-      data: req.body,
+      data: {
+        ...req.body,
+        branchId: parseInt(branchId),
+      },
     });
 
     res.json(updatedStaff);
@@ -418,6 +435,17 @@ const deleteStaff = async (req, res, next) => {
     });
     res.json({ message: "Staff member deleted" });
   } catch (error) {
+    if (
+      error.code === "P2003" ||
+      error.message.includes("Foreign key constraint failed")
+    ) {
+      return res.status(409).json({
+        errors: {
+          message:
+            "Cannot delete this Staff because it is referenced in related data. Please remove the related references before deleting.",
+        },
+      });
+    }
     if (error.name === "UnauthorizedError") {
       return res.status(401).json({
         errors: {
