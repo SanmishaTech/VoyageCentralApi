@@ -83,7 +83,6 @@ const getTours = async (req, res, next) => {
     });
   }
 };
-
 // Create a new tour
 const createTour = async (req, res, next) => {
   const schema = z
@@ -93,6 +92,7 @@ const createTour = async (req, res, next) => {
         .min(1, "Tour title cannot be left blank.")
         .max(100, "Tour title must not exceed 100 characters."),
       tourType: z.string().optional(),
+      numberOfNights: z.string().optional(),
       destination: z.string().optional(),
       status: z.string().optional(),
       sectorId: z.string().optional(),
@@ -166,6 +166,7 @@ const createTour = async (req, res, next) => {
     status,
     sectorId,
     notes,
+    numberOfNights,
     itineraries = [],
   } = req.body;
 
@@ -183,6 +184,7 @@ const createTour = async (req, res, next) => {
         destination: destination || null,
         status: status || null,
         sectorId: sectorId ? parseInt(sectorId, 10) : null,
+        numberOfNights: numberOfNights ? parseInt(numberOfNights) : null,
         attachment: attachmentFilename || null,
         uploadUUID: uploadUUID || null,
         notes: notes || null,
@@ -277,6 +279,7 @@ const updateTour = async (req, res, next) => {
         .min(1, "Tour title cannot be left blank.")
         .max(100, "Tour title must not exceed 100 characters."),
       tourType: z.string().optional(),
+      numberOfNights: z.string().optional(),
       destination: z.string().optional(),
       status: z.string().optional(),
       sectorId: z.string().optional(),
@@ -553,6 +556,7 @@ const updateTour = async (req, res, next) => {
       sectorId,
       attachment,
       notes,
+      numberOfNights,
       itineraries = [],
     } = req.body;
 
@@ -583,6 +587,7 @@ const updateTour = async (req, res, next) => {
           tourTitle,
           tourType: tourType || null,
           destination: destination || null,
+          numberOfNights: numberOfNights ? parseInt(numberOfNights) : null,
           status: status || null,
           sectorId: sectorId ? parseInt(sectorId, 10) : null,
           attachment: finalAttachmentFilename || null,

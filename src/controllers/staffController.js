@@ -5,6 +5,7 @@ const prisma = require("../config/db");
 const roles = require("../config/roles");
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
+const dayjs = require("dayjs");
 
 const getStaff = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
@@ -125,6 +126,10 @@ const getStaffById = async (req, res, next) => {
         communicationEmail: true,
         mobile1: true,
         mobile2: true,
+        dateOfBirth: true,
+        address: true,
+        bloodGroup: true,
+        gender: true,
         role: true,
         active: true,
         lastLogin: true,
@@ -229,6 +234,10 @@ const createStaff = async (req, res, next) => {
   try {
     const validationErrors = await validateRequest(schema, req.body, res);
 
+    const parseDate = (value) => {
+      if (typeof value !== "string" || value.trim() === "") return undefined;
+      return dayjs(value).isValid() ? new Date(value) : undefined;
+    };
     // start
     const packageData = await prisma.agency.findUnique({
       where: { id: parseInt(req.user.agencyId) },
@@ -282,6 +291,7 @@ const createStaff = async (req, res, next) => {
         password: hashedPassword,
         agencyId: req.user.agencyId,
         branchId: parseInt(branchId),
+        dateOfBirth: parseDate(req.body.dateOfBirth),
       },
     });
 
@@ -346,7 +356,10 @@ const updateStaff = async (req, res, next) => {
 
   try {
     const validationErrors = await validateRequest(schema, req.body, res);
-
+    const parseDate = (value) => {
+      if (typeof value !== "string" || value.trim() === "") return undefined;
+      return dayjs(value).isValid() ? new Date(value) : undefined;
+    };
     // Check if email exists (if email is being updated)
     if (req.body.email) {
       const existingUser = await prisma.user.findFirst({
@@ -389,6 +402,7 @@ const updateStaff = async (req, res, next) => {
       data: {
         ...req.body,
         branchId: parseInt(branchId),
+        dateOfBirth: parseDate(req.body.dateOfBirth),
       },
     });
 
