@@ -128,6 +128,9 @@ const createAgent = async (req, res, next) => {
       beneficiaryName2,
       ifscCode2,
       swiftCode2,
+      isVehicle,
+      isAirline,
+      isTrain,
     } = req.body;
 
     const newAgent = await prisma.agent.create({
@@ -162,6 +165,9 @@ const createAgent = async (req, res, next) => {
         beneficiaryName2: beneficiaryName2 || null,
         ifscCode2: ifscCode2 || null,
         swiftCode2: swiftCode2 || null,
+        isVehicle,
+        isAirline,
+        isTrain,
       },
     });
 
@@ -266,6 +272,9 @@ const updateAgent = async (req, res, next) => {
       beneficiaryName2,
       ifscCode2,
       swiftCode2,
+      isVehicle,
+      isAirline,
+      isTrain,
     } = req.body;
 
     const updatedAgent = await prisma.agent.update({
@@ -300,6 +309,9 @@ const updateAgent = async (req, res, next) => {
         beneficiaryName2: beneficiaryName2 || null,
         ifscCode2: ifscCode2 || null,
         swiftCode2: swiftCode2 || null,
+        isVehicle,
+        isAirline,
+        isTrain,
       },
     });
 

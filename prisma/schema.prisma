@@ -16,7 +16,7 @@ model User {
   communicationEmail String?   // Added: Optional email for communications
   mobile1            String?   // Added: Primary mobile number
   mobile2            String?   // Added: Secondary mobile number
-  address            String?   @db.VarChar(2000)
+  address            String?   @db.Text
   bloodGroup         String?   
   gender             String?   
   dateOfBirth        DateTime?
@@ -53,8 +53,8 @@ model Agency {
   id                   Int       @id @default(autoincrement())
   currentSubscriptionId Int?     // Foreign key to the Subscription table
   businessName         String    // Business name
-  addressLine1         String    @db.VarChar(2000)
-  addressLine2         String?   @db.VarChar(2000)
+  addressLine1         String    @db.Text
+  addressLine2         String?   @db.Text
   stateId  Int?
   state                State?    @relation("AgencyState", fields: [stateId], references: [id], onDelete: Restrict)
   cityId  Int?
@@ -104,6 +104,20 @@ model Subscription {
   packageId       Int       // Foreign key to the Package table
   package         Package   @relation(fields: [packageId], references: [id])
   cost            Decimal   @db.Decimal(10, 2) // Added cost field with Decimal type
+  cgstPercent     Int?
+  cgstAmount      Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type
+  sgstPercent     Int?
+  sgstAmount      Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type
+  igstPercent     Int?
+  igstAmount      Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type
+  totalAmount     Decimal   @db.Decimal(10, 2) // Added cost field with Decimal type
+  paymentDate    DateTime // Payment date (optional)
+  paymentMode    String  // Payment mode (optional)
+  utrNumber    String? // UPI number (optional)
+  neftImpfNumber String? // NEFT/IMPS number (optional)  
+  chequeNumber String? // Cheque number (optional)
+  chequeDate DateTime? // Cheque date (optional)
+  bankName String? // Bank name (optional)
   startDate       DateTime  // Subscription start date
   endDate         DateTime  // Subscription end date
   createdAt       DateTime  @default(now())
@@ -117,7 +131,7 @@ model Branch {
   id            Int       @id @default(autoincrement())
   agencyId      Int      // Foreign key to Agency
   branchName    String
-  address       String?  @db.VarChar(2000)
+  address       String?  @db.Text
   contactName   String?
   contactEmail  String?
   contactMobile String?
@@ -220,7 +234,8 @@ model Vehicle {
   agencyId  Int
   agency   Agency   @relation(fields:[agencyId],references:[id],onDelete:Restrict)
   vehicleName String
-    vehicleBookings    VehicleBooking[]
+  vehicleBookings    VehicleBooking[]
+  journeyBookings  JourneyBooking[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -245,14 +260,14 @@ model Hotel {
   agencyId            Int
   agency              Agency   @relation(fields: [agencyId], references: [id], onDelete: Restrict)
   hotelName           String
-  hotelAddressLine1   String? @db.VarChar(2000)
-  hotelAddressLine2   String? @db.VarChar(2000)
-  hotelAddressLine3   String?  @db.VarChar(2000)
+  hotelAddressLine1   String?  @db.Text
+  hotelAddressLine2   String? @db.Text
+  hotelAddressLine3   String?  @db.Text
 
   hotelPincode        String?
-  officeAddressLine1  String?     @db.VarChar(2000)
-  officeAddressLine2  String?      @db.VarChar(2000)
-  officeAddressLine3  String?      @db.VarChar(2000)
+  officeAddressLine1  String?     @db.Text
+  officeAddressLine2  String?     @db.Text
+  officeAddressLine3  String?      @db.Text
   hotelCountryId   Int?
 hotelStateId     Int?
 hotelCityId      Int?
@@ -313,8 +328,8 @@ model Client {
   dateOfBirth DateTime? // Date of birth
   marriageDate DateTime? // Marriage date (optional)
   referBy     String?  // Referred by (optional)
-  address1    String?  @db.VarChar(2000)
-  address2    String?  @db.VarChar(2000)
+  address1    String? @db.Text
+  address2    String?  @db.Text
    stateId         Int?             // Foreign key to the State table
   state           State?           @relation(fields: [stateId], references: [id], onDelete: Restrict)
   cityId          Int?             // Foreign key to the City table
@@ -395,7 +410,8 @@ model Tour {
   sector      Sector?  @relation(fields: [sectorId], references: [id], onDelete: Restrict)
   uploadUUID  String?  // Stores the UUID directory name
   attachment  String?  // File attachment (optional)
-  notes       String?   @db.VarChar(2000)
+  notes       String?   @db.Text
+   numberOfNights   Int?       // Number of nights
   itineraries Itinerary[] // One-to-many relationship with Itinerary
   bookings Booking[] // One-to-many relationship with TourEnquiry
   createdAt   DateTime @default(now())
@@ -409,7 +425,7 @@ model Itinerary {
   tourId      Int      // Foreign key to the Tour table
   tour        Tour     @relation(fields: [tourId], references: [id], onDelete: Restrict)
   day         Int      // Day number of the itinerary
-  description String      @db.VarChar(2000)// Description of the itinerary for the day
+  description String      @db.Text
   cityId      Int?     // Foreign key to the City table
   city        City?    @relation(fields: [cityId], references: [id], onDelete: Restrict)
 
@@ -437,7 +453,7 @@ model Booking {
   branch                  Branch?   @relation(fields: [branchId], references: [id],onDelete:Restrict)
   tourId                  Int?      // Foreign key to the Tour table
   tour                    Tour?     @relation(fields: [tourId], references: [id], onDelete: Restrict)
-  bookingDetail          String?    @db.VarChar(2000)// Booking details (optional)
+  bookingDetail          String?    @db.Text
   isJourney               Boolean   @default(false) // Indicates if it's a journey
   isHotel                 Boolean   @default(false) // Indicates if a hotel is included
   isVehicle               Boolean   @default(false) // Indicates if a vehicle is included
@@ -445,6 +461,8 @@ model Booking {
   bookingDetails      BookingDetail[] // One-to-many relationship with TourBookingDetail
   followUpDate     DateTime?  // Date of the follow-up
   remarks          String?   // Remarks for the follow-up
+  numberOfNights   Int?       // Number of nights
+  bookingType     String?   // Type of booking (e.g., Group, Individual)
   FollowUps       FollowUp[]
   journeyBookings  JourneyBooking[]
   hotelBookings    HotelBooking[]
@@ -465,7 +483,7 @@ model BookingDetail {
   booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
   day             Int       // Day number of the booking
   date            DateTime  // Date of the booking
-  description     String     @db.VarChar(2000)// Description of the booking
+  description     String    @db.Text
   cityId          Int?      // Foreign key to the City table
   city            City?     @relation(fields: [cityId], references: [id],onDelete: Restrict)
   createdAt       DateTime  @default(now())
@@ -498,7 +516,7 @@ model JourneyBooking {
   fromDepartureDate DateTime  // Departure date from the starting place
   toArrivalDate     DateTime  // Arrival date at the destination
   foodType          String?   // Food type (e.g., Vegetarian, Non-Vegetarian)
-  billDescription   String?    @db.VarChar(2000)// Description of the bill
+  billDescription   String?    @db.Text
   trainName         String?   // Train name (optional)
   class             String?   // Class (e.g., Sleeper, AC)
   pnrNumber         String?   // PNR number (optional)
@@ -507,7 +525,8 @@ model JourneyBooking {
   flightNumber      String?   // Flight number (optional)
   airlineId         Int?      // Foreign key to the Airline table
   airline           Airline?  @relation(fields: [airlineId], references: [id], onDelete: Restrict)
-
+  vehicleId         Int?      // Foreign key to the Airline table
+  vehicle           Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -535,17 +554,17 @@ model HotelBooking {
   accommodationId     Int?       // Foreign key to the Accommodation table
   accommodation       Accommodation? @relation(fields: [accommodationId], references: [id], onDelete: Restrict)
   tariffPackage       String?    // Tariff package
-  accommodationNote   String?    @db.VarChar(2000)// Accommodation note (optional)
+  accommodationNote   String?    @db.Text
   extraBed            Boolean   @default(false) // Indicates if extra bed is required
   beds                Int?      // Number of beds (optional)
   extraBedCost        Decimal?  @db.Decimal(10, 2) // Cost of extra bed
   hotelBookingDate    DateTime  // Date of hotel booking
   bookingConfirmedBy  String?    // Booking confirmed by (optional)
   confirmationNumber  String?   // Confirmation number (optional)
-  billingInstructions String?    @db.VarChar(2000)// Billing instructions (optional)
-  specialRequirement  String?   @db.VarChar(2000)// Special requirements (optional)
-  notes               String?   @db.VarChar(2000)// Notes (optional)
-  billDescription     String?   @db.VarChar(2000)// Bill description (optional)
+  billingInstructions String?    @db.Text
+  specialRequirement  String?   @db.Text
+  notes               String?   @db.Text// Notes (optional)
+  billDescription     String?   @db.Text// Bill description (optional)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   @@map("hotel_bookings") // Map the table name to "hotel_bookings"
@@ -555,7 +574,7 @@ model ServiceBooking {
   id                  Int       @id @default(autoincrement())
   bookingId           Int       // Foreign key to the Booking table
   booking             Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
-  description         String      @db.VarChar(2000)
+  description         String      @db.Text
   cost                Decimal?  @db.Decimal(10, 2)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -568,9 +587,9 @@ model Agent {
   agencyId              Int
   agency                Agency   @relation(fields: [agencyId], references: [id], onDelete: Restrict)
   agentName             String
-  addressLine1          String @db.VarChar(2000)
-  addressLine2          String? @db.VarChar(2000)
-  addressLine3          String? @db.VarChar(2000)
+  addressLine1          String @db.Text
+  addressLine2          String? @db.Text
+  addressLine3          String? @db.Text
   countryId             Int
   country               Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
   stateId               Int
@@ -601,6 +620,9 @@ model Agent {
   beneficiaryName2      String?
   ifscCode2             String?
   swiftCode2            String?
+  isVehicle Boolean @default(false) 
+  isAirline Boolean @default(false) 
+  isTrain   Boolean @default(false)
   vehicleBookings    VehicleBooking[]
 
   createdAt             DateTime @default(now())
@@ -628,12 +650,12 @@ model VehicleBooking {
   agentId             Int       // Agent responsible for the booking
   agent               Agent     @relation(fields: [agentId], references: [id], onDelete: Restrict)
   pickupPlace         String
-  terms               String?  @db.VarChar(2000)
-  specialRequest      String?  @db.VarChar(2000)
-  vehicleNote         String?  @db.VarChar(2000)
-  specialNote         String?  @db.VarChar(2000)
-  summaryNote         String?  @db.VarChar(2000)
-  billDescription     String?  @db.VarChar(2000)
+  terms               String?  @db.Text
+  specialRequest      String?  @db.Text
+  vehicleNote         String?  @db.Text
+  specialNote         String?  @db.Text
+  summaryNote         String?  @db.Text
+  billDescription     String?  @db.Text
   vehicleItineraries VehicleItinerary[]
   vehicleHotelBookings VehicleHotelBooking[]
   createdAt           DateTime  @default(now())
@@ -648,7 +670,7 @@ model VehicleItinerary {
   vehicleBooking     VehicleBooking @relation(fields: [vehicleBookingId], references: [id], onDelete: Restrict)
   day                Int       // Day number of the itinerary
   date               DateTime
-  description        String    @db.VarChar(2000)
+  description        String    @db.Text
   cityId             Int?
   city               City?      @relation(fields: [cityId], references: [id], onDelete: Restrict)
   createdAt          DateTime  @default(now())
@@ -681,7 +703,7 @@ model TravelDocument {
   id             Int      @id @default(autoincrement())
   bookingId      Int
   booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
-  description    String?   @db.VarChar(2000) // Up to 2000 characters
+  description    String?   @db.Text // Up to 2000 characters
   isPrivate      Boolean  @default(false)
   uploadUUID     String?  // Stores the UUID directory name (optional)
   attachment String?  // Stores only the filename for the attachment (optional)

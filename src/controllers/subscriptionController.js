@@ -21,6 +21,72 @@ const createSubscription = async (req, res, next) => {
           invalid_type_error: "Agency ID must be a number.",
         })
         .int("Agency ID must be an integer."),
+      // amount details
+      cgstPercent: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0 && val <= 100, {
+          message: "Invalid CGST percent",
+        })
+        .optional(),
+
+      cgstAmount: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0, {
+          message: "Invalid CGST amount",
+        })
+        .optional(),
+
+      sgstPercent: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0 && val <= 100, {
+          message: "Invalid SGST percent",
+        })
+        .optional(),
+
+      sgstAmount: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0, {
+          message: "Invalid SGST amount",
+        })
+        .optional(),
+
+      igstPercent: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0 && val <= 100, {
+          message: "Invalid IGST percent",
+        })
+        .optional(),
+
+      igstAmount: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0, {
+          message: "Invalid IGST amount",
+        })
+        .optional(),
+
+      totalAmount: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0, {
+          message: "Total amount must be a positive number",
+        }),
+
+      paymentDate: z.string().optional(), // works with "YYYY-MM-DD"
+
+      paymentMode: z.string().min(1, "Payment mode is required"),
+
+      utrNumber: z.string().optional(),
+      neftImpfNumber: z.string().optional(),
+      chequeNumber: z.string().optional(),
+      chequeDate: z.string().optional(),
+      bankName: z.string().optional(),
+      // amiunt details end
     })
     .superRefine(async (data, ctx) => {
       // Check if the package exists
@@ -51,7 +117,24 @@ const createSubscription = async (req, res, next) => {
 
   // Validate the request body using Zod
   const validationErrors = await validateRequest(schema, req.body, res);
-  const { packageId, agencyId } = req.body;
+  const {
+    packageId,
+    agencyId,
+    paymentDate,
+    paymentMode,
+    utrNumber,
+    neftImpfNumber,
+    chequeNumber,
+    chequeDate,
+    bankName,
+    cgstPercent,
+    cgstAmount,
+    sgstPercent,
+    sgstAmount,
+    igstPercent,
+    igstAmount,
+    totalAmount,
+  } = req.body;
 
   try {
     // Get agency data to retrieve currentSubscriptionId
@@ -65,7 +148,7 @@ const createSubscription = async (req, res, next) => {
     if (agencyData.currentSubscription) {
       // Use the endDate of the current subscription as the startDate for the new subscription
       // startDate = dayjs(agencyData.currentSubscription.endDate);
-      startDate = dayjs(agencyData.currentSubscription.endDate).add(1, 'day');
+      startDate = dayjs(agencyData.currentSubscription.endDate).add(1, "day");
     } else {
       // If no current subscription, send an error
       return res.status(400).json({
@@ -90,6 +173,24 @@ const createSubscription = async (req, res, next) => {
         startDate: startDate.toDate(), // Convert dayjs object to JavaScript Date
         endDate: endDate.toDate(), // Convert dayjs object to JavaScript Date
         cost: packageData.cost,
+        paymentDate: paymentDate
+          ? dayjs(paymentDate).startOf("day").toDate()
+          : null,
+        paymentMode: paymentMode,
+        utrNumber: utrNumber || null,
+        neftImpfNumber: neftImpfNumber || null,
+        chequeNumber: chequeNumber || null,
+        chequeDate: chequeDate
+          ? dayjs(chequeDate).startOf("day").toDate()
+          : null,
+        bankName: bankName || null,
+        cgstPercent: cgstPercent ? parseFloat(cgstPercent) : null,
+        cgstAmount: cgstAmount ? parseFloat(cgstAmount) : null,
+        sgstPercent: sgstPercent ? parseFloat(sgstPercent) : null,
+        sgstAmount: sgstAmount ? parseFloat(sgstAmount) : null,
+        igstPercent: igstPercent ? parseFloat(igstPercent) : null,
+        igstAmount: igstAmount ? parseFloat(igstAmount) : null,
+        totalAmount: parseFloat(totalAmount),
       },
     });
 

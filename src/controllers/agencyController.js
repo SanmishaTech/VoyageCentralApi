@@ -124,6 +124,72 @@ const createAgencyBodySchema = z.object({
         .refine((date) => !isNaN(Date.parse(date)), {
           message: "Start date must be a valid date string (e.g., YYYY-MM-DD).",
         }),
+      // amount details
+      cgstPercent: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0 && val <= 100, {
+          message: "Invalid CGST percent",
+        })
+        .optional(),
+
+      cgstAmount: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0, {
+          message: "Invalid CGST amount",
+        })
+        .optional(),
+
+      sgstPercent: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0 && val <= 100, {
+          message: "Invalid SGST percent",
+        })
+        .optional(),
+
+      sgstAmount: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0, {
+          message: "Invalid SGST amount",
+        })
+        .optional(),
+
+      igstPercent: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0 && val <= 100, {
+          message: "Invalid IGST percent",
+        })
+        .optional(),
+
+      igstAmount: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0, {
+          message: "Invalid IGST amount",
+        })
+        .optional(),
+
+      totalAmount: z
+        .union([z.string(), z.number()])
+        .transform(parseFloat)
+        .refine((val) => !isNaN(val) && val >= 0, {
+          message: "Total amount must be a positive number",
+        }),
+
+      paymentDate: z.string().optional(), // works with "YYYY-MM-DD"
+
+      paymentMode: z.string().min(1, "Payment mode is required"),
+
+      utrNumber: z.string().optional(),
+      neftImpfNumber: z.string().optional(),
+      chequeNumber: z.string().optional(),
+      chequeDate: z.string().optional(),
+      bankName: z.string().optional(),
+      // amiunt details end
     },
     { required_error: "Subscription details are required." }
   ),
@@ -476,6 +542,20 @@ const createAgency = async (req, res, next) => {
       contactPersonPhone2,
       contactPersonEmail2,
       gstin,
+      // cgstPercent,
+      // cgstAmount,
+      // sgstPercent,
+      // sgstAmount,
+      // igstPercent,
+      // igstAmount,
+      // totalAmount,
+      // paymentDate,
+      // paymentMode,
+      // utrNumber,
+      // neftImpfNumber,
+      // chequeNumber,
+      // chequeDate,
+      // bankName,
       subscription,
       user,
     } = validationResult.data;
@@ -530,6 +610,36 @@ const createAgency = async (req, res, next) => {
           startDate: startDate.startOf("day").toDate(),
           endDate: endDate.toDate(),
           agencyId: newAgency.id,
+          paymentDate: subscription.paymentDate
+            ? dayjs(subscription.paymentDate).startOf("day").toDate()
+            : null,
+          paymentMode: subscription.paymentMode,
+          utrNumber: subscription.utrNumber || null,
+          neftImpfNumber: subscription.neftImpfNumber || null,
+          chequeNumber: subscription.chequeNumber || null,
+          chequeDate: subscription.chequeDate
+            ? dayjs(subscription.chequeDate).startOf("day").toDate()
+            : null,
+          bankName: subscription.bankName || null,
+          cgstPercent: subscription.cgstPercent
+            ? parseFloat(subscription.cgstPercent)
+            : null,
+          cgstAmount: subscription.cgstAmount
+            ? parseFloat(subscription.cgstAmount)
+            : null,
+          sgstPercent: subscription.sgstPercent
+            ? parseFloat(subscription.sgstPercent)
+            : null,
+          sgstAmount: subscription.sgstAmount
+            ? parseFloat(subscription.sgstAmount)
+            : null,
+          igstPercent: subscription.igstPercent
+            ? parseFloat(subscription.igstPercent)
+            : null,
+          igstAmount: subscription.igstAmount
+            ? parseFloat(subscription.igstAmount)
+            : null,
+          totalAmount: parseFloat(subscription.totalAmount),
         },
       });
 
@@ -634,6 +744,7 @@ const getAgencyById = async (req, res, next) => {
       where: { id: agencyId },
       // Include relations as before
       include: {
+        state: true,
         users: {
           select: {
             id: true,

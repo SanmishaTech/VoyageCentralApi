@@ -115,6 +115,116 @@ const getBookings = async (req, res, next) => {
   }
 };
 
+const getTourEnquiries = async (req, res, next) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const search = req.query.search || "";
+  const sortBy = req.query.sortBy || "id";
+  const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+
+  // Additional filters
+  const fromBookingDate = req.query.fromBookingDate
+    ? new Date(req.query.fromBookingDate)
+    : null;
+  const toBookingDate = req.query.toBookingDate
+    ? new Date(req.query.toBookingDate)
+    : null;
+  const tourTitle = req.query.tourTitle || "";
+  const clientName = req.query.clientName || "";
+
+  try {
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belong to any Agency" });
+    }
+
+    const whereClause = {
+      agencyId: req.user.agencyId,
+      bookingType: "Enquiry",
+      AND: [
+        // Filter by booking date range
+        fromBookingDate && toBookingDate
+          ? {
+              bookingDate: {
+                gte: fromBookingDate,
+                lte: toBookingDate,
+              },
+            }
+          : {},
+        // Filter by tour title
+        tourTitle
+          ? {
+              tour: {
+                tourTitle: {
+                  contains: tourTitle,
+                },
+              },
+            }
+          : {},
+        // Filter by client name
+        clientName
+          ? {
+              client: {
+                clientName: {
+                  contains: clientName,
+                },
+              },
+            }
+          : {},
+      ],
+      OR: [
+        { bookingNumber: { contains: search } },
+        { branch: { branchName: { contains: search } } },
+        { client: { clientName: { contains: search } } },
+        { tour: { tourTitle: { contains: search } } },
+      ],
+    };
+
+    // Handle ordering by related fields
+    const orderByClause =
+      sortBy === "clientName"
+        ? { client: { clientName: sortOrder } }
+        : sortBy === "branchName"
+        ? { branch: { branchName: sortOrder } }
+        : sortBy === "tourTitle"
+        ? { tour: { tourTitle: sortOrder } }
+        : { [sortBy]: sortOrder };
+
+    const bookings = await prisma.booking.findMany({
+      where: whereClause,
+      skip,
+      take: limit,
+      orderBy: orderByClause,
+      include: {
+        tour: true, // Include tour details
+        client: true, // Include client details
+        branch: true, // Include branch details
+      },
+    });
+
+    const totalBookings = await prisma.booking.count({
+      where: whereClause,
+    });
+    const totalPages = Math.ceil(totalBookings / limit);
+
+    res.json({
+      bookings,
+      page,
+      totalPages,
+      totalBookings,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      errors: {
+        message: "Failed to fetch bookings",
+        details: error.message,
+      },
+    });
+  }
+};
+
 // Create a new tour enquiry
 const createBooking = async (req, res, next) => {
   const schema = z.object({
@@ -168,6 +278,8 @@ const createBooking = async (req, res, next) => {
       isPackage,
       enquiryStatus,
       bookingDetails,
+      // numberOfNights,
+      bookingType,
     } = req.body;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -178,6 +290,8 @@ const createBooking = async (req, res, next) => {
           agencyId: req.user.agencyId,
           bookingDate: parseDate(bookingDate),
           journeyDate: parseDate(journeyDate),
+          // numberOfNights: numberOfNights ? parseInt(numberOfNights) : null,
+          bookingType: bookingType ? bookingType : null,
           departureDate: parseDate(departureDate),
           budgetField: budgetField || null,
           clientId: parseInt(clientId, 10),
@@ -316,6 +430,8 @@ const updateBooking = async (req, res, next) => {
     isPackage,
     enquiryStatus,
     bookingDetails = [],
+    // numberOfNights,
+    bookingType,
   } = req.body;
 
   try {
@@ -351,6 +467,8 @@ const updateBooking = async (req, res, next) => {
           journeyDate: parseDate(journeyDate),
           departureDate: parseDate(departureDate),
           budgetField: budgetField || null,
+          // numberOfNights: numberOfNights ? parseInt(numberOfNights) : null,
+          bookingType: bookingType ? bookingType : null,
           clientId: parseInt(clientId, 10),
           numberOfAdults: numberOfAdults ? parseInt(numberOfAdults, 10) : null, // Parse as integer
           numberOfChildren5To11: numberOfChildren5To11
@@ -459,4 +577,5 @@ module.exports = {
   getBookingById,
   deleteBooking,
   updateBooking,
+  getTourEnquiries,
 };
