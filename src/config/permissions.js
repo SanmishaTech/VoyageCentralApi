@@ -6,9 +6,9 @@ module.exports = {
   "users.delete": ["super_admin"],
   "users.export": ["super_admin"],
   //agencies
-  "agencies.read": ["super_admin"],
-  "agencies.write": ["super_admin"],
-  "agencies.delete": ["super_admin"],
+  "agencies.read": ["super_admin", "admin", "branch_admin", "user"],
+  "agencies.write": ["super_admin", "admin", "branch_admin", "user"],
+  "agencies.delete": ["super_admin", "admin", "branch_admin", "user"],
   //packages
   "packages.read": ["super_admin"],
   "packages.write": ["super_admin"],
@@ -69,10 +69,10 @@ module.exports = {
   "banks.write": ["super_admin", "admin", "branch_admin", "user"],
   "banks.delete": ["super_admin", "admin", "branch_admin", "user"],
   "banks.read": ["super_admin", "admin", "branch_admin", "user"],
-  //fairs
-  "fairs.write": ["super_admin", "admin", "branch_admin", "user"],
-  "fairs.delete": ["super_admin", "admin", "branch_admin", "user"],
-  "fairs.read": ["super_admin", "admin", "branch_admin", "user"],
+  //services
+  "services.write": ["super_admin", "admin", "branch_admin", "user"],
+  "services.delete": ["super_admin", "admin", "branch_admin", "user"],
+  "services.read": ["super_admin", "admin", "branch_admin", "user"],
   //tours
   "tours.write": ["super_admin", "admin", "branch_admin", "user"],
   "tours.delete": ["super_admin", "admin", "branch_admin", "user"],
@@ -108,4 +108,12 @@ module.exports = {
   "travelDocuments.write": ["super_admin", "admin", "branch_admin", "user"],
   "travelDocuments.delete": ["super_admin", "admin", "branch_admin", "user"],
   "travelDocuments.read": ["super_admin", "admin", "branch_admin", "user"],
+  //bookingReceipts
+  "bookingReceipts.write": ["super_admin", "admin", "branch_admin", "user"],
+  "bookingReceipts.delete": ["super_admin", "admin", "branch_admin", "user"],
+  "bookingReceipts.read": ["super_admin", "admin", "branch_admin", "user"],
+  //dashboard
+  "dashboard.write": ["super_admin", "admin", "branch_admin", "user"],
+  "dashboard.delete": ["super_admin", "admin", "branch_admin", "user"],
+  "dashboard.read": ["super_admin", "admin", "branch_admin", "user"],
 };

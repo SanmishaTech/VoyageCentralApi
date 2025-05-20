@@ -1,21 +1,21 @@
 const express = require("express");
 const router = express.Router();
 const {
-  getFairs,
-  createFair,
-  getFairById,
-  updateFair,
-  deleteFair,
-  getAllFairs,
-} = require("../controllers/fairController");
+  getServices,
+  createService,
+  getServiceById,
+  updateService,
+  deleteService,
+  getAllServices,
+} = require("../controllers/serviceController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
 
 /**
  * @swagger
  * tags:
- *   name: Fairs
- *   description: Fair management endpoints
+ *   name: Services
+ *   description: Service management endpoints
  */
 
 /**
@@ -30,10 +30,10 @@ const acl = require("../middleware/acl");
 
 /**
  * @swagger
- * /fairs:
+ * /services:
  *   get:
- *     summary: Get all fairs with pagination, sorting, and search
- *     tags: [Fairs]
+ *     summary: Get all services with pagination, sorting, and search
+ *     tags: [Services]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -48,12 +48,12 @@ const acl = require("../middleware/acl");
  *         schema:
  *           type: integer
  *           default: 10
- *         description: Number of fairs per page
+ *         description: Number of services per page
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
- *         description: Search term for fair name
+ *         description: Search term for service name
  *       - in: query
  *         name: sortBy
  *         schema:
@@ -69,20 +69,20 @@ const acl = require("../middleware/acl");
  *         description: Sort order
  *     responses:
  *       200:
- *         description: List of all fairs
+ *         description: List of all services
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 fairs:
+ *                 services:
  *                   type: array
  *                   items:
  *                     type: object
  *                     properties:
  *                       id:
  *                         type: integer
- *                       fairName:
+ *                       serviceName:
  *                         type: string
  *                       createdAt:
  *                         type: string
@@ -94,19 +94,19 @@ const acl = require("../middleware/acl");
  *                   type: integer
  *                 totalPages:
  *                   type: integer
- *                 totalFairs:
+ *                 totalServices:
  *                   type: integer
  *       500:
- *         description: Failed to fetch fairs
+ *         description: Failed to fetch services
  */
-router.get("/", auth, acl("fairs.read"), getFairs);
+router.get("/", auth, acl("services.read"), getServices);
 
 /**
  * @swagger
- * /fairs:
+ * /services:
  *   post:
- *     summary: Create a new fair
- *     tags: [Fairs]
+ *     summary: Create a new service
+ *     tags: [Services]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -116,30 +116,30 @@ router.get("/", auth, acl("fairs.read"), getFairs);
  *           schema:
  *             type: object
  *             properties:
- *               fairName:
+ *               serviceName:
  *                 type: string
- *                 description: Name of the fair
+ *                 description: Name of the service
  *     responses:
  *       201:
- *         description: Fair created successfully
+ *         description: Service created successfully
  *       400:
  *         description: Bad request
  *       500:
- *         description: Failed to create fair
+ *         description: Failed to create service
  */
-router.post("/", auth, acl("fairs.write"), createFair);
+router.post("/", auth, acl("services.write"), createService);
 
 /**
  * @swagger
- * /fairs/all:
+ * /services/all:
  *   get:
- *     summary: Get all fairs without pagination, sorting, and search
- *     tags: [Fairs]
+ *     summary: Get all services without pagination, sorting, and search
+ *     tags: [Services]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of all fairs
+ *         description: List of all services
  *         content:
  *           application/json:
  *             schema:
@@ -149,19 +149,19 @@ router.post("/", auth, acl("fairs.write"), createFair);
  *                 properties:
  *                   id:
  *                     type: integer
- *                   fairName:
+ *                   serviceName:
  *                     type: string
  *       500:
- *         description: Failed to fetch fairs
+ *         description: Failed to fetch services
  */
-router.get("/all", auth, acl("fairs.read"), getAllFairs);
+router.get("/all", auth, acl("services.read"), getAllServices);
 
 /**
  * @swagger
- * /fairs/{id}:
+ * /services/{id}:
  *   get:
- *     summary: Get fair by ID
- *     tags: [Fairs]
+ *     summary: Get service by ID
+ *     tags: [Services]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -170,10 +170,10 @@ router.get("/all", auth, acl("fairs.read"), getAllFairs);
  *         schema:
  *           type: integer
  *         required: true
- *         description: Fair ID
+ *         description: Service ID
  *     responses:
  *       200:
- *         description: Fair details
+ *         description: Service details
  *         content:
  *           application/json:
  *             schema:
@@ -181,7 +181,7 @@ router.get("/all", auth, acl("fairs.read"), getAllFairs);
  *               properties:
  *                 id:
  *                   type: integer
- *                 fairName:
+ *                 serviceName:
  *                   type: string
  *                 createdAt:
  *                   type: string
@@ -190,18 +190,18 @@ router.get("/all", auth, acl("fairs.read"), getAllFairs);
  *                   type: string
  *                   format: date-time
  *       404:
- *         description: Fair not found
+ *         description: Service not found
  *       500:
- *         description: Failed to fetch fair
+ *         description: Failed to fetch service
  */
-router.get("/:id", auth, acl("fairs.read"), getFairById);
+router.get("/:id", auth, acl("services.read"), getServiceById);
 
 /**
  * @swagger
- * /fairs/{id}:
+ * /services/{id}:
  *   put:
- *     summary: Update fair by ID
- *     tags: [Fairs]
+ *     summary: Update service by ID
+ *     tags: [Services]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -210,7 +210,7 @@ router.get("/:id", auth, acl("fairs.read"), getFairById);
  *         schema:
  *           type: integer
  *         required: true
- *         description: Fair ID
+ *         description: Service ID
  *     requestBody:
  *       required: true
  *       content:
@@ -218,27 +218,27 @@ router.get("/:id", auth, acl("fairs.read"), getFairById);
  *           schema:
  *             type: object
  *             properties:
- *               fairName:
+ *               serviceName:
  *                 type: string
- *                 description: Name of the fair
+ *                 description: Name of the service
  *     responses:
  *       200:
- *         description: Fair updated successfully
+ *         description: Service updated successfully
  *       400:
  *         description: Bad request
  *       404:
- *         description: Fair not found
+ *         description: Service not found
  *       500:
- *         description: Failed to update fair
+ *         description: Failed to update service
  */
-router.put("/:id", auth, acl("fairs.write"), updateFair);
+router.put("/:id", auth, acl("services.write"), updateService);
 
 /**
  * @swagger
- * /fairs/{id}:
+ * /services/{id}:
  *   delete:
- *     summary: Delete fair by ID
- *     tags: [Fairs]
+ *     summary: Delete service by ID
+ *     tags: [Services]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -247,15 +247,15 @@ router.put("/:id", auth, acl("fairs.write"), updateFair);
  *         schema:
  *           type: integer
  *         required: true
- *         description: Fair ID
+ *         description: Service ID
  *     responses:
  *       204:
- *         description: Fair deleted successfully
+ *         description: Service deleted successfully
  *       404:
- *         description: Fair not found
+ *         description: Service not found
  *       500:
- *         description: Failed to delete fair
+ *         description: Failed to delete service
  */
-router.delete("/:id", auth, acl("fairs.delete"), deleteFair);
+router.delete("/:id", auth, acl("services.delete"), deleteService);
 
 module.exports = router;

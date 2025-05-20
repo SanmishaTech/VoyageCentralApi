@@ -6,6 +6,7 @@ const {
   getAgencyById,
   updateAgency,
   deleteAgency,
+  updateAgencyProfile,
 } = require("../controllers/agencyController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
@@ -314,6 +315,73 @@ router.post(
  *         description: Failed to fetch agency
  */
 router.get("/:id", auth, acl("agencies.read"), getAgencyById);
+
+/**
+ * @swagger
+ * /agencies/{id}:
+ *   put:
+ *     summary: Update an existing agency
+ *     tags: [Agencies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: Agency ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               businessName:
+ *                 type: string
+ *               addressLine1:
+ *                 type: string
+ *               addressLine2:
+ *                 type: string
+ *               state:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               pincode:
+ *                 type: string
+ *               contactPersonName:
+ *                 type: string
+ *               contactPersonEmail:
+ *                 type: string
+ *                 format: email
+ *               contactPersonPhone:
+ *                 type: string
+ *               gstin:
+ *                 type: string
+ *               letterHead:
+ *                 type: string
+ *                 format: binary
+ *               logo:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Agency updated successfully
+ *       400:
+ *         description: Bad request
+ *       404:
+ *         description: Agency not found
+ *       500:
+ *         description: Failed to update agency
+ */
+router.put(
+  "profile/:id",
+  auth,
+  acl("agencies.write"),
+  ...uploadMiddleware, // Spread the array of middleware functions
+  updateAgencyProfile
+);
 
 /**
  * @swagger

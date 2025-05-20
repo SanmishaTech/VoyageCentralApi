@@ -16,7 +16,7 @@ const vehicleRoutes = require("./routes/vehicle");
 const airlineRoutes = require("./routes/airline");
 const bankRoutes = require("./routes/bank");
 const hotelRoutes = require("./routes/hotel");
-const fairRoutes = require("./routes/fair");
+const serviceRoutes = require("./routes/service");
 const clientRoutes = require("./routes/client");
 const staffRoutes = require("./routes/staff");
 const stateRoutes = require("./routes/state");
@@ -32,8 +32,10 @@ const vehicleBookingRoutes = require("./routes/vehicleBooking");
 const followUpRoutes = require("./routes/followUp");
 const sectorRoutes = require("./routes/sector");
 const agentRoutes = require("./routes/agent");
+const bookingReceiptRoutes = require("./routes/bookingReceipt");
 const subscriptionRoutes = require("./routes/subscription");
 const branchRoutes = require("./routes/branch"); // Import branch routes
+const dashboardRoutes = require("./routes/dashboard");
 const swaggerRouter = require("./swagger");
 const path = require("path");
 const config = require("./config/config");
@@ -75,7 +77,7 @@ app.use("/airlines", airlineRoutes);
 app.use("/hotels", hotelRoutes);
 app.use("/clients", clientRoutes);
 app.use("/banks", bankRoutes);
-app.use("/fairs", fairRoutes);
+app.use("/services", serviceRoutes);
 app.use("/tours", tourRoutes);
 app.use("/agents", agentRoutes);
 app.use("/bookings", bookingRoutes);
@@ -86,6 +88,8 @@ app.use("/service-bookings", serviceBookingRoutes);
 app.use("/vehicle-bookings", vehicleBookingRoutes);
 app.use("/tour-members", tourMemberRoutes);
 app.use("/travel-documents", travelDocumentRoutes);
+app.use("/booking-receipts", bookingReceiptRoutes);
+app.use("/dashboard", dashboardRoutes);
 app.use(swaggerRouter); // Add this line to include Swagger documentation
 
 app.use((req, res, next) => {

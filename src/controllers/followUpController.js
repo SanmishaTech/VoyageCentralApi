@@ -13,7 +13,7 @@ const createFollowUp = async (req, res, next) => {
     remarks: z
       .string()
       .min(1, "remarks field is required.")
-      .max(180, "remarks must not exceed 180 characters"),
+      .max(2000, "remarks must not exceed 2000 characters"),
   });
   const { id } = req.params;
   const validationErrors = await validateRequest(schema, req.body, res);

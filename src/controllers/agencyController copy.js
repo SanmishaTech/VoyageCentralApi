@@ -49,11 +49,11 @@ const createAgencyBodySchema = z.object({
   //   .string({ required_error: "City is required." })
   //   .min(1, "City cannot be empty.")
   //   .max(100, "City must not exceed 100 characters."),
-  cityName: z.union([
+  cityId: z.union([
     z.string().min(1, "City field is required."),
     z.number().min(1, "City Field is required"),
   ]),
-  stateName: z.union([
+  stateId: z.union([
     z.string().min(1, "State field is required."),
     z.number().min(1, "State Field is required"),
   ]),
@@ -238,11 +238,11 @@ const updateAgencyBodySchema = z
     addressLine2: z.string().max(255).optional().nullable(),
     // state: z.string().min(1).max(100).optional(),
     // city: z.string().min(1).max(100).optional(),
-    cityName: z.union([
+    cityId: z.union([
       z.string().min(1, "City field is required."),
       z.number().min(1, "City Field is required"),
     ]),
-    stateName: z.union([
+    stateId: z.union([
       z.string().min(1, "State field is required."),
       z.number().min(1, "State Field is required"),
     ]),
@@ -298,8 +298,8 @@ const getAgencies = async (req, res, next) => {
             { contactPersonName: { contains: search } },
             { addressLine1: { contains: search } },
             { addressLine2: { contains: search } },
-            { stateName: { contains: search } },
-            { cityName: { contains: search } },
+            { state: { stateName: { contains: search } } },
+            { city: { cityName: { contains: search } } },
             { contactPersonEmail: { contains: search } },
             { contactPersonPhone: { contains: search } },
             { gstin: { contains: search } },
@@ -314,8 +314,8 @@ const getAgencies = async (req, res, next) => {
       businessName: true,
       addressLine1: true,
       addressLine2: true,
-      stateName: true,
-      cityName: true,
+      state: true,
+      city: true,
       pincode: true,
       contactPersonName: true,
       contactPersonEmail: true,
@@ -350,7 +350,15 @@ const getAgencies = async (req, res, next) => {
       skip: exportToExcel ? undefined : skip,
       take: exportToExcel ? undefined : limit,
       // orderBy: exportToExcel ? undefined : { [sortBy]: sortOrder },
-      orderBy: exportToExcel ? undefined : { [sortBy]: sortOrder },
+      orderBy: exportToExcel
+        ? undefined
+        : sortBy === "stateName"
+        ? { state: { stateName: sortOrder } }
+        : sortBy === "cityName"
+        ? { city: { cityName: sortOrder } }
+        : sortBy === "endDate"
+        ? { currentSubscription: { endDate: sortOrder } }
+        : { [sortBy]: sortOrder },
     });
 
     // Map to include URLs using the updated getFileUrl
@@ -380,8 +388,8 @@ const getAgencies = async (req, res, next) => {
         { header: "Business Name", key: "businessName", width: 30 },
         { header: "Address Line 1", key: "addressLine1", width: 30 },
         { header: "Address Line 2", key: "addressLine2", width: 30 },
-        { header: "stateName", key: "stateName", width: 15 },
-        { header: "cityName", key: "cityName", width: 15 },
+        { header: "StateId", key: "StateId", width: 15 },
+        { header: "CityId", key: "CityId", width: 15 },
         { header: "Pincode", key: "pincode", width: 10 },
         { header: "Contact Person", key: "contactPersonName", width: 25 },
         { header: "Contact Email", key: "contactPersonEmail", width: 30 },
@@ -424,8 +432,8 @@ const getAgencies = async (req, res, next) => {
           businessName: agency.businessName,
           addressLine1: agency.addressLine1,
           addressLine2: agency.addressLine2 ?? "", // Handle null
-          stateName: agency.stateName,
-          cityName: agency.cityName,
+          stateId: agency.stateId,
+          cityId: agency.cityId,
           pincode: agency.pincode,
           contactPersonName: agency.contactPersonName,
           contactPersonEmail: agency.contactPersonEmail,
@@ -524,8 +532,8 @@ const createAgency = async (req, res, next) => {
       businessName,
       addressLine1,
       addressLine2,
-      stateName,
-      cityName,
+      stateId,
+      cityId,
       pincode,
       contactPersonName,
       contactPersonPhone,
@@ -556,7 +564,9 @@ const createAgency = async (req, res, next) => {
     const letterheadFile = req.files?.letterHead?.[0];
     const logoFilename = logoFile ? logoFile.filename : null;
     const letterheadFilename = letterheadFile ? letterheadFile.filename : null;
-
+    console.log("state ANd city id", stateId, cityId);
+    console.log("Type of stateId:", typeof stateId);
+    console.log("Type of cityId:", typeof cityId);
     // --- Database Transaction (remains largely the same) ---
     const result = await prisma.$transaction(async (tx) => {
       // 4. Create Agency - Store UUID and filenames
@@ -565,8 +575,8 @@ const createAgency = async (req, res, next) => {
           businessName,
           addressLine1,
           addressLine2: addressLine2 ?? null,
-          stateName,
-          cityName,
+          stateId: parseInt(stateId),
+          cityId: parseInt(cityId),
           pincode,
           contactPersonName,
           contactPersonPhone,
@@ -734,6 +744,7 @@ const getAgencyById = async (req, res, next) => {
       where: { id: agencyId },
       // Include relations as before
       include: {
+        state: true,
         users: {
           select: {
             id: true,
@@ -1128,6 +1139,8 @@ const updateAgency = async (req, res, next) => {
       where: { id: agencyId },
       data: {
         ...dataToUpdate,
+        stateId: parseInt(dataToUpdate.stateId),
+        cityId: parseInt(dataToUpdate.cityId),
       },
     });
     console.log(`[Update DB Success:${requestUploadUUID}] DB updated.`);
@@ -1201,6 +1214,8 @@ const updateAgency = async (req, res, next) => {
       message: "Agency updated successfully.",
       agency: {
         ...updatedAgency,
+        stateId: parseInt(updatedAgency.stateId),
+        cityId: parseInt(updatedAgency.cityId),
         logoUrl: getFileUrl(
           AGENCY_MODULE_NAME,
           "logo",
@@ -1360,495 +1375,10 @@ const deleteAgency = async (req, res, next) => {
   }
 };
 
-const updateAgencyProfile = async (req, res, next) => {
-  const { id } = req.params;
-  const agencyId = parseInt(id, 10);
-  const requestUploadUUID = req.uploadUUID; // UUID for *this* request's potential new uploads
-
-  console.log(`[Update Start:${requestUploadUUID}] Updating agency ID: ${id}`);
-  console.log(
-    `[Update Files:${requestUploadUUID}] Req Files:`,
-    req.files ? Object.keys(req.files) : "None"
-  );
-  console.log(`[Update Body:${requestUploadUUID}] Req Body:`, req.body);
-
-  if (isNaN(agencyId)) {
-    // No uploads likely happened yet, middleware cleanup handles if they did
-    return next(createError(400, "Invalid agency ID."));
-  }
-
-  try {
-    // 1. Validate Body + Check Middleware Upload Errors
-    const validationResult = await validateRequest(
-      updateAgencyBodySchema, // Use the updated schema allowing null for filenames
-      req.body,
-      req.uploadErrors
-    );
-
-    if (!validationResult.success) {
-      console.log(
-        `[Update Validation Fail:${requestUploadUUID}] Errors:`,
-        validationResult.errors
-      );
-      if (req.cleanupUpload) await req.cleanupUpload(req); // Cleanup *this* request's uploads
-      return res.status(400).json({ errors: validationResult.errors });
-    }
-    console.log(`[Update Validation OK:${requestUploadUUID}]`);
-
-    // 2. Fetch Existing Agency Data (including file info)
-    const existingAgency = await prisma.agency.findUnique({
-      where: { id: agencyId },
-      select: {
-        id: true,
-        uploadUUID: true,
-        logoFilename: true,
-        letterheadFilename: true,
-        contactPersonEmail: true, // For uniqueness check
-        // Select other fields if needed for comparison later
-      },
-    });
-
-    if (!existingAgency) {
-      console.log(
-        `[Update Error:${requestUploadUUID}] Agency ${agencyId} not found.`
-      );
-      if (req.cleanupUpload) await req.cleanupUpload(req); // Cleanup *this* request's uploads
-      return next(createError(404, `Agency with ID ${agencyId} not found.`));
-    }
-    console.log(
-      `[Update Found:${requestUploadUUID}] Existing Files: UUID=${existingAgency.uploadUUID}, Logo=${existingAgency.logoFilename}, LH=${existingAgency.letterheadFilename}`
-    );
-
-    // 3. Prepare Update: Determine target state and file operations
-    const dataToUpdate = { ...validationResult.data }; // Start with validated body fields
-    const newLogoFile = req.files?.logo?.[0];
-    const newLetterheadFile = req.files?.letterHead?.[0]; // Match middleware field name
-    const hasNewUploads = !!(newLogoFile || newLetterheadFile);
-    const oldUploadUUID = existingAgency.uploadUUID;
-
-    let targetUploadUUID = hasNewUploads ? requestUploadUUID : oldUploadUUID;
-    if (hasNewUploads) {
-      dataToUpdate.uploadUUID = targetUploadUUID; // Set DB field if new UUID is used
-      console.log(
-        `[Update Files:${requestUploadUUID}] New uploads detected. Target UUID = ${targetUploadUUID}`
-      );
-    } else {
-      console.log(
-        `[Update Files:${requestUploadUUID}] No new uploads. Target UUID = ${targetUploadUUID}`
-      );
-    }
-
-    const filesToCopy = []; // { sourcePath: string, destPath: string, fieldName: string }
-    const filesToDelete = []; // { fullPath: string, fieldName: string }
-
-    // --- Logo Handling ---
-    // Check if body explicitly requests removal (null value)
-    const wantsToRemoveLogo =
-      dataToUpdate.hasOwnProperty("logoFilename") &&
-      dataToUpdate.logoFilename === null;
-
-    if (newLogoFile) {
-      // A. New logo uploaded
-      dataToUpdate.logoFilename = newLogoFile.filename; // Update DB field
-      console.log(
-        `[Update Files:${requestUploadUUID}] New Logo: ${newLogoFile.filename}`
-      );
-      // Mark old logo for deletion if it existed
-      if (oldUploadUUID && existingAgency.logoFilename) {
-        filesToDelete.push({
-          fullPath: path.join(
-            UPLOAD_DIR_BASE,
-            AGENCY_MODULE_NAME,
-            "logo",
-            oldUploadUUID,
-            existingAgency.logoFilename
-          ),
-          fieldName: "logo",
-        });
-      }
-    } else if (wantsToRemoveLogo) {
-      // B. Explicitly removing logo (via null in body)
-      dataToUpdate.logoFilename = null; // Ensure DB field is set to null
-      console.log(
-        `[Update Files:${requestUploadUUID}] Removing Logo explicit.`
-      );
-      // Mark old logo for deletion if it existed
-      if (oldUploadUUID && existingAgency.logoFilename) {
-        filesToDelete.push({
-          fullPath: path.join(
-            UPLOAD_DIR_BASE,
-            AGENCY_MODULE_NAME,
-            "logo",
-            oldUploadUUID,
-            existingAgency.logoFilename
-          ),
-          fieldName: "logo",
-        });
-      }
-    } else {
-      // C. No new logo, not removing: Keep existing file reference
-      // Remove from dataToUpdate only if it wasn't explicitly set (to avoid overriding with undefined)
-      if (!dataToUpdate.hasOwnProperty("logoFilename")) {
-        delete dataToUpdate.logoFilename;
-      }
-      console.log(
-        `[Update Files:${requestUploadUUID}] Keeping existing Logo ref.`
-      );
-      // *** Crucial: If UUID changed (due to other file upload), copy existing logo to new location ***
-      if (hasNewUploads && oldUploadUUID && existingAgency.logoFilename) {
-        const sourcePath = path.join(
-          UPLOAD_DIR_BASE,
-          AGENCY_MODULE_NAME,
-          "logo",
-          oldUploadUUID,
-          existingAgency.logoFilename
-        );
-        const destPath = path.join(
-          UPLOAD_DIR_BASE,
-          AGENCY_MODULE_NAME,
-          "logo",
-          targetUploadUUID,
-          existingAgency.logoFilename
-        ); // Keep same filename
-        filesToCopy.push({ sourcePath, destPath, fieldName: "logo" });
-      }
-    }
-
-    // --- Letterhead Handling (Similar Logic) ---
-    const wantsToRemoveLetterhead =
-      dataToUpdate.hasOwnProperty("letterheadFilename") &&
-      dataToUpdate.letterheadFilename === null;
-
-    if (newLetterheadFile) {
-      // A. New letterhead uploaded
-      dataToUpdate.letterheadFilename = newLetterheadFile.filename; // Update DB field
-      console.log(
-        `[Update Files:${requestUploadUUID}] New Letterhead: ${newLetterheadFile.filename}`
-      );
-      if (oldUploadUUID && existingAgency.letterheadFilename) {
-        filesToDelete.push({
-          fullPath: path.join(
-            UPLOAD_DIR_BASE,
-            AGENCY_MODULE_NAME,
-            "letterHead",
-            oldUploadUUID,
-            existingAgency.letterheadFilename
-          ),
-          fieldName: "letterhead",
-        });
-      }
-    } else if (wantsToRemoveLetterhead) {
-      // B. Explicitly removing letterhead
-      dataToUpdate.letterheadFilename = null; // Ensure DB field is null
-      console.log(
-        `[Update Files:${requestUploadUUID}] Removing Letterhead explicit.`
-      );
-      if (oldUploadUUID && existingAgency.letterheadFilename) {
-        filesToDelete.push({
-          fullPath: path.join(
-            UPLOAD_DIR_BASE,
-            AGENCY_MODULE_NAME,
-            "letterHead",
-            oldUploadUUID,
-            existingAgency.letterheadFilename
-          ),
-          fieldName: "letterhead",
-        });
-      }
-    } else {
-      // C. Keep existing letterhead
-      if (!dataToUpdate.hasOwnProperty("letterheadFilename")) {
-        delete dataToUpdate.letterheadFilename;
-      }
-      console.log(
-        `[Update Files:${requestUploadUUID}] Keeping existing Letterhead ref.`
-      );
-      if (hasNewUploads && oldUploadUUID && existingAgency.letterheadFilename) {
-        const sourcePath = path.join(
-          UPLOAD_DIR_BASE,
-          AGENCY_MODULE_NAME,
-          "letterHead",
-          oldUploadUUID,
-          existingAgency.letterheadFilename
-        );
-        const destPath = path.join(
-          UPLOAD_DIR_BASE,
-          AGENCY_MODULE_NAME,
-          "letterHead",
-          targetUploadUUID,
-          existingAgency.letterheadFilename
-        );
-        filesToCopy.push({ sourcePath, destPath, fieldName: "letterhead" });
-      }
-    }
-
-    // --- Optional: Nullify UUID if both final files are null AND no new UUID was generated ---
-    const finalLogoFilename = dataToUpdate.hasOwnProperty("logoFilename")
-      ? dataToUpdate.logoFilename
-      : existingAgency.logoFilename;
-    const finalLetterheadFilename = dataToUpdate.hasOwnProperty(
-      "letterheadFilename"
-    )
-      ? dataToUpdate.letterheadFilename
-      : existingAgency.letterheadFilename;
-
-    if (
-      finalLogoFilename === null &&
-      finalLetterheadFilename === null &&
-      !hasNewUploads &&
-      oldUploadUUID
-    ) {
-      // If both are cleared, and we didn't create a new UUID folder for this request,
-      // we can nullify the reference in the DB. The files should already be marked for deletion.
-      console.log(
-        `[Update Files:${requestUploadUUID}] Both files null, no new uploads. Nullifying UUID.`
-      );
-      dataToUpdate.uploadUUID = null;
-      targetUploadUUID = null; // Update local variable too
-    } else if (
-      finalLogoFilename === null &&
-      finalLetterheadFilename === null &&
-      hasNewUploads
-    ) {
-      // If both are cleared, but we *did* create a new UUID (which is now empty),
-      // still nullify the DB reference, but the cleanup function for *this request* should handle the empty new folders.
-      console.log(
-        `[Update Files:${requestUploadUUID}] Both files null, new UUID created (will be empty). Nullifying UUID in DB.`
-      );
-      dataToUpdate.uploadUUID = null;
-      targetUploadUUID = null;
-    }
-
-    // 4. Check Contact Email Uniqueness (if changed) - Remains the same
-    if (
-      dataToUpdate.contactPersonEmail &&
-      dataToUpdate.contactPersonEmail !== existingAgency.contactPersonEmail
-    ) {
-      const conflictingAgency = await prisma.agency.findFirst({
-        where: { contactPersonEmail: dataToUpdate.contactPersonEmail },
-        select: { id: true },
-      });
-      if (conflictingAgency && conflictingAgency.id !== agencyId) {
-        console.log(
-          `[Update Conflict:${requestUploadUUID}] Email conflict: ${dataToUpdate.contactPersonEmail}`
-        );
-        if (req.cleanupUpload) await req.cleanupUpload(req); // Cleanup *this request's* uploads
-        return res.status(409).json({
-          errors: {
-            contactPersonEmail: `Email '${dataToUpdate.contactPersonEmail}' is already in use.`,
-          },
-        });
-      }
-    }
-
-    // 5. Check if any actual changes (DB fields or file operations)
-    const hasDbFieldChanges = Object.keys(dataToUpdate).some(
-      (key) => dataToUpdate[key] !== existingAgency[key]
-    );
-    // File actions include copies, deletes, or simply updating the filename/UUID ref in DB
-    const hasFileActions =
-      filesToCopy.length > 0 ||
-      filesToDelete.length > 0 ||
-      dataToUpdate.hasOwnProperty("logoFilename") ||
-      dataToUpdate.hasOwnProperty("letterheadFilename") ||
-      dataToUpdate.hasOwnProperty("uploadUUID");
-
-    if (!hasDbFieldChanges && !hasFileActions) {
-      console.log(
-        `[Update No Changes:${requestUploadUUID}] No effective changes.`
-      );
-      // Cleanup *this request's* potentially unused upload directory IF it was created
-      if (req.cleanupUpload && hasNewUploads) {
-        await req.cleanupUpload(req);
-      }
-
-      // Return current data
-      const currentFullAgency = await prisma.agency.findUnique({
-        where: { id: agencyId },
-      }); // Fetch full data
-      return res.status(200).json({
-        message: "No changes applied.",
-        agency: {
-          ...currentFullAgency,
-          logoUrl: getFileUrl(
-            AGENCY_MODULE_NAME,
-            "logo",
-            currentFullAgency.uploadUUID,
-            currentFullAgency.logoFilename
-          ),
-          letterheadUrl: getFileUrl(
-            AGENCY_MODULE_NAME,
-            "letterHead",
-            currentFullAgency.uploadUUID,
-            currentFullAgency.letterheadFilename
-          ),
-        },
-      });
-    }
-
-    console.log(
-      `[Update Changes:${requestUploadUUID}] Changes detected. DB Data:`,
-      dataToUpdate
-    );
-    console.log(
-      `[Update Changes:${requestUploadUUID}] Files to Copy:`,
-      filesToCopy.map((f) => f.fieldName)
-    );
-    console.log(
-      `[Update Changes:${requestUploadUUID}] Files to Delete:`,
-      filesToDelete.map((f) => f.fieldName)
-    );
-
-    // 6. Perform Database Update
-    const updatedAgency = await prisma.agency.update({
-      where: { id: agencyId },
-      data: {
-        ...dataToUpdate,
-      },
-    });
-    console.log(`[Update DB Success:${requestUploadUUID}] DB updated.`);
-
-    // 7. Perform Post-DB File Operations (Copy, Delete)
-    let fileOpErrors = [];
-
-    // --- 7a. Copy necessary files ---
-    if (filesToCopy.length > 0) {
-      console.log(`[Update File Ops:${requestUploadUUID}] Copying files...`);
-      await Promise.all(
-        filesToCopy.map(async (op) => {
-          try {
-            const destDir = path.dirname(op.destPath);
-            await fs.mkdir(destDir, { recursive: true }); // Ensure destination dir exists
-            await fs.copyFile(op.sourcePath, op.destPath);
-            console.log(
-              `[Update File Ops:${requestUploadUUID}] Copied ${
-                op.fieldName
-              }: ${path.basename(op.sourcePath)} -> ${path.basename(
-                op.destPath
-              )}`
-            );
-          } catch (err) {
-            console.error(
-              `[Update File Ops ERROR:${requestUploadUUID}] Failed to copy ${op.fieldName} from ${op.sourcePath} to ${op.destPath}:`,
-              err
-            );
-            fileOpErrors.push(`Failed to copy ${op.fieldName}.`);
-          }
-        })
-      );
-    }
-
-    // --- 7b. Delete old/replaced files ---
-    if (filesToDelete.length > 0) {
-      console.log(
-        `[Update File Ops:${requestUploadUUID}] Deleting old files...`
-      );
-      await Promise.all(
-        filesToDelete.map(async (op) => {
-          try {
-            await fs.unlink(op.fullPath);
-            console.log(
-              `[Update File Ops:${requestUploadUUID}] Deleted old ${op.fieldName} file: ${op.fullPath}`
-            );
-          } catch (err) {
-            if (err.code === "ENOENT") {
-              console.log(
-                `[Update File Ops:${requestUploadUUID}] Old ${op.fieldName} file not found (OK): ${op.fullPath}`
-              );
-            } else {
-              console.error(
-                `[Update File Ops ERROR:${requestUploadUUID}] Failed to delete old ${op.fieldName} file ${op.fullPath}:`,
-                err
-              );
-              fileOpErrors.push(`Failed to delete old ${op.fieldName} file.`);
-            }
-          }
-        })
-      );
-    }
-
-    // --- NOTE: No directory cleanup here ---
-    // We are only deleting specific files. The middleware handles cleanup for *this request*.
-    // Old, potentially empty directories from previous UUIDs might remain.
-
-    // 8. Success Response
-    console.log(`[Update Success:${requestUploadUUID}] Process completed.`);
-    const responsePayload = {
-      message: "Agency updated successfully.",
-      agency: {
-        ...updatedAgency,
-        logoUrl: getFileUrl(
-          AGENCY_MODULE_NAME,
-          "logo",
-          updatedAgency.uploadUUID,
-          updatedAgency.logoFilename
-        ),
-        letterheadUrl: getFileUrl(
-          AGENCY_MODULE_NAME,
-          "letterHead",
-          updatedAgency.uploadUUID,
-          updatedAgency.letterheadFilename
-        ),
-      },
-    };
-    if (fileOpErrors.length > 0) {
-      responsePayload.warnings = fileOpErrors; // Include warnings if file ops failed
-      console.warn(
-        `[Update Success:${requestUploadUUID}] Update finished with file operation warnings:`,
-        fileOpErrors
-      );
-    }
-
-    res.status(200).json(responsePayload);
-  } catch (error) {
-    // --- Error Handling ---
-    console.error(
-      `[Update FATAL ERROR:${requestUploadUUID}] Error updating agency ${agencyId}:`,
-      error
-    );
-    // Cleanup *this request's* uploads if error occurred after validation
-    if (req.cleanupUpload) {
-      console.log(
-        `[Update Error Cleanup:${requestUploadUUID}] Attempting cleanup...`
-      );
-      await req.cleanupUpload(req).catch((cleanupErr) => {
-        console.error(
-          `[Update Error Cleanup:${requestUploadUUID}] Cleanup failed:`,
-          cleanupErr
-        );
-      });
-    }
-
-    // Handle specific Prisma errors (remain the same)
-    if (error.code === "P2025")
-      return next(
-        createError(404, `Update failed: Agency ${agencyId} not found.`)
-      );
-    if (error.code === "P2002") {
-      const field = error.meta?.target?.join(", ") || "field";
-      return res.status(409).json({
-        errors: {
-          general: `Unique constraint violation on ${field}.`,
-          ...(field === "contactPersonEmail" && {
-            contactPersonEmail: `Email already in use.`,
-          }),
-        },
-      });
-    }
-    return res.status(500).json({
-      errors: {
-        message: "Failed to create airline",
-        details: error.message,
-      },
-    });
-  }
-};
-
 module.exports = {
   getAgencies,
   createAgency,
   getAgencyById,
   updateAgency,
   deleteAgency,
-  updateAgencyProfile,
 };

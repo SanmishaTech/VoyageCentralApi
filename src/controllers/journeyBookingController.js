@@ -25,6 +25,7 @@ const createJourneyBooking = async (req, res, next) => {
       busName: z.string().optional(),
       flightNumber: z.string().optional(),
       airlineId: z.number().nullable().optional(),
+      vehicleId: z.number().nullable().optional(),
     })
     .superRefine((data, ctx) => {
       // If the mode is "Train", ensure trainName and trainNumber are provided
@@ -108,6 +109,17 @@ const createJourneyBooking = async (req, res, next) => {
         }
       }
       // bus end
+      // vehicle start
+      if (data.mode === "Car") {
+        if (!data.vehicleId) {
+          ctx.addIssue({
+            path: ["vehicleId"], // Path to the trainName field
+            message: "Car Name is required when mode is 'Car'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+      }
+      // vehicle end
     });
 
   const { id } = req.params;
@@ -136,6 +148,7 @@ const createJourneyBooking = async (req, res, next) => {
       busName,
       flightNumber,
       airlineId,
+      vehicleId,
     } = req.body;
 
     let classVal = null;
@@ -162,7 +175,8 @@ const createJourneyBooking = async (req, res, next) => {
         trainNumber: trainNumber || null,
         busName: busName || null,
         flightNumber: flightNumber || null,
-        airlineId: airlineId || null,
+        airlineId: airlineId ? parseInt(airlineId) : null,
+        vehicleId: vehicleId ? parseInt(vehicleId) : null,
       },
     });
 
@@ -226,6 +240,7 @@ const updateJourneyBooking = async (req, res, next) => {
       busName: z.string().optional(),
       flightNumber: z.string().optional(),
       airlineId: z.number().nullable().optional(),
+      vehicleId: z.number().nullable().optional(),
     })
     .superRefine((data, ctx) => {
       // If the mode is "Train", ensure trainName and trainNumber are provided
@@ -309,6 +324,18 @@ const updateJourneyBooking = async (req, res, next) => {
         }
       }
       // bus end
+
+      // vehicle start
+      if (data.mode === "Car") {
+        if (!data.vehicleId) {
+          ctx.addIssue({
+            path: ["vehicleId"], // Path to the trainName field
+            message: "Car Name is required when mode is 'Car'",
+            code: z.ZodIssueCode.custom,
+          });
+        }
+      }
+      // vehicle end
     });
 
   // const parseDate = (value) => {
@@ -337,6 +364,7 @@ const updateJourneyBooking = async (req, res, next) => {
       busName,
       flightNumber,
       airlineId,
+      vehicleId,
     } = req.body;
 
     let classVal = null;
@@ -363,7 +391,8 @@ const updateJourneyBooking = async (req, res, next) => {
         trainNumber: trainNumber || null,
         busName: busName || null,
         flightNumber: flightNumber || null,
-        airlineId: airlineId || null,
+        airlineId: airlineId ? parseInt(airlineId) : null,
+        vehicleId: vehicleId ? parseInt(vehicleId) : null,
       },
     });
 
