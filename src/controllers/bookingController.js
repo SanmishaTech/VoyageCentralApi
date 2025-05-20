@@ -33,6 +33,7 @@ const getBookings = async (req, res, next) => {
 
     const whereClause = {
       agencyId: req.user.agencyId,
+      bookingType: "Confirm",
       AND: [
         // Filter by booking date range
         fromBookingDate && toBookingDate

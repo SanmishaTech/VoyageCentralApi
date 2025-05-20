@@ -55,13 +55,15 @@ model Agency {
   businessName         String    // Business name
   addressLine1         String    @db.Text
   addressLine2         String?   @db.Text
-  stateId  Int?
-  state                State?    @relation("AgencyState", fields: [stateId], references: [id], onDelete: Restrict)
-  cityId  Int?
-  city   City?   @relation("AgencyCity", fields:[cityId],references: [id], onDelete: Restrict)
+  // stateId  Int?
+  // state                State?    @relation("AgencyState", fields: [stateId], references: [id], onDelete: Restrict)
+  // cityId  Int?
+  // city   City?   @relation("AgencyCity", fields:[cityId],references: [id], onDelete: Restrict)
+  stateName         String?   // State name
+  cityName          String?   // City name
   pincode              String?    
   currentSubscription  Subscription? @relation("CurrentSubscription", fields: [currentSubscriptionId], references: [id],onDelete: Restrict)
- uploadUUID          String?  // Stores the UUID directory name
+  uploadUUID          String?  // Stores the UUID directory name
   logoFilename        String?  // Stores only the filename for the logo
   letterheadFilename  String?  // Stores only the filename for the letterhead
   contactPersonName    String    // Contact person name
@@ -71,6 +73,8 @@ model Agency {
   contactPersonEmail2   String?    // Contact person email
   contactPersonPhone2   String?    // Contact person phone
   gstin                String    // GSTIN
+  invoiceNumber  String?  // Invoice number (optional)
+  invoicePath  String?  // Invoice name (optional)
   subscriptions        Subscription[] @relation("AgencySubscriptions") 
   users                User[]         
   branches             Branch[]
@@ -84,12 +88,13 @@ model Agency {
   hotels               Hotel[]
   clients               Client[]
   banks               Bank[]
-  fairs               Fair[]
+  services               Service[]
   tours               Tour[]
   bookings           Booking[]
   hotelBookings     HotelBooking[]
   agents             Agent[]  
   vehicleBookings    VehicleBooking[]
+  bookingReceipts   BookingReceipt[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -172,8 +177,8 @@ model State {
 hotelAddresses  Hotel[] @relation("HotelState")
 officeAddresses Hotel[] @relation("OfficeState")
   clients         Client[]  // One-to-many relationship with Client
-  agencies         Agency[]  @relation("AgencyState")
-  agents             Agent[]  
+  // agencies         Agency[]  @relation("AgencyState")
+  agents             Agent[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -193,7 +198,7 @@ officeAddresses Hotel[] @relation("OfficeCity")
 itineraries  Itinerary[] // One-to-many relationship with Itinerary
 bookingDetails BookingDetail[] // One-to-many relationship with TourEnquiry
   hotelBookings    HotelBooking[]
-  agencies         Agency[]   @relation("AgencyCity")
+  // agencies         Agency[]   @relation("AgencyCity")
     agents             Agent[]  
       vehicleBookings    VehicleBooking[]
   vehicleItineraries VehicleItinerary[]
@@ -263,7 +268,6 @@ model Hotel {
   hotelAddressLine1   String?  @db.Text
   hotelAddressLine2   String? @db.Text
   hotelAddressLine3   String?  @db.Text
-
   hotelPincode        String?
   officeAddressLine1  String?     @db.Text
   officeAddressLine2  String?     @db.Text
@@ -379,7 +383,7 @@ model Bank {
   hotels2  Hotel[]  @relation("Bank2")
   agents1  Agent[]  @relation("Bank1_Agent")
   agents2  Agent[]  @relation("Bank2_Agent")
-  
+  bookingReceipts   BookingReceipt[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -387,15 +391,15 @@ model Bank {
 }
 
 
-model Fair {
+model Service {
   id   Int  @id @default(autoincrement())
   agencyId  Int
   agency   Agency   @relation(fields:[agencyId],references:[id],onDelete:Restrict)
-  fairName String
+  serviceName String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("fairs")
+  @@map("services")
 }
 
 model Tour {
@@ -461,7 +465,7 @@ model Booking {
   bookingDetails      BookingDetail[] // One-to-many relationship with TourBookingDetail
   followUpDate     DateTime?  // Date of the follow-up
   remarks          String?   // Remarks for the follow-up
-  numberOfNights   Int?       // Number of nights
+  enquiryStatus   String?   // Status of the enquiry (e.g., Open, Closed)
   bookingType     String?   // Type of booking (e.g., Group, Individual)
   FollowUps       FollowUp[]
   journeyBookings  JourneyBooking[]
@@ -470,7 +474,7 @@ model Booking {
     vehicleBookings    VehicleBooking[]
   travelDocuments TravelDocument[]
   tourMembers      TourMember[] // One-to-many relationship with TourMember
-
+  bookingReceipts   BookingReceipt[]
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
@@ -498,7 +502,7 @@ model FollowUp {
   booking          Booking   @relation(fields: [bookingId], references: [id])
   followUpDate     DateTime  // Date of the follow-up
   nextFollowUpDate DateTime? // Optional next follow-up date
-  remarks          String   // Remarks for the follow-up
+  remarks          String    @db.Text// Remarks for the follow-up
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -730,5 +734,39 @@ model TourMember {
   updatedAt        DateTime  @updatedAt
 
   @@map("tour_members")
+}
+
+model BookingReceipt {
+  id             Int      @id @default(autoincrement())
+  agencyId       Int
+  agency         Agency   @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  bookingId      Int
+  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  receiptNumber  String   // Receipt number
+  receiptDate    DateTime // Receipt date
+  paymentMode    String   // Payment mode (e.g., Cash, Cheque, UPI, Net Banking)
+  amount         Decimal  @db.Decimal(10, 2)
+  bankId         Int?     
+  bank           Bank?    @relation(fields: [bankId], references: [id], onDelete: Restrict)
+  chequeDate     DateTime?
+  chequeNumber   String?
+  utrNumber      String?
+  neftImpfNumber String?
+  gstin                String?    // GSTIN
+  isGst           Boolean @default(false) // Indicates if the agency is GST registered
+  invoiceNumber  String?  // Invoice number (optional)
+  invoicePath  String?  // Invoice name (optional)
+  cgstPercent     Int?
+  cgstAmount      Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type
+  sgstPercent     Int?
+  sgstAmount      Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type
+  igstPercent     Int?
+  igstAmount      Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type
+  totalAmount     Decimal   @db.Decimal(10, 2) // Added cost field with Decimal type
+  paymentDate    DateTime // Payment date (optional)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("booking_receipts")
 }
 
