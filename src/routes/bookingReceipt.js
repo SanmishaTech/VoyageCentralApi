@@ -6,6 +6,7 @@ const {
   updateBookingReceipt,
   deleteBookingReceipt,
   getAllBookingReceiptsByBookingId,
+  generateInvoice,
 } = require("../controllers/bookingReceiptController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
@@ -44,6 +45,43 @@ router.get(
   acl("bookingReceipts.read"),
   getAllBookingReceiptsByBookingId
 );
+
+/**
+ * @swagger
+ * /invoice/{id}:
+ *   get:
+ *     summary: Generate and download an invoice PDF
+ *     description: Generates a PDF invoice for the specified booking receipt ID. Requires authentication and appropriate permissions.
+ *     tags:
+ *       - Booking Receipts
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID of the booking receipt
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: PDF invoice successfully generated
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Unauthorized – user is not authenticated
+ *       403:
+ *         description: Forbidden – user lacks required permissions
+ *       404:
+ *         description: Booking receipt not found
+ *       500:
+ *         description: Server error while generating invoice
+ */
+
+router.get("/invoice/:id", auth, acl("bookingReceipts.read"), generateInvoice);
 
 /**
  * @swagger

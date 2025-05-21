@@ -1,13 +1,22 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient, Prisma } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
 const dayjs = require("dayjs");
+const path = require("path");
+const fs = require("fs");
+const { v4: uuidv4 } = require("uuid");
+
+const {
+  generateBookingReceiptInvoice,
+} = require("../utils/Invoice/generateBookingReceiptInvoice");
 const parseDate = (value) => {
   if (typeof value !== "string" || value.trim() === "") return undefined;
   return dayjs(value).isValid() ? new Date(value) : undefined;
 };
+const { numberToWords } = require("../utils/numberToWords");
 const generateBookingReceiptNumber = require("../utils/generateBookingReceiptNumber");
+const generateBookingReceiptInvoiceNumber = require("../utils/generateBookingReceiptInvoiceNumber");
 // Create a new booking receipt
 const createBookingReceipt = async (req, res) => {
   const schema = z.object({
@@ -98,37 +107,53 @@ const createBookingReceipt = async (req, res) => {
     igstPercent,
     igstAmount,
     totalAmount,
-    isGst,
+    paymentDate,
+    description,
   } = req.body;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
       const receiptNumber = await generateBookingReceiptNumber(
         tx,
-        req.user.agencyId
+        parseInt(req.user.agencyId)
       );
 
       const newReceipt = await tx.bookingReceipt.create({
         data: {
-          agencyId: parseInt(req.user.agencyId),
-          bookingId: parseInt(id),
+          // agencyId: parseInt(req.user.agencyId),
+          // bookingId: parseInt(id),
+          // bankId: bankId ? parseInt(bankId) : null,
+          agency: {
+            connect: { id: parseInt(req.user.agencyId) },
+          },
+          booking: {
+            connect: { id: parseInt(id) },
+          },
+          bank: bankId
+            ? {
+                connect: {
+                  id: parseInt(bankId),
+                },
+              }
+            : undefined, // Omit if no bankId is provided
           receiptNumber: receiptNumber,
+          description,
           receiptDate: parseDate(receiptDate),
           paymentMode,
           amount: amount ? parseFloat(amount) : null,
-          bankId: bankId ? parseInt(bankId) : null,
           chequeDate: chequeDate ? parseDate(chequeDate) : null,
           chequeNumber,
           utrNumber,
           neftImpfNumber,
-          isGst: isGst ? parseInt(isGst) : null,
           cgstPercent: cgstPercent ? parseFloat(cgstPercent) : null,
           cgstAmount: cgstAmount ? parseFloat(cgstAmount) : null,
           sgstPercent: sgstPercent ? parseFloat(sgstPercent) : null,
           sgstAmount: sgstAmount ? parseFloat(sgstAmount) : null,
           igstPercent: igstPercent ? parseFloat(igstPercent) : null,
           igstAmount: igstAmount ? parseFloat(igstAmount) : null,
-          totalAmount: parseFloat(totalAmount),
+          totalAmount: new Prisma.Decimal(totalAmount),
+          paymentDate: paymentDate ? parseDate(paymentDate) : null,
+          paymentDate: paymentDate ? parseDate(paymentDate) : null,
         },
       });
 
@@ -327,10 +352,184 @@ const getAllBookingReceiptsByBookingId = async (req, res) => {
   }
 };
 
+const generateInvoice = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Step 1: Fetch existing booking receipt
+      const existingInvoice = await tx.bookingReceipt.findUnique({
+        where: { id: parseInt(id, 10) },
+        select: { invoiceNumber: true }, // only fetch needed field
+      });
+      let updateBookingReceipt = null;
+      // Step 2: Check if invoice number already exists
+      if (existingInvoice.invoiceNumber) {
+        // Don't update invoice number, just return existing
+        updateBookingReceipt = await tx.bookingReceipt.update({
+          where: { id: parseInt(id, 10) },
+          data: {
+            invoiceDate: new Date(),
+          },
+        });
+      } else {
+        const invoiceNumber = await generateBookingReceiptInvoiceNumber(
+          tx,
+          parseInt(req.user.agencyId)
+        );
+
+        updateBookingReceipt = await tx.bookingReceipt.update({
+          where: { id: parseInt(id, 10) },
+          data: {
+            invoiceDate: new Date(),
+            invoiceNumber: invoiceNumber,
+          },
+        });
+      }
+
+      return {
+        updateBookingReceipt: updateBookingReceipt,
+      };
+    });
+
+    const receipt = await prisma.bookingReceipt.findUnique({
+      where: { id: parseInt(id, 10) },
+      include: {
+        booking: {
+          include: {
+            client: {
+              include: {
+                city: true,
+                state: true,
+              },
+            },
+          },
+        },
+        agency: true,
+        bank: true,
+      },
+    });
+
+    if (!receipt) {
+      return res.status(404).json({ error: "Receipt not found" });
+    }
+
+    // ✅ Step 2: Format data for generateInvoicePdf
+    const invoiceData = {
+      invoiceNumber: receipt.invoiceNumber,
+      invoiceDate: receipt.invoiceDate,
+      client: {
+        clientName: receipt.booking?.client?.clientName,
+        addressLines: [
+          receipt.booking?.client?.address1 || "",
+          receipt.booking?.client?.address2 || "",
+        ].filter(Boolean),
+        city: receipt.booking?.client?.city?.cityName || "",
+        pincode: receipt.booking?.client?.pincode || "",
+        gstinUin: receipt.booking?.client?.gstin || "",
+      },
+      agencyDetails: {
+        name: receipt.agency.businessName,
+        addressLines: [
+          receipt.agency.addressLine1 || "",
+          receipt.agency.addressLine2 || "",
+        ],
+        city: receipt.agency.cityName || "", // Optional
+        pincode: receipt.agency.pincode || "", // Optional
+        gstin: receipt.agency.gstin || "",
+        email: receipt.agency.contactPersonEmail || "",
+        logoPath: path.join(__dirname, "..", "assets", "brandlogo.png"), // Optional logo
+      },
+      items: [
+        {
+          srNo: 1,
+          description: `${receipt.description}`,
+          hsnSac: "998551", // or pull this from somewhere
+          amount: parseFloat(receipt.amount),
+        },
+      ],
+      totals: {
+        amountBeforeTax: parseFloat(receipt.amount),
+        cgstAmount: parseFloat(receipt.cgstAmount || 0),
+        cgstRate: receipt.cgstPercent || 0,
+        sgstAmount: parseFloat(receipt.sgstAmount || 0),
+        sgstRate: receipt.sgstPercent || 0,
+        igstAmount: parseFloat(receipt.igstAmount || 0),
+        igstRate: receipt.igstPercent || 0,
+        totalAmount: parseFloat(receipt.totalAmount),
+        amountInWords: numberToWords(parseFloat(receipt.totalAmount)), // Optional: convert to words using a helper
+      },
+    };
+
+    // ✅ Step 3: Define file path
+    // const filePath = path.join(
+    //   __dirname,
+    //   "..",
+    //   "invoices",
+    //   `invoice-${receipt.id}.pdf`
+    // );
+    // start
+    const oldPath = receipt.invoicePath;
+
+    const uuidFolder = uuidv4();
+    const invoiceDir = path.join(
+      __dirname,
+      "..",
+      "invoices",
+      "booking",
+      "bookingReceipt",
+      uuidFolder
+    );
+    const filePath = path.join(invoiceDir, `invoice-${receipt.id}.pdf`);
+
+    if (oldPath && fs.existsSync(oldPath)) {
+      try {
+        fs.unlinkSync(oldPath);
+        console.log("Old invoice deleted:", oldPath);
+      } catch (err) {
+        console.error("Failed to delete old invoice:", err);
+      }
+    }
+    // end
+    console.log("Writing PDF to:", filePath);
+
+    // ✅ Step 4: Generate the PDF
+    await generateBookingReceiptInvoice(invoiceData, filePath);
+    await prisma.bookingReceipt.update({
+      where: { id: parseInt(id, 10) },
+      data: {
+        invoicePath: filePath, // Save relative or absolute path based on your use-case
+      },
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+
+    // ✅ Step 5: Send file to client
+    res.download(filePath, (err) => {
+      if (err) {
+        console.error("Download error:", err);
+        res.status(500).send("Failed to download invoice");
+      } else {
+        // Optionally delete file after download
+        // fs.unlink(filePath, () => {});
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      errors: {
+        message: "Failed to generate invoice",
+        details: error.message,
+      },
+    });
+  }
+};
+
 module.exports = {
   createBookingReceipt,
   getBookingReceiptById,
   updateBookingReceipt,
   deleteBookingReceipt,
   getAllBookingReceiptsByBookingId,
+  generateInvoice,
 };

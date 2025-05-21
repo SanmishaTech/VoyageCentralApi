@@ -4,7 +4,13 @@ const prisma = new PrismaClient();
 const { z } = require("zod"); // Import Zod for validation
 const validateRequest = require("../utils/validateRequest"); // Utility function for validation
 const dayjs = require("dayjs"); // Import dayjs
-
+const { numberToWords } = require("../utils/numberToWords");
+const generateSubscriptionInvoiceNumber = require("../utils/generateSubscriptionInvoiceNumber");
+const {
+  generateSubscriptionInvoice,
+} = require("../utils/Invoice/generateSubscriptionInvoice");
+const fs = require("fs").promises; // Use promises API
+const path = require("path");
 const createSubscription = async (req, res, next) => {
   // Define Zod schema for subscription validation
   const schema = z
@@ -206,6 +212,143 @@ const createSubscription = async (req, res, next) => {
   }
 };
 
+const generateSubscriptionInvoicePdf = async (req, res) => {
+  const { id } = req.params;
+  console.log("Received Subscription ID:", id); // Debugging line to ensure it's correct
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Step 1: Fetch existing booking receipt
+      const existingInvoice = await tx.subscription.findUnique({
+        where: { id: parseInt(id, 10) },
+        select: { invoiceNumber: true }, // only fetch needed field
+      });
+      let subscription = null;
+      // Step 2: Check if invoice number already exists
+      if (existingInvoice.invoiceNumber) {
+        // Don't update invoice number, just return existing
+        subscription = await tx.subscription.update({
+          where: { id: parseInt(id, 10) },
+          data: {
+            invoiceDate: new Date(),
+          },
+        });
+      } else {
+        const invoiceNumber = await generateSubscriptionInvoiceNumber(tx);
+
+        subscription = await tx.subscription.update({
+          where: { id: parseInt(id, 10) },
+          data: {
+            invoiceDate: new Date(),
+            invoiceNumber: invoiceNumber,
+          },
+        });
+      }
+
+      return {
+        subscription: subscription,
+      };
+    });
+
+    const subscriptionData = await prisma.subscription.findUnique({
+      where: { id: parseInt(id, 10) },
+      include: {
+        agency: true,
+        package: true,
+      },
+    });
+
+    if (!subscriptionData) {
+      return res.status(404).json({ error: "Subscription details not found" });
+    }
+
+    // ✅ Step 2: Format data for generateInvoicePdf
+    const invoiceData = {
+      invoiceNumber: subscriptionData.invoiceNumber,
+      invoiceDate: subscriptionData.invoiceDate,
+      client: {
+        clientName: subscriptionData.agency?.businessName,
+        addressLines: [
+          subscriptionData.agency?.addressLine1 || "",
+          subscriptionData.agency?.addressLine2 || "",
+        ].filter(Boolean),
+        city: subscriptionData.agency?.cityName || "",
+        pincode: subscriptionData.agency?.pincode || "",
+        gstin: subscriptionData.agency?.gstin || "",
+      },
+      sanmishaDetails: {
+        name: "Sanmisha Technologies",
+        addressLines: ["Dombivli East", ""],
+        city: "Dombivli", // Optional
+        pincode: "400605", // Optional
+        gstin: "27AANCS1234C1Z5", // Optional
+        email: "amar@sanmisha.com",
+        logoPath: path.join(__dirname, "..", "assets", "brandlogo.png"), // Optional logo
+      },
+      items: [
+        {
+          srNo: 1,
+          description: `${subscriptionData?.package?.packageName}`,
+          hsnSac: "998551", // or pull this from somewhere
+          amount: parseFloat(subscriptionData.cost),
+        },
+      ],
+      totals: {
+        amountBeforeTax: parseFloat(subscriptionData.cost),
+        cgstAmount: parseFloat(subscriptionData.cgstAmount || 0),
+        cgstRate: subscriptionData.cgstPercent || 0,
+        sgstAmount: parseFloat(subscriptionData.sgstAmount || 0),
+        sgstRate: subscriptionData.sgstPercent || 0,
+        igstAmount: parseFloat(subscriptionData.igstAmount || 0),
+        igstRate: subscriptionData.igstPercent || 0,
+        totalAmount: parseFloat(subscriptionData.totalAmount),
+        amountInWords: numberToWords(parseFloat(subscriptionData.totalAmount)), // Optional: convert to words using a helper
+      },
+    };
+
+    // ✅ Step 3: Define file path
+    const filePath = path.join(
+      __dirname,
+      "..",
+      "invoices",
+      "subscriptions",
+      `invoice-${subscriptionData.id}.pdf`
+    );
+    console.log("Writing PDF to:", filePath);
+
+    // ✅ Step 4: Generate the PDF
+    await generateSubscriptionInvoice(invoiceData, filePath);
+    await prisma.subscription.update({
+      where: { id: parseInt(id, 10) },
+      data: {
+        invoicePath: filePath, // Save relative or absolute path based on your use-case
+      },
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+
+    // ✅ Step 5: Send file to client
+    res.download(filePath, (err) => {
+      if (err) {
+        console.error("Download error:", err);
+        res.status(500).send("Failed to download invoice");
+      } else {
+        // Optionally delete file after download
+        // fs.unlink(filePath, () => {});
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      errors: {
+        message: "Failed to generate invoice",
+        details: error.message,
+      },
+    });
+  }
+};
+
 module.exports = {
   createSubscription,
+  generateSubscriptionInvoicePdf,
 };
