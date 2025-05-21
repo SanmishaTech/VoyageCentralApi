@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const { createSubscription } = require("../controllers/subscriptionController");
+const {
+  createSubscription,
+  generateSubscriptionInvoicePdf,
+} = require("../controllers/subscriptionController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
 
@@ -11,6 +14,47 @@ const acl = require("../middleware/acl");
  *   description: Subscription management endpoints
  */
 
+/**
+ * @swagger
+ * /invoice/{id}:
+ *   get:
+ *     summary: Generate and download a subscription invoice PDF
+ *     description: Generates a PDF invoice for the specified subscription ID. Requires authentication and `subscriptions.read` permission.
+ *     tags:
+ *       - Subscriptions
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID of the subscription
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: PDF invoice successfully generated
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Unauthorized – user is not authenticated
+ *       403:
+ *         description: Forbidden – user lacks required permissions
+ *       404:
+ *         description: Subscription not found
+ *       500:
+ *         description: Server error while generating invoice
+ */
+
+router.get(
+  "/invoice/:id",
+  auth,
+  acl("subscriptions.read"),
+  generateSubscriptionInvoicePdf
+);
 /**
  * @swagger
  * /subscriptions:

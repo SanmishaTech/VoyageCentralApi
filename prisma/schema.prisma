@@ -94,7 +94,7 @@ model Agency {
   hotelBookings     HotelBooking[]
   agents             Agent[]  
   vehicleBookings    VehicleBooking[]
-  bookingReceipts   BookingReceipt[]
+  bookingReceipts    BookingReceipt[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -123,6 +123,9 @@ model Subscription {
   chequeNumber String? // Cheque number (optional)
   chequeDate DateTime? // Cheque date (optional)
   bankName String? // Bank name (optional)
+  invoiceNumber String?   @unique// Invoice number (optional)
+  invoiceDate DateTime? // Invoice date (optional)
+  invoicePath String? // Invoice name (optional)
   startDate       DateTime  // Subscription start date
   endDate         DateTime  // Subscription end date
   createdAt       DateTime  @default(now())
@@ -745,15 +748,15 @@ model BookingReceipt {
   receiptNumber  String   // Receipt number
   receiptDate    DateTime // Receipt date
   paymentMode    String   // Payment mode (e.g., Cash, Cheque, UPI, Net Banking)
+  description    String?  @db.Text // Description of the payment
   amount         Decimal  @db.Decimal(10, 2)
+  invoiceDate   DateTime? // Invoice date (optional)
   bankId         Int?     
   bank           Bank?    @relation(fields: [bankId], references: [id], onDelete: Restrict)
   chequeDate     DateTime?
   chequeNumber   String?
   utrNumber      String?
   neftImpfNumber String?
-  gstin                String?    // GSTIN
-  isGst           Boolean @default(false) // Indicates if the agency is GST registered
   invoiceNumber  String?  // Invoice number (optional)
   invoicePath  String?  // Invoice name (optional)
   cgstPercent     Int?

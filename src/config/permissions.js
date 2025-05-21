@@ -14,6 +14,7 @@ module.exports = {
   "packages.write": ["super_admin"],
   "packages.delete": ["super_admin"],
   "subscriptions.write": ["super_admin"],
+  "subscriptions.read": ["super_admin"],
   //superAdmin and admin sections
   //branches
   "branches.read": ["super_admin", "admin"],
