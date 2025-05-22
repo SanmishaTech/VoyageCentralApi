@@ -462,32 +462,40 @@ const generateInvoice = async (req, res) => {
     };
 
     // ✅ Step 3: Define file path
-    // const filePath = path.join(
-    //   __dirname,
-    //   "..",
-    //   "invoices",
-    //   `invoice-${receipt.id}.pdf`
-    // );
-    // start
-    const oldPath = receipt.invoicePath;
 
+    const oldPath = receipt.invoicePath;
+    const sanitizedInvoiceNumber = receipt.invoiceNumber.replace(
+      /[\/\\]/g,
+      "-"
+    );
     const uuidFolder = uuidv4();
     const invoiceDir = path.join(
       __dirname,
+      "..",
       "..",
       "invoices",
       "booking",
       "bookingReceipt",
       uuidFolder
     );
-    const filePath = path.join(invoiceDir, `invoice-${receipt.id}.pdf`);
+    const filePath = path.join(
+      invoiceDir,
+      `invoice-${sanitizedInvoiceNumber}.pdf`
+    );
 
     if (oldPath && fs.existsSync(oldPath)) {
       try {
-        fs.unlinkSync(oldPath);
+        fs.unlinkSync(oldPath); // ✅ no callback needed
         console.log("Old invoice deleted:", oldPath);
+
+        const folderToDelete = path.dirname(oldPath);
+        const isEmpty = fs.readdirSync(folderToDelete).length === 0;
+        if (isEmpty) {
+          fs.rmdirSync(folderToDelete);
+          console.log("Empty folder deleted:", folderToDelete);
+        }
       } catch (err) {
-        console.error("Failed to delete old invoice:", err);
+        console.error("Error deleting invoice or folder:", err);
       }
     }
     // end

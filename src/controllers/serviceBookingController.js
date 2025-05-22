@@ -1,9 +1,13 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient, Prisma } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
 const createError = require("http-errors");
-
+const dayjs = require("dayjs");
+const parseDate = (value) => {
+  if (typeof value !== "string" || value.trim() === "") return undefined;
+  return dayjs(value).isValid() ? new Date(value) : undefined;
+};
 // Create Service Booking
 const createServiceBooking = async (req, res, next) => {
   const schema = z.object({
@@ -14,13 +18,38 @@ const createServiceBooking = async (req, res, next) => {
   const validationErrors = await validateRequest(schema, req.body, res);
 
   try {
-    const { description, cost } = req.body;
+    const {
+      description,
+      cost,
+      isPaid,
+      agentId,
+      paymentMode,
+      bankId,
+      serviceId,
+      paymentDate,
+      paidAmount,
+      chequeDate,
+      chequeNumber,
+      utrNumber,
+      neftImpfNumber,
+    } = req.body;
 
     const newServiceBooking = await prisma.serviceBooking.create({
       data: {
         bookingId: parseInt(bookingId),
         description,
-        cost: cost !== undefined && cost !== "" ? parseFloat(cost) : null,
+        cost: cost ? new Prisma.Decimal(cost) : null,
+        isPaid,
+        agentId: agentId ? parseInt(agentId) : null,
+        paymentMode: paymentMode || null,
+        bankId: bankId ? parseInt(bankId) : null,
+        serviceId: serviceId ? parseInt(serviceId) : null,
+        paymentDate: paymentDate ? parseDate(paymentDate) : null,
+        paidAmount: paidAmount ? new Prisma.Decimal(paidAmount) : null,
+        chequeDate: chequeDate ? parseDate(chequeDate) : null,
+        chequeNumber: chequeNumber || null,
+        utrNumber: utrNumber || null,
+        neftImpfNumber: neftImpfNumber || null,
       },
     });
 
@@ -72,13 +101,38 @@ const updateServiceBooking = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const { description, cost } = req.body;
+    const {
+      description,
+      cost,
+      isPaid,
+      agentId,
+      paymentMode,
+      bankId,
+      serviceId,
+      paymentDate,
+      paidAmount,
+      chequeDate,
+      chequeNumber,
+      utrNumber,
+      neftImpfNumber,
+    } = req.body;
 
     const updatedServiceBooking = await prisma.serviceBooking.update({
       where: { id: parseInt(id, 10) },
       data: {
         description,
-        cost: cost !== undefined && cost !== "" ? parseFloat(cost) : null,
+        cost: cost ? new Prisma.Decimal(cost) : null,
+        isPaid,
+        agentId: agentId ? parseInt(agentId) : null,
+        paymentMode: paymentMode || null,
+        bankId: bankId ? parseInt(bankId) : null,
+        serviceId: serviceId ? parseInt(serviceId) : null,
+        paymentDate: paymentDate ? parseDate(paymentDate) : null,
+        paidAmount: paidAmount ? new Prisma.Decimal(paidAmount) : null,
+        chequeDate: chequeDate ? parseDate(chequeDate) : null,
+        chequeNumber: chequeNumber || null,
+        utrNumber: utrNumber || null,
+        neftImpfNumber: neftImpfNumber || null,
       },
     });
 

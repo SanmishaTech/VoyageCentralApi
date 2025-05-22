@@ -355,6 +355,7 @@ const getBookingById = async (req, res, next) => {
       },
       include: {
         hotelBookings: true,
+        branch: true,
         bookingDetails: {
           include: {
             city: {

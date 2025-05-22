@@ -1,4 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient, Prisma } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
@@ -149,6 +149,7 @@ const createJourneyBooking = async (req, res, next) => {
       flightNumber,
       airlineId,
       vehicleId,
+      amount,
     } = req.body;
 
     let classVal = null;
@@ -177,6 +178,7 @@ const createJourneyBooking = async (req, res, next) => {
         flightNumber: flightNumber || null,
         airlineId: airlineId ? parseInt(airlineId) : null,
         vehicleId: vehicleId ? parseInt(vehicleId) : null,
+        amount: amount ? new Prisma.Decimal(amount) : null,
       },
     });
 
@@ -365,6 +367,7 @@ const updateJourneyBooking = async (req, res, next) => {
       flightNumber,
       airlineId,
       vehicleId,
+      amount,
     } = req.body;
 
     let classVal = null;
@@ -393,6 +396,7 @@ const updateJourneyBooking = async (req, res, next) => {
         flightNumber: flightNumber || null,
         airlineId: airlineId ? parseInt(airlineId) : null,
         vehicleId: vehicleId ? parseInt(vehicleId) : null,
+        amount: amount ? new Prisma.Decimal(amount) : null,
       },
     });
 
