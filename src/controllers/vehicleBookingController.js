@@ -1,4 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient, Prisma } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
@@ -37,6 +37,7 @@ const createVehicleBooking = async (req, res) => {
       billDescription,
       vehicleItineraries,
       vehicleHotelBookings,
+      amount,
     } = req.body;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -65,6 +66,7 @@ const createVehicleBooking = async (req, res) => {
           specialNote: specialNote || null,
           summaryNote: summaryNote || null,
           billDescription: billDescription || null,
+          amount: amount ? new Prisma.Decimal(amount) : null,
           vehicleItineraries: {
             create: (vehicleItineraries || []).map((itinerary) => ({
               day: parseInt(itinerary.day),
@@ -164,6 +166,7 @@ const updateVehicleBooking = async (req, res) => {
       billDescription,
       vehicleItineraries,
       vehicleHotelBookings,
+      amount,
     } = req.body;
 
     // satrt
@@ -210,6 +213,8 @@ const updateVehicleBooking = async (req, res) => {
           specialNote: specialNote || null,
           summaryNote: summaryNote || null,
           billDescription: billDescription || null,
+          amount: amount ? new Prisma.Decimal(amount) : null,
+
           vehicleItineraries: {
             upsert: vehicleItineraries
               .filter((vehicle) => !!parseInt(vehicle.itineraryId)) // Only existing friends

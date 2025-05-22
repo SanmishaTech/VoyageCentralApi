@@ -387,6 +387,7 @@ model Bank {
   agents1  Agent[]  @relation("Bank1_Agent")
   agents2  Agent[]  @relation("Bank2_Agent")
   bookingReceipts   BookingReceipt[]
+  serviceBookings  ServiceBooking[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -399,6 +400,7 @@ model Service {
   agencyId  Int
   agency   Agency   @relation(fields:[agencyId],references:[id],onDelete:Restrict)
   serviceName String
+  serviceBookings  ServiceBooking[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -534,6 +536,7 @@ model JourneyBooking {
   airline           Airline?  @relation(fields: [airlineId], references: [id], onDelete: Restrict)
   vehicleId         Int?      // Foreign key to the Airline table
   vehicle           Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  amount           Decimal?  @db.Decimal(10, 2) // Amount for the journey booking
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -572,6 +575,8 @@ model HotelBooking {
   specialRequirement  String?   @db.Text
   notes               String?   @db.Text// Notes (optional)
   billDescription     String?   @db.Text// Bill description (optional)
+  amount           Decimal?  @db.Decimal(10, 2) // Amount for the journey booking
+  totalAmount           Decimal?  @db.Decimal(10, 2)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   @@map("hotel_bookings") // Map the table name to "hotel_bookings"
@@ -581,8 +586,22 @@ model ServiceBooking {
   id                  Int       @id @default(autoincrement())
   bookingId           Int       // Foreign key to the Booking table
   booking             Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  agentId                Int?       // Foreign key to the Agency table
+  agent                  Agent?    @relation(fields: [agentId], references: [id], onDelete:Restrict)
+  serviceId                Int?       // Foreign key to the Agency table
+  service                  Service?    @relation(fields: [serviceId], references: [id], onDelete:Restrict)
   description         String      @db.Text
   cost                Decimal?  @db.Decimal(10, 2)
+  isPaid             Boolean   @default(false) 
+  paymentMode    String?   // Payment mode (e.g., Cash, Cheque, UPI)
+  paymentDate    DateTime? // Payment date (optional)
+  paidAmount    Decimal?  @db.Decimal(10, 2) // Amount paid 
+  bankId         Int?     
+  bank           Bank?    @relation(fields: [bankId], references: [id], onDelete: Restrict)
+  chequeDate     DateTime?
+  chequeNumber   String?
+  utrNumber      String?
+  neftImpfNumber String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   @@map("service_bookings")
@@ -631,7 +650,7 @@ model Agent {
   isAirline Boolean @default(false) 
   isTrain   Boolean @default(false)
   vehicleBookings    VehicleBooking[]
-
+  serviceBookings  ServiceBooking[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -663,6 +682,7 @@ model VehicleBooking {
   specialNote         String?  @db.Text
   summaryNote         String?  @db.Text
   billDescription     String?  @db.Text
+  amount           Decimal?  @db.Decimal(10, 2) // Amount for the journey booking
   vehicleItineraries VehicleItinerary[]
   vehicleHotelBookings VehicleHotelBooking[]
   createdAt           DateTime  @default(now())

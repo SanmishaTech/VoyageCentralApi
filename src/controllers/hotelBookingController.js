@@ -1,4 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient, Prisma } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
@@ -41,6 +41,8 @@ const createHotelBooking = async (req, res) => {
       specialRequirement,
       notes,
       billDescription,
+      amount,
+      totalAmount,
     } = req.body;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -77,6 +79,8 @@ const createHotelBooking = async (req, res) => {
           specialRequirement: specialRequirement || null,
           notes: notes || null,
           billDescription: billDescription || null,
+          amount: amount ? new Prisma.Decimal(amount) : null,
+          totalAmount: totalAmount ? new Prisma.Decimal(totalAmount) : null,
         },
       });
 
@@ -152,6 +156,8 @@ const updateHotelBooking = async (req, res) => {
       specialRequirement,
       notes,
       billDescription,
+      amount,
+      totalAmount,
     } = req.body;
 
     const updatedHotelBooking = await prisma.hotelBooking.update({
@@ -182,6 +188,8 @@ const updateHotelBooking = async (req, res) => {
         specialRequirement: specialRequirement || null,
         notes: notes || null,
         billDescription: billDescription || null,
+        amount: amount ? new Prisma.Decimal(amount) : null,
+        totalAmount: totalAmount ? new Prisma.Decimal(totalAmount) : null,
       },
     });
 

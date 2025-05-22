@@ -6,6 +6,8 @@ const validateRequest = require("../utils/validateRequest"); // Utility function
 const dayjs = require("dayjs"); // Import dayjs
 const { numberToWords } = require("../utils/numberToWords");
 const generateSubscriptionInvoiceNumber = require("../utils/generateSubscriptionInvoiceNumber");
+const { v4: uuidv4 } = require("uuid");
+
 const {
   generateSubscriptionInvoice,
 } = require("../utils/Invoice/generateSubscriptionInvoice");
@@ -307,13 +309,49 @@ const generateSubscriptionInvoicePdf = async (req, res) => {
     };
 
     // ✅ Step 3: Define file path
-    const filePath = path.join(
+    // const filePath = path.join(
+    //   __dirname,
+    //   "..",
+    //   "invoices",
+    //   "subscriptions",
+    //   `invoice-${subscriptionData.id}.pdf`
+    // );
+    const oldPath = subscriptionData.invoicePath;
+    const sanitizedInvoiceNumber = subscriptionData.invoiceNumber.replace(
+      /[\/\\]/g,
+      "-"
+    );
+
+    const uuidFolder = uuidv4();
+    const invoiceDir = path.join(
       __dirname,
+      "..",
       "..",
       "invoices",
       "subscriptions",
-      `invoice-${subscriptionData.id}.pdf`
+      uuidFolder
     );
+    const filePath = path.join(
+      invoiceDir,
+      `invoice-${sanitizedInvoiceNumber}.pdf`
+    );
+    try {
+      if (oldPath) {
+        await fs.unlink(oldPath);
+        console.log("Old invoice deleted:", oldPath);
+
+        const folderToDelete = path.dirname(oldPath);
+        const files = await fs.readdir(folderToDelete);
+
+        if (files.length === 0) {
+          await fs.rmdir(folderToDelete);
+          console.log("Empty folder deleted:", folderToDelete);
+        }
+      }
+    } catch (err) {
+      console.error("Error deleting invoice or folder:", err);
+    }
+    // end
     console.log("Writing PDF to:", filePath);
 
     // ✅ Step 4: Generate the PDF
