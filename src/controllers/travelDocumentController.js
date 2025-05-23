@@ -28,7 +28,12 @@ const createTravelDocument = async (req, res, next) => {
       .string()
       .min(1, "Description cannot be left blank.")
       .max(2000, "Description must not exceed 2000 characters."),
-    isPrivate: z.coerce.boolean(),
+    isPrivate: z
+      .string()
+      .refine((val) => val === "true" || val === "false", {
+        message: "isPrivate must be either 'true' or 'false' as a string.",
+      })
+      .transform((val) => val === "true"),
   });
 
   // satrt

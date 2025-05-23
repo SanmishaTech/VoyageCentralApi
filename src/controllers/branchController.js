@@ -139,8 +139,6 @@ const createBranch = async (req, res, next) => {
       });
     }
     // end
-    const parsed = await schema.parseAsync(req.body);
-    parsed.branchName = parsed.branchName.trim().replace(/\s+/g, " ");
 
     const {
       branchName,
@@ -149,7 +147,7 @@ const createBranch = async (req, res, next) => {
       contactEmail,
       contactMobile,
       pincode,
-    } = parsed;
+    } = req.body;
 
     const newBranch = await prisma.branch.create({
       data: {
