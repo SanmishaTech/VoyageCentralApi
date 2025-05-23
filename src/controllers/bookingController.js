@@ -5,6 +5,7 @@ const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
 const createError = require("http-errors"); // For consistent error handling
 const generateBookingNumber = require("../utils/generateBookingNumber");
+const roles = require("../config/roles");
 // Get all tour enquiries with pagination, sorting, and search
 const getBookings = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
@@ -13,6 +14,21 @@ const getBookings = async (req, res, next) => {
   const search = req.query.search || "";
   const sortBy = req.query.sortBy || "id";
   const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+  // start
+  let agencyId = req.user.agencyId;
+  let branchId = req.user.branchId;
+  let role = req.user.role;
+
+  let baseWhereClause = {
+    agencyId: agencyId,
+    bookingType: "Confirm",
+  };
+
+  // If user is not admin and belongs to a branch, filter by branch
+  if (role !== "admin" && branchId) {
+    baseWhereClause.branchId = branchId;
+  }
+  // end
 
   // Additional filters
   const fromBookingDate = req.query.fromBookingDate
@@ -32,8 +48,7 @@ const getBookings = async (req, res, next) => {
     }
 
     const whereClause = {
-      agencyId: req.user.agencyId,
-      bookingType: "Confirm",
+      ...baseWhereClause,
       AND: [
         // Filter by booking date range
         fromBookingDate && toBookingDate
@@ -228,25 +243,41 @@ const getTourEnquiries = async (req, res, next) => {
 
 // Create a new tour enquiry
 const createBooking = async (req, res, next) => {
-  const schema = z.object({
-    clientId: z.number().min(1, "Client ID cannot be blank."),
-    bookingDetails: z
-      .array(
-        z.object({
-          day: z
-            .number({
-              required_error: "Day is required.",
-              invalid_type_error: "Day must be a number.",
-            })
-            .int("Day must be an integer."),
-          date: z.string().min(1, "Date cannot be blank."),
-          description: z.string().min(1, "Description cannot be blank."),
-          cityId: z.string().optional(),
-        })
-      )
-      .optional(),
-  });
+  const schema = z
+    .object({
+      clientId: z.number().min(1, "Client ID cannot be blank."),
+      branchId: z.string().optional(),
+      bookingDetails: z
+        .array(
+          z.object({
+            day: z
+              .number({
+                required_error: "Day is required.",
+                invalid_type_error: "Day must be a number.",
+              })
+              .int("Day must be an integer."),
+            date: z.string().min(1, "Date cannot be blank."),
+            description: z.string().min(1, "Description cannot be blank."),
+            cityId: z.string().optional(),
+          })
+        )
+        .optional(),
+    })
+    .superRefine(async (data, ctx) => {
+      // You must define this logic *after* you have access to `req`
+      const userRole = req.user.role;
 
+      if (
+        userRole === roles.ADMIN &&
+        (!data.branchId || data.branchId.trim() === "")
+      ) {
+        ctx.addIssue({
+          path: ["branchId"],
+          code: z.ZodIssueCode.custom,
+          message: "Branch ID is required for admin users.",
+        });
+      }
+    });
   const validationErrors = await validateRequest(schema, req.body, res);
 
   try {
@@ -270,7 +301,6 @@ const createBooking = async (req, res, next) => {
       numberOfAdults,
       numberOfChildren5To11,
       numberOfChildrenUnder5,
-      branchId,
       tourId,
       bookingDetail,
       isJourney,
@@ -282,6 +312,13 @@ const createBooking = async (req, res, next) => {
       // numberOfNights,
       bookingType,
     } = req.body;
+
+    let branchId = null;
+    if (req.user.role === roles.ADMIN) {
+      branchId = req.body.branchId;
+    } else {
+      branchId = req.user.branchId;
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const bookingNumber = await generateBookingNumber(tx, req.user.agencyId);
@@ -303,11 +340,7 @@ const createBooking = async (req, res, next) => {
           numberOfChildrenUnder5: numberOfChildrenUnder5
             ? parseInt(numberOfChildrenUnder5, 10)
             : null, // Parse as integer
-          branchId: req.user.branchId
-            ? req.user.branchId
-            : branchId
-            ? parseInt(branchId, 10)
-            : null,
+          branchId: parseInt(branchId, 10),
           tourId: tourId ? parseInt(tourId, 10) : null,
           bookingDetail: bookingDetail || null,
           isJourney: !!isJourney, // Convert to boolean
@@ -396,19 +429,36 @@ const getBookingById = async (req, res, next) => {
 
 // Update a tour enquiry
 const updateBooking = async (req, res, next) => {
-  const schema = z.object({
-    budgetField: z.string().optional(),
-    bookingDetails: z
-      .array(
-        z.object({
-          bookingDetailId: z.string().optional(), // Include ID for existing booking details
-          day: z.number().min(1, "Day must be at least 1."),
-          date: z.string().min(1, "Date cannot be blank."),
-          description: z.string().min(1, "Description cannot be blank."),
-        })
-      )
-      .optional(),
-  });
+  const schema = z
+    .object({
+      budgetField: z.string().optional(),
+      branchId: z.string().optional(),
+      bookingDetails: z
+        .array(
+          z.object({
+            bookingDetailId: z.string().optional(), // Include ID for existing booking details
+            day: z.number().min(1, "Day must be at least 1."),
+            date: z.string().min(1, "Date cannot be blank."),
+            description: z.string().min(1, "Description cannot be blank."),
+          })
+        )
+        .optional(),
+    })
+    .superRefine(async (data, ctx) => {
+      // You must define this logic *after* you have access to `req`
+      const userRole = req.user.role;
+
+      if (
+        userRole === roles.ADMIN &&
+        (!data.branchId || data.branchId.trim() === "")
+      ) {
+        ctx.addIssue({
+          path: ["branchId"],
+          code: z.ZodIssueCode.custom,
+          message: "Branch ID is required for admin users.",
+        });
+      }
+    });
 
   const validationErrors = await validateRequest(schema, req.body, res);
 
@@ -423,7 +473,6 @@ const updateBooking = async (req, res, next) => {
     numberOfAdults,
     numberOfChildren5To11,
     numberOfChildrenUnder5,
-    branchId,
     tourId,
     bookingDetail,
     isJourney,
@@ -441,6 +490,13 @@ const updateBooking = async (req, res, next) => {
       return res
         .status(404)
         .json({ message: "User does not belong to any Agency" });
+    }
+
+    let branchId = null;
+    if (req.user.role === roles.ADMIN) {
+      branchId = req.body.branchId;
+    } else {
+      branchId = req.user.branchId;
     }
 
     const parseDate = (value) => {
@@ -479,11 +535,7 @@ const updateBooking = async (req, res, next) => {
           numberOfChildrenUnder5: numberOfChildrenUnder5
             ? parseInt(numberOfChildrenUnder5, 10)
             : null, // Parse as integer
-          ...(req.user.branchId
-            ? {}
-            : {
-                branchId: branchId ? parseInt(branchId, 10) : null,
-              }),
+          branchId: parseInt(branchId),
           tourId: tourId ? parseInt(tourId, 10) : null,
           bookingDetail: bookingDetail || null,
           isJourney: !!isJourney, // Convert to boolean

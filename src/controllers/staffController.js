@@ -211,7 +211,7 @@ const createStaff = async (req, res, next) => {
         .nonempty("Password is required."),
       role: z.enum(Object.values(roles), "Invalid role."),
       active: z.boolean().optional(),
-      branchId: z.string().min(1, "Branch is required"),
+      branchId: z.string().optional(),
     })
     .superRefine(async (data, ctx) => {
       if (!req.user.agencyId) {
@@ -219,6 +219,20 @@ const createStaff = async (req, res, next) => {
           .status(404)
           .json({ message: "User does not belong to any Agency" });
       }
+
+      const userRole = req.user.role;
+
+      if (
+        userRole === roles.ADMIN &&
+        (!data.branchId || data.branchId.trim() === "")
+      ) {
+        ctx.addIssue({
+          path: ["branchId"],
+          code: z.ZodIssueCode.custom,
+          message: "Branch ID is required for admin users.",
+        });
+      }
+
       const existingUser = await prisma.user.findUnique({
         where: { email: req.body.email },
       });
@@ -233,6 +247,13 @@ const createStaff = async (req, res, next) => {
 
   try {
     const validationErrors = await validateRequest(schema, req.body, res);
+
+    let branchId = null;
+    if (req.user.role === roles.ADMIN) {
+      branchId = req.body.branchId;
+    } else {
+      branchId = req.user.branchId;
+    }
 
     const parseDate = (value) => {
       if (typeof value !== "string" || value.trim() === "") return undefined;
@@ -253,7 +274,7 @@ const createStaff = async (req, res, next) => {
       packageData?.currentSubscription?.package?.usersPerBranch || 0;
 
     const branchData = await prisma.branch.findUnique({
-      where: { id: parseInt(req.body.branchId) },
+      where: { id: parseInt(branchId) },
       include: {
         users: true,
       },
@@ -271,19 +292,6 @@ const createStaff = async (req, res, next) => {
 
     // end
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
-
-    let branchId = null;
-    if (req.user.role === roles.ADMIN) {
-      branchId = req.body.branchId;
-    } else if (req.user.role === roles.BRANCH_ADMIN) {
-      branchId = req.user.branchId;
-    } else {
-      if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User is not allowed to enter staff" });
-      }
-    }
 
     const staff = await prisma.user.create({
       data: {
@@ -381,17 +389,69 @@ const updateStaff = async (req, res, next) => {
       }
     }
 
+    // start
+    const packageData = await prisma.agency.findUnique({
+      where: { id: parseInt(req.user.agencyId) },
+      include: {
+        currentSubscription: {
+          include: {
+            package: true, // ✅ Correct usage of nested include
+          },
+        },
+      },
+    });
+    const usersPerBranch =
+      packageData?.currentSubscription?.package?.usersPerBranch || 0;
+
+    const branchData = await prisma.branch.findUnique({
+      where: { id: parseInt(req.body.branchId) },
+      include: {
+        users: true,
+      },
+    });
+
+    const totalUsers = branchData?.users?.length || 0;
+
+    let isUserInBranch = false;
+
+    // Check if user with the same email already exists in the branch
+    if (req.body.email) {
+      const existingBranchUser = await prisma.user.findFirst({
+        where: {
+          email: req.body.email,
+          branchId: parseInt(req.body.branchId),
+        },
+      });
+
+      if (existingBranchUser) {
+        isUserInBranch = true;
+      }
+    }
+
+    // Enforce limit only if the user is not already part of the branch
+    if (!isUserInBranch && totalUsers >= usersPerBranch) {
+      return res.status(500).json({
+        errors: {
+          message: "User limit reached for your package.",
+        },
+      });
+    }
+
+    // if (totalUsers >= usersPerBranch) {
+    //   return res.status(500).json({
+    //     errors: {
+    //       message: "User limit reached for your package.",
+    //     },
+    //   });
+    // }
+
+    // end
+
     let branchId = null;
     if (req.user.role === roles.ADMIN) {
       branchId = req.body.branchId;
-    } else if (req.user.role === roles.BRANCH_ADMIN) {
-      branchId = req.user.branchId;
     } else {
-      if (!req.user.agencyId) {
-        return res
-          .status(404)
-          .json({ message: "User is not allowed to enter staff" });
-      }
+      branchId = req.user.branchId;
     }
 
     const updatedStaff = await prisma.user.update({

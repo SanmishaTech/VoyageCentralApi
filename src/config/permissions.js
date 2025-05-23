@@ -17,7 +17,7 @@ module.exports = {
   "subscriptions.read": ["super_admin"],
   //superAdmin and admin sections
   //branches
-  "branches.read": ["super_admin", "admin"],
+  "branches.read": ["super_admin", "admin", "branch_admin", "user"],
   "branches.write": ["super_admin", "admin"],
   "branches.delete": ["super_admin", "admin"],
   //countries
@@ -39,9 +39,9 @@ module.exports = {
   //roles
   "roles.read": ["super_admin", "admin", "branch_admin", "user"],
   //staff
-  "staff.read": ["admin", "branch_admin"],
-  "staff.write": ["admin", "branch_admin"],
-  "staff.delete": ["admin", "branch_admin"],
+  "staff.read": ["admin", "branch_admin", "user"],
+  "staff.write": ["admin", "branch_admin", "user"],
+  "staff.delete": ["admin", "branch_admin", "user"],
   //accommodations
   "accommodations.write": ["super_admin", "admin", "branch_admin", "user"],
   "accommodations.delete": ["super_admin", "admin", "branch_admin", "user"],
