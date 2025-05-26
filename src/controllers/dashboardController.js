@@ -40,6 +40,11 @@ const getUpcomingFollowUps = async (req, res, next) => {
         },
       },
       include: {
+        user: {
+          select: {
+            name: true,
+          },
+        },
         booking: {
           select: {
             bookingNumber: true,
@@ -58,6 +63,7 @@ const getUpcomingFollowUps = async (req, res, next) => {
       bookingNumber: fu.booking.bookingNumber,
       nextFollowUpDate: dayjs(fu.nextFollowUpDate).format("YYYY-MM-DD"),
       remarks: fu.remarks,
+      userName: fu.user.name,
     }));
 
     const totalPages = Math.ceil(totalFollowUps / limit);
