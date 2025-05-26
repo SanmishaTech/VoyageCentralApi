@@ -33,6 +33,7 @@ const createFollowUp = async (req, res, next) => {
       const newFollowUp = await tx.followUp.create({
         data: {
           bookingId: parseInt(id),
+          userId: parseInt(req.user.id),
           followUpDate: parseDate(followUpDate),
           nextFollowUpDate: parseDate(nextFollowUpDate),
           remarks,
