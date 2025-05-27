@@ -307,9 +307,8 @@ const createBooking = async (req, res, next) => {
       isHotel,
       isVehicle,
       isPackage,
-      enquiryStatus,
       bookingDetails,
-      // numberOfNights,
+      groupTourMembers,
       bookingType,
     } = req.body;
 
@@ -328,7 +327,6 @@ const createBooking = async (req, res, next) => {
           agencyId: req.user.agencyId,
           bookingDate: parseDate(bookingDate),
           journeyDate: parseDate(journeyDate),
-          // numberOfNights: numberOfNights ? parseInt(numberOfNights) : null,
           bookingType: bookingType ? bookingType : null,
           departureDate: parseDate(departureDate),
           budgetField: budgetField || null,
@@ -353,6 +351,23 @@ const createBooking = async (req, res, next) => {
               date: parseDate(detail.date),
               description: detail.description || "",
               cityId: detail.cityId ? parseInt(detail.cityId, 10) : null, // Parse as integer
+            })),
+          },
+          groupTourMembers: {
+            create: (groupTourMembers || []).map((member) => ({
+              name: member.name || null,
+              gender: member.gender || null,
+              aadharNo: member.aadharNo || null,
+              relation: member.relation || null,
+              dateOfBirth: member.dateOfBirth
+                ? parseDate(member.dateOfBirth)
+                : null,
+              anniversaryDate: member.anniversaryDate
+                ? parseDate(member.anniversaryDate)
+                : null,
+              foodType: member.foodType || null,
+              mobile: member.mobile || null,
+              email: member.email || null,
             })),
           },
         },
@@ -389,6 +404,7 @@ const getBookingById = async (req, res, next) => {
       include: {
         hotelBookings: true,
         branch: true,
+        groupTourMembers: true,
         bookingDetails: {
           include: {
             city: {
@@ -407,6 +423,8 @@ const getBookingById = async (req, res, next) => {
         tour: {
           select: {
             tourTitle: true,
+            isGroupTour: true,
+            numberOfTravelers: true,
           },
         },
       },
@@ -479,9 +497,8 @@ const updateBooking = async (req, res, next) => {
     isHotel,
     isVehicle,
     isPackage,
-    enquiryStatus,
     bookingDetails = [],
-    // numberOfNights,
+    groupTourMembers = [],
     bookingType,
   } = req.body;
 
@@ -513,6 +530,18 @@ const updateBooking = async (req, res, next) => {
             notIn: bookingDetails
               .filter((d) => parseInt(d.bookingDetailId))
               .map((d) => parseInt(d.bookingDetailId)), // Only keep existing friends in the list
+          },
+        },
+      });
+
+      // group tour members
+      await tx.groupTourMember.deleteMany({
+        where: {
+          bookingId: parseInt(id, 10),
+          id: {
+            notIn: groupTourMembers
+              .filter((d) => parseInt(d.groupTourMemberId))
+              .map((d) => parseInt(d.groupTourMemberId)), // Only keep existing members in the list
           },
         },
       });
@@ -567,6 +596,60 @@ const updateBooking = async (req, res, next) => {
                 description: detail.description,
                 date: parseDate(detail.date),
                 cityId: detail.cityId ? parseInt(detail.cityId, 10) : null,
+              })),
+          },
+          groupTourMembers: {
+            upsert: groupTourMembers
+              .filter((member) => !!parseInt(member.groupTourMemberId)) // Existing members
+              .map((member) => ({
+                where: { id: parseInt(member.groupTourMemberId, 10) },
+                update: {
+                  name: member.name || null,
+                  gender: member.gender || null,
+                  aadharNo: member.aadharNo || null,
+                  relation: member.relation || null,
+                  dateOfBirth: member.dateOfBirth
+                    ? parseDate(member.dateOfBirth)
+                    : null,
+                  anniversaryDate: member.anniversaryDate
+                    ? parseDate(member.anniversaryDate)
+                    : null,
+                  foodType: member.foodType || null,
+                  mobile: member.mobile || null,
+                  email: member.email || null,
+                },
+                create: {
+                  name: member.name || null,
+                  gender: member.gender || null,
+                  aadharNo: member.aadharNo || null,
+                  relation: member.relation || null,
+                  dateOfBirth: member.dateOfBirth
+                    ? parseDate(member.dateOfBirth)
+                    : null,
+                  anniversaryDate: member.anniversaryDate
+                    ? parseDate(member.anniversaryDate)
+                    : null,
+                  foodType: member.foodType || null,
+                  mobile: member.mobile || null,
+                  email: member.email || null,
+                },
+              })),
+            create: groupTourMembers
+              .filter((member) => !parseInt(member.groupTourMemberId)) // New members
+              .map((member) => ({
+                name: member.name || null,
+                gender: member.gender || null,
+                aadharNo: member.aadharNo || null,
+                relation: member.relation || null,
+                dateOfBirth: member.dateOfBirth
+                  ? parseDate(member.dateOfBirth)
+                  : null,
+                anniversaryDate: member.anniversaryDate
+                  ? parseDate(member.anniversaryDate)
+                  : null,
+                foodType: member.foodType || null,
+                mobile: member.mobile || null,
+                email: member.email || null,
               })),
           },
         },

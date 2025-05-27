@@ -421,7 +421,9 @@ model Tour {
   uploadUUID  String?  // Stores the UUID directory name
   attachment  String?  // File attachment (optional)
   notes       String?   @db.Text
-   numberOfNights   Int?       // Number of nights
+  numberOfNights   Int?       // Number of nights
+  numberOfTravelers   Int?       // Number of travelers
+  isGroupTour Boolean @default(false) // Indicates if it's a group tour
   itineraries Itinerary[] // One-to-many relationship with Itinerary
   bookings Booking[] // One-to-many relationship with TourEnquiry
   createdAt   DateTime @default(now())
@@ -473,17 +475,18 @@ model Booking {
   remarks          String?   // Remarks for the follow-up
   enquiryStatus   String?   // Status of the enquiry (e.g., Open, Closed)
   bookingType     String?   // Type of booking (e.g., Group, Individual)
+  isGroupTourBooking Boolean @default(false) // Indicates if it's a group tour booking
   FollowUps       FollowUp[]
   journeyBookings  JourneyBooking[]
   hotelBookings    HotelBooking[]
   serviceBookings  ServiceBooking[]
-    vehicleBookings    VehicleBooking[]
+  vehicleBookings    VehicleBooking[]
   travelDocuments TravelDocument[]
   tourMembers      TourMember[] // One-to-many relationship with TourMember
+  groupTourMembers   GroupTourMember[] // One-to-many relationship with GroupTourMember
   bookingReceipts   BookingReceipt[]
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
-
   @@map("bookings") // Map the table name to "tour_enquiries"
 }
 
@@ -760,6 +763,25 @@ model TourMember {
   updatedAt        DateTime  @updatedAt
 
   @@map("tour_members")
+}
+
+model GroupTourMember {
+  id               Int       @id @default(autoincrement())
+  bookingId        Int
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  name             String?    // Name of the tour member
+  gender           String?    // Gender
+  aadharNo        String?  // AADHAR number (optional)
+  relation         String?    // Relation to the booking/client
+  dateOfBirth      DateTime? // Date of birth (optional)
+  anniversaryDate  DateTime? // Anniversary date (optional)
+  foodType         String?   // Food type (e.g., Vegetarian, Non-Vegetarian) (optional)
+  mobile           String?   // Mobile number (optional)
+  email            String?   // Email (optional)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("group_tour_members")
 }
 
 model BookingReceipt {

@@ -9,6 +9,7 @@ module.exports = {
 
   TOUR_TYPE_TAILORMADE_TOUR: "Tailormade Tour",
   TOUR_TYPE_HONEYMOON_TOUR: "Honeymoon Tour",
+  TOUR_TYPE_GROUP_TOUR: "Group Tour",
 
   DESTINATION_DOMESTIC: "Domestic",
   DESTINATION_INTERNATIONAL: "International",
