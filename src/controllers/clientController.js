@@ -392,6 +392,7 @@ const getAllClients = async (req, res, next) => {
       select: {
         id: true,
         clientName: true,
+        familyFriends: true,
       },
     });
 

@@ -9,7 +9,7 @@ const { STATUS_OPEN } = require("../config/data");
 const UPLOAD_DIR_BASE = "uploads"; // Base directory - MUST MATCH STATIC SERVING and middleware config
 const TOUR_MODULE_NAME = "tour"; // Define module name consistently
 const fs = require("fs").promises; // Use promises API
-
+const { TOUR_TYPE_GROUP_TOUR } = require("../config/data");
 // --- Helper to construct URLs (Updated for new structure) ---
 const getFileUrl = (moduleName, fieldName, uuid, filename) => {
   // Check if all required parts are present
@@ -167,6 +167,7 @@ const createTour = async (req, res, next) => {
     sectorId,
     notes,
     numberOfNights,
+    numberOfTravelers,
     itineraries = [],
   } = req.body;
 
@@ -185,6 +186,11 @@ const createTour = async (req, res, next) => {
         status: status || null,
         sectorId: sectorId ? parseInt(sectorId, 10) : null,
         numberOfNights: numberOfNights ? parseInt(numberOfNights) : null,
+        numberOfTravelers: numberOfTravelers
+          ? parseInt(numberOfTravelers)
+          : null,
+        numberOfNights: numberOfNights ? parseInt(numberOfNights) : null,
+        isGroupTour: TOUR_TYPE_GROUP_TOUR === tourType ? true : false,
         attachment: attachmentFilename || null,
         uploadUUID: uploadUUID || null,
         notes: notes || null,
@@ -224,6 +230,8 @@ const createTour = async (req, res, next) => {
     });
   }
 };
+
+
 
 // Get a tour by ID
 const getTourById = async (req, res, next) => {
@@ -557,6 +565,7 @@ const updateTour = async (req, res, next) => {
       attachment,
       notes,
       numberOfNights,
+      numberOfTravelers,
       itineraries = [],
     } = req.body;
 
@@ -588,6 +597,10 @@ const updateTour = async (req, res, next) => {
           tourType: tourType || null,
           destination: destination || null,
           numberOfNights: numberOfNights ? parseInt(numberOfNights) : null,
+          numberOfTravelers: numberOfTravelers
+            ? parseInt(numberOfTravelers)
+            : null,
+          isGroupTour: TOUR_TYPE_GROUP_TOUR === tourType ? true : false,
           status: status || null,
           sectorId: sectorId ? parseInt(sectorId, 10) : null,
           attachment: finalAttachmentFilename || null,
