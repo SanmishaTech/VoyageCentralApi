@@ -96,6 +96,7 @@ model Agency {
   agents             Agent[]  
   vehicleBookings    VehicleBooking[]
   bookingReceipts    BookingReceipt[]
+  groupBookings      GroupBooking[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -148,6 +149,8 @@ model Branch {
   agency        Agency    @relation(fields: [agencyId], references: [id], onDelete: Restrict)
   users         User[]
   bookings Booking[]
+  groupBookings      GroupBooking[]
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -207,6 +210,7 @@ bookingDetails BookingDetail[] // One-to-many relationship with TourEnquiry
       vehicleBookings    VehicleBooking[]
   vehicleItineraries VehicleItinerary[]
   vehicleHotelBookings VehicleHotelBooking[]
+  groupBookingDetails  GroupBookingDetail[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -426,6 +430,8 @@ model Tour {
   isGroupTour Boolean @default(false) // Indicates if it's a group tour
   itineraries Itinerary[] // One-to-many relationship with Itinerary
   bookings Booking[] // One-to-many relationship with TourEnquiry
+  groupBookings      GroupBooking[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -483,7 +489,6 @@ model Booking {
   vehicleBookings    VehicleBooking[]
   travelDocuments TravelDocument[]
   tourMembers      TourMember[] // One-to-many relationship with TourMember
-  groupTourMembers   GroupTourMember[] // One-to-many relationship with GroupTourMember
   bookingReceipts   BookingReceipt[]
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
@@ -657,6 +662,7 @@ model Agent {
   isTrain   Boolean @default(false)
   vehicleBookings    VehicleBooking[]
   serviceBookings  ServiceBooking[]
+
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -765,25 +771,6 @@ model TourMember {
   @@map("tour_members")
 }
 
-model GroupTourMember {
-  id               Int       @id @default(autoincrement())
-  bookingId        Int
-  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
-  name             String?    // Name of the tour member
-  gender           String?    // Gender
-  aadharNo        String?  // AADHAR number (optional)
-  relation         String?    // Relation to the booking/client
-  dateOfBirth      DateTime? // Date of birth (optional)
-  anniversaryDate  DateTime? // Anniversary date (optional)
-  foodType         String?   // Food type (e.g., Vegetarian, Non-Vegetarian) (optional)
-  mobile           String?   // Mobile number (optional)
-  email            String?   // Email (optional)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  @@map("group_tour_members")
-}
-
 model BookingReceipt {
   id             Int      @id @default(autoincrement())
   agencyId       Int
@@ -818,3 +805,43 @@ model BookingReceipt {
   @@map("booking_receipts")
 }
 
+// group booking start
+model GroupBooking {
+  id                      Int       @id @default(autoincrement())
+  agencyId                Int       // Foreign key to the Agency table
+  agency                  Agency    @relation(fields: [agencyId], references: [id], onDelete:Restrict)
+  groupBookingNumber           String    
+  groupBookingDate             DateTime  // Date of booking
+  journeyDate             DateTime?  // Journey date
+  branchId                Int?      // Foreign key to the Branch table
+  branch                  Branch?   @relation(fields: [branchId], references: [id],onDelete:Restrict)
+  tourId                  Int?      // Foreign key to the Tour table
+  tour                    Tour?     @relation(fields: [tourId], references: [id], onDelete: Restrict)
+  bookingDetail          String?    @db.Text
+  isJourney               Boolean   @default(false) // Indicates if it's a journey
+  isHotel                 Boolean   @default(false) // Indicates if a hotel is included
+  isVehicle               Boolean   @default(false) // Indicates if a vehicle is included
+  followUpDate     DateTime?  // Date of the follow-up
+  remarks          String?   // Remarks for the follow-up
+  enquiryStatus   String?   // Status of the enquiry (e.g., Open, Closed)
+  bookingType     String?   // Type of booking (e.g., Group, Individual)
+  groupBookingDetails   GroupBookingDetail[]
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  @@map("group_bookings") // Map the table name to "tour_enquiries"
+}
+
+
+model GroupBookingDetail {
+  id              Int       @id @default(autoincrement())
+  groupBookingId   Int       // Foreign key to the TourEnquiry table
+  groupBooking     GroupBooking @relation(fields: [groupBookingId], references: [id], onDelete: Restrict)
+  day             Int       // Day number of the booking
+  date            DateTime  // Date of the booking
+  description     String    @db.Text
+  cityId          Int?      // Foreign key to the City table
+  city            City?     @relation(fields: [cityId], references: [id],onDelete: Restrict)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  @@map("group_booking_details") // Map the table name to "tour_booking_details"
+}
