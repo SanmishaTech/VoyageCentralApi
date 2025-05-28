@@ -4,10 +4,10 @@ const dayjs = require("dayjs");
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
 const createError = require("http-errors"); // For consistent error handling
-const generateBookingNumber = require("../utils/generateBookingNumber");
+const generateGroupBookingNumber = require("../utils/groupBooking/generateGroupBookingNumber");
 const roles = require("../config/roles");
 // Get all tour enquiries with pagination, sorting, and search
-const getBookings = async (req, res, next) => {
+const getGroupBookings = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -31,14 +31,13 @@ const getBookings = async (req, res, next) => {
   // end
 
   // Additional filters
-  const fromBookingDate = req.query.fromBookingDate
+  const fromBookingDate = req.query.fromGBookingDate
     ? new Date(req.query.fromBookingDate)
     : null;
   const toBookingDate = req.query.toBookingDate
     ? new Date(req.query.toBookingDate)
     : null;
   const tourTitle = req.query.tourTitle || "";
-  const clientName = req.query.clientName || "";
 
   try {
     if (!req.user.agencyId) {
@@ -53,7 +52,7 @@ const getBookings = async (req, res, next) => {
         // Filter by booking date range
         fromBookingDate && toBookingDate
           ? {
-              bookingDate: {
+              groupBookingDate: {
                 gte: fromBookingDate,
                 lte: toBookingDate,
               },
@@ -69,69 +68,55 @@ const getBookings = async (req, res, next) => {
               },
             }
           : {},
-        // Filter by client name
-        clientName
-          ? {
-              client: {
-                clientName: {
-                  contains: clientName,
-                },
-              },
-            }
-          : {},
       ],
       OR: [
-        { bookingNumber: { contains: search } },
+        { groupBookingNumber: { contains: search } },
         { branch: { branchName: { contains: search } } },
-        { client: { clientName: { contains: search } } },
         { tour: { tourTitle: { contains: search } } },
       ],
     };
 
     // Handle ordering by related fields
     const orderByClause =
-      sortBy === "clientName"
-        ? { client: { clientName: sortOrder } }
-        : sortBy === "branchName"
+      sortBy === "branchName"
         ? { branch: { branchName: sortOrder } }
         : sortBy === "tourTitle"
         ? { tour: { tourTitle: sortOrder } }
         : { [sortBy]: sortOrder };
 
-    const bookings = await prisma.booking.findMany({
+    const groupBookings = await prisma.groupBooking.findMany({
       where: whereClause,
       skip,
       take: limit,
       orderBy: orderByClause,
       include: {
         tour: true, // Include tour details
-        client: true, // Include client details
         branch: true, // Include branch details
       },
     });
 
-    const totalBookings = await prisma.booking.count({
+    const totalGroupBookings = await prisma.groupBooking.count({
       where: whereClause,
     });
-    const totalPages = Math.ceil(totalBookings / limit);
+    const totalPages = Math.ceil(totalGroupBookings / limit);
 
     res.json({
-      bookings,
+      groupBookings,
       page,
       totalPages,
-      totalBookings,
+      totalGroupBookings,
     });
   } catch (error) {
     return res.status(500).json({
       errors: {
-        message: "Failed to fetch bookings",
+        message: "Failed to fetch group bookings",
         details: error.message,
       },
     });
   }
 };
 
-const getTourEnquiries = async (req, res, next) => {
+const getTourBookingEnquiries = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -147,7 +132,6 @@ const getTourEnquiries = async (req, res, next) => {
     ? new Date(req.query.toBookingDate)
     : null;
   const tourTitle = req.query.tourTitle || "";
-  const clientName = req.query.clientName || "";
 
   try {
     if (!req.user.agencyId) {
@@ -163,7 +147,7 @@ const getTourEnquiries = async (req, res, next) => {
         // Filter by booking date range
         fromBookingDate && toBookingDate
           ? {
-              bookingDate: {
+              groupBookingDate: {
                 gte: fromBookingDate,
                 lte: toBookingDate,
               },
@@ -179,62 +163,48 @@ const getTourEnquiries = async (req, res, next) => {
               },
             }
           : {},
-        // Filter by client name
-        clientName
-          ? {
-              client: {
-                clientName: {
-                  contains: clientName,
-                },
-              },
-            }
-          : {},
       ],
       OR: [
-        { bookingNumber: { contains: search } },
+        { groupBookingNumber: { contains: search } },
         { branch: { branchName: { contains: search } } },
-        { client: { clientName: { contains: search } } },
         { tour: { tourTitle: { contains: search } } },
       ],
     };
 
     // Handle ordering by related fields
     const orderByClause =
-      sortBy === "clientName"
-        ? { client: { clientName: sortOrder } }
-        : sortBy === "branchName"
+      sortBy === "branchName"
         ? { branch: { branchName: sortOrder } }
         : sortBy === "tourTitle"
         ? { tour: { tourTitle: sortOrder } }
         : { [sortBy]: sortOrder };
 
-    const bookings = await prisma.booking.findMany({
+    const groupBookings = await prisma.groupBooking.findMany({
       where: whereClause,
       skip,
       take: limit,
       orderBy: orderByClause,
       include: {
         tour: true, // Include tour details
-        client: true, // Include client details
         branch: true, // Include branch details
       },
     });
 
-    const totalBookings = await prisma.booking.count({
+    const totalGroupBookings = await prisma.groupBooking.count({
       where: whereClause,
     });
-    const totalPages = Math.ceil(totalBookings / limit);
+    const totalPages = Math.ceil(totalGroupBookings / limit);
 
     res.json({
-      bookings,
+      groupBookings,
       page,
       totalPages,
-      totalBookings,
+      totalGroupBookings,
     });
   } catch (error) {
     return res.status(500).json({
       errors: {
-        message: "Failed to fetch bookings",
+        message: "Failed to fetch group bookings",
         details: error.message,
       },
     });
@@ -245,9 +215,8 @@ const getTourEnquiries = async (req, res, next) => {
 const createBooking = async (req, res, next) => {
   const schema = z
     .object({
-      clientId: z.number().min(1, "Client ID cannot be blank."),
       branchId: z.string().optional(),
-      bookingDetails: z
+      groupBookingDetails: z
         .array(
           z.object({
             day: z
@@ -293,21 +262,14 @@ const createBooking = async (req, res, next) => {
     };
 
     const {
-      bookingDate,
+      groupBookingDate,
       journeyDate,
-      departureDate,
-      budgetField,
-      clientId,
-      numberOfAdults,
-      numberOfChildren5To11,
-      numberOfChildrenUnder5,
       tourId,
       bookingDetail,
       isJourney,
       isHotel,
       isVehicle,
-      isPackage,
-      bookingDetails,
+      groupBookingDetails,
       bookingType,
     } = req.body;
 
@@ -319,33 +281,25 @@ const createBooking = async (req, res, next) => {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const bookingNumber = await generateBookingNumber(tx, req.user.agencyId);
-      const newBooking = await tx.booking.create({
+      const groupBookingNumber = await generateGroupBookingNumber(
+        tx,
+        req.user.agencyId
+      );
+      const newGroupBooking = await tx.groupBooking.create({
         data: {
-          bookingNumber: bookingNumber,
+          groupBookingNumber: groupBookingNumber,
           agencyId: req.user.agencyId,
-          bookingDate: parseDate(bookingDate),
+          groupBookingDate: parseDate(groupBookingDate),
           journeyDate: parseDate(journeyDate),
           bookingType: bookingType ? bookingType : null,
-          departureDate: parseDate(departureDate),
-          budgetField: budgetField || null,
-          clientId: parseInt(clientId, 10),
-          numberOfAdults: numberOfAdults ? parseInt(numberOfAdults, 10) : null, // Parse as integer
-          numberOfChildren5To11: numberOfChildren5To11
-            ? parseInt(numberOfChildren5To11, 10)
-            : null, // Parse as integer
-          numberOfChildrenUnder5: numberOfChildrenUnder5
-            ? parseInt(numberOfChildrenUnder5, 10)
-            : null, // Parse as integer
           branchId: parseInt(branchId, 10),
           tourId: tourId ? parseInt(tourId, 10) : null,
           bookingDetail: bookingDetail || null,
           isJourney: !!isJourney, // Convert to boolean
           isHotel: !!isHotel, // Convert to boolean
           isVehicle: !!isVehicle, // Convert to boolean
-          isPackage: !!isPackage, // Convert to boolean
-          bookingDetails: {
-            create: (bookingDetails || []).map((detail) => ({
+          groupBookingDetails: {
+            create: (groupBookingDetails || []).map((detail) => ({
               day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
               date: parseDate(detail.date),
               description: detail.description || "",
@@ -356,15 +310,15 @@ const createBooking = async (req, res, next) => {
       });
 
       return {
-        newBooking: newBooking,
+        newGroupBooking: newGroupBooking,
       };
     });
 
-    res.status(201).json(result.newBooking);
+    res.status(201).json(result.newGroupBooking);
   } catch (error) {
     return res.status(500).json({
       errors: {
-        message: "Failed to create booking",
+        message: "Failed to create group booking",
         details: error.message,
       },
     });
@@ -376,7 +330,7 @@ const getBookingById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    const booking = await prisma.booking.findFirst({
+    const groupBooking = await prisma.groupBbooking.findFirst({
       where: {
         AND: [
           { id: parseInt(id, 10) },
@@ -384,9 +338,8 @@ const getBookingById = async (req, res, next) => {
         ],
       },
       include: {
-        hotelBookings: true,
         branch: true,
-        bookingDetails: {
+        groupBookingDetails: {
           include: {
             city: {
               select: {
@@ -395,12 +348,6 @@ const getBookingById = async (req, res, next) => {
             },
           },
         }, // Include tourBookingDetails in the response
-        client: {
-          select: {
-            clientName: true,
-            familyFriends: true,
-          },
-        },
         tour: {
           select: {
             tourTitle: true,
@@ -409,15 +356,17 @@ const getBookingById = async (req, res, next) => {
       },
     });
 
-    if (!booking) {
-      return res.status(404).json({ errors: { message: "Booking not found" } });
+    if (!groupBooking) {
+      return res
+        .status(404)
+        .json({ errors: { message: "Group Booking not found" } });
     }
 
     res.status(200).json(booking);
   } catch (error) {
     res.status(500).json({
       errors: {
-        message: "Failed to fetch booking",
+        message: "Failed to fetch group booking",
         details: error.message,
       },
     });
