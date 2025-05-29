@@ -7,6 +7,7 @@ const {
   updateTour,
   deleteTour,
   getAllTours,
+  getAllGroupTours,
 } = require("../controllers/tourController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
@@ -199,6 +200,33 @@ router.post(
  *         description: Failed to fetch tours
  */
 router.get("/all", auth, acl("tours.read"), getAllTours);
+
+/**
+ * @swagger
+ * /tours/allGroupTours:
+ *   get:
+ *     summary: Get all tours without pagination, sorting, and search
+ *     tags: [tours]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all tours
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   name:
+ *                     type: string
+ *       500:
+ *         description: Failed to fetch tours
+ */
+router.get("/allGroupTours", auth, acl("tours.read"), getAllGroupTours);
 
 /**
  * @swagger

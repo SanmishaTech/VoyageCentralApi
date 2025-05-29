@@ -24,7 +24,7 @@ async function generateGroupBookingNumber(tx, agencyId) {
       AND: [
         {
           groupBookingNumber: {
-            startsWith: financialYear,
+            startsWith: `GB-${financialYear}`,
           },
         },
         { agencyId },
@@ -46,7 +46,7 @@ async function generateGroupBookingNumber(tx, agencyId) {
   }
 
   const paddedNumber = String(nextNumber).padStart(3, "0");
-  return `${financialYear}/${paddedNumber}`;
+  return `GB-${financialYear}/${paddedNumber}`;
 }
 
 module.exports = generateGroupBookingNumber;

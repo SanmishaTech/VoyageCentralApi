@@ -355,6 +355,7 @@ model Client {
   aadharNo    String?
   familyFriends   FamilyFriends[]  // One-to-many relationship with FamilyFriends
   bookings Booking[] // One-to-many relationship with TourEnquiry
+  groupClients          GroupClient[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -467,6 +468,7 @@ model Booking {
   numberOfAdults          Int?       // Number of adults
   numberOfChildren5To11   Int?       // Number of children between age 5-11
   numberOfChildrenUnder5  Int?       // Number of children under age 5
+  totalTravelers          Int?
   branchId                Int?      // Foreign key to the Branch table
   branch                  Branch?   @relation(fields: [branchId], references: [id],onDelete:Restrict)
   tourId                  Int?      // Foreign key to the Tour table
@@ -825,7 +827,13 @@ model GroupBooking {
   remarks          String?   // Remarks for the follow-up
   enquiryStatus   String?   // Status of the enquiry (e.g., Open, Closed)
   bookingType     String?   // Type of booking (e.g., Group, Individual)
+  totalNumberOfAdults          Int?       // Number of adults
+  totalNumberOfChildren5To11   Int?       // Number of children between age 5-11
+  totalNumberOfChildrenUnder5  Int?       // Number of children under age 5
+  totalGroupTravelers              Int?
+  totalCost          Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type       
   groupBookingDetails   GroupBookingDetail[]
+  groupClients          GroupClient[]
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
   @@map("group_bookings") // Map the table name to "tour_enquiries"
@@ -844,4 +852,48 @@ model GroupBookingDetail {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   @@map("group_booking_details") // Map the table name to "tour_booking_details"
+}
+
+model GroupClient {
+  id               Int       @id @default(autoincrement())
+  groupBookingId   Int       // Foreign key to the TourEnquiry table
+  groupBooking     GroupBooking @relation(fields: [groupBookingId], references: [id], onDelete: Restrict)
+  clientId                Int?       // Foreign key to the Client table
+  client                  Client?    @relation(fields: [clientId], references: [id],onDelete:Restrict)
+  bookingDate       DateTime?
+  numberOfAdults          Int?       // Number of adults
+  numberOfChildren5To11   Int?       // Number of children between age 5-11
+  numberOfChildrenUnder5  Int?       // Number of children under age 5
+  totalMember              Int?
+  tourCost          Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type       
+  notes             String?    @db.Text
+  isJourney               Boolean   @default(false) // Indicates if it's a journey
+  isHotel                 Boolean   @default(false) // Indicates if a hotel is included
+  isVehicle               Boolean   @default(false) // Indicates if a vehicle is included
+  groupClientMembers       GroupClientMember[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("group_clients")
+}
+
+model GroupClientMember {
+  id               Int       @id @default(autoincrement())
+  groupClientId   Int       // Foreign key to the TourEnquiry table
+  groupClient     GroupClient @relation(fields: [groupClientId], references: [id], onDelete: Restrict)
+  name             String?    // Name of the tour member
+  gender           String?    // Gender
+  aadharNo        String?  // AADHAR number (optional)
+  relation         String?    // Relation to the booking/client
+  dateOfBirth      DateTime? // Date of birth (optional)
+  anniversaryDate  DateTime? // Anniversary date (optional)
+  foodType         String?   // Food type (e.g., Vegetarian, Non-Vegetarian) (optional)
+  mobile           String?   // Mobile number (optional)
+  email            String?   // Email (optional)
+  passportNumber  String?
+  panNumber       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("group_client_members")
 }

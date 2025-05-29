@@ -117,4 +117,17 @@ module.exports = {
   "dashboard.write": ["super_admin", "admin", "branch_admin", "user"],
   "dashboard.delete": ["super_admin", "admin", "branch_admin", "user"],
   "dashboard.read": ["super_admin", "admin", "branch_admin", "user"],
+  //groupBookings
+  "groupBookings.write": ["super_admin", "admin", "branch_admin", "user"],
+  "groupBookings.delete": ["super_admin", "admin", "branch_admin", "user"],
+  "groupBookings.read": ["super_admin", "admin", "branch_admin", "user"],
+  //groupClientBookings
+  "groupClientBookings.write": ["super_admin", "admin", "branch_admin", "user"],
+  "groupClientBookings.delete": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientBookings.read": ["super_admin", "admin", "branch_admin", "user"],
 };
