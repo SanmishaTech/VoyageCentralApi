@@ -2,10 +2,10 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const dayjs = require("dayjs");
 const { z } = require("zod");
-const validateRequest = require("../utils/validateRequest");
+const validateRequest = require("../../utils/validateRequest");
 const createError = require("http-errors"); // For consistent error handling
-const generateGroupBookingNumber = require("../utils/groupBooking/generateGroupBookingNumber");
-const roles = require("../config/roles");
+const generateGroupBookingNumber = require("../../utils/groupBooking/generateGroupBookingNumber");
+const roles = require("../../config/roles");
 // Get all tour enquiries with pagination, sorting, and search
 const getGroupBookings = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
@@ -116,7 +116,7 @@ const getGroupBookings = async (req, res, next) => {
   }
 };
 
-const getTourBookingEnquiries = async (req, res, next) => {
+const getGroupBookingEnquiries = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -212,7 +212,7 @@ const getTourBookingEnquiries = async (req, res, next) => {
 };
 
 // Create a new tour enquiry
-const createBooking = async (req, res, next) => {
+const createGroupBooking = async (req, res, next) => {
   const schema = z
     .object({
       branchId: z.string().optional(),
@@ -326,11 +326,11 @@ const createBooking = async (req, res, next) => {
 };
 
 // Get a tour enquiry by ID
-const getBookingById = async (req, res, next) => {
+const getGroupBookingById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    const groupBooking = await prisma.groupBbooking.findFirst({
+    const groupBooking = await prisma.groupBooking.findFirst({
       where: {
         AND: [
           { id: parseInt(id, 10) },
@@ -362,7 +362,7 @@ const getBookingById = async (req, res, next) => {
         .json({ errors: { message: "Group Booking not found" } });
     }
 
-    res.status(200).json(booking);
+    res.status(200).json(groupBooking);
   } catch (error) {
     res.status(500).json({
       errors: {
@@ -374,15 +374,14 @@ const getBookingById = async (req, res, next) => {
 };
 
 // Update a tour enquiry
-const updateBooking = async (req, res, next) => {
+const updateGroupBooking = async (req, res, next) => {
   const schema = z
     .object({
-      budgetField: z.string().optional(),
       branchId: z.string().optional(),
-      bookingDetails: z
+      groupBookingDetails: z
         .array(
           z.object({
-            bookingDetailId: z.string().optional(), // Include ID for existing booking details
+            groupBookingDetailId: z.string().optional(), // Include ID for existing booking details
             day: z.number().min(1, "Day must be at least 1."),
             date: z.string().min(1, "Date cannot be blank."),
             description: z.string().min(1, "Description cannot be blank."),
@@ -410,22 +409,14 @@ const updateBooking = async (req, res, next) => {
 
   const { id } = req.params;
   const {
-    bookingNumber,
-    bookingDate,
+    groupBookingDate,
     journeyDate,
-    departureDate,
-    budgetField,
-    clientId,
-    numberOfAdults,
-    numberOfChildren5To11,
-    numberOfChildrenUnder5,
     tourId,
     bookingDetail,
     isJourney,
     isHotel,
     isVehicle,
-    isPackage,
-    bookingDetails = [],
+    groupBookingDetails = [],
     bookingType,
   } = req.body;
 
@@ -450,46 +441,35 @@ const updateBooking = async (req, res, next) => {
 
     const result = await prisma.$transaction(async (tx) => {
       // First, delete familyFriends that are not in the new familyFriends array
-      await tx.bookingDetail.deleteMany({
+      await tx.groupBookingDetail.deleteMany({
         where: {
-          bookingId: parseInt(id, 10),
+          groupBookingId: parseInt(id, 10),
           id: {
-            notIn: bookingDetails
-              .filter((d) => parseInt(d.bookingDetailId))
-              .map((d) => parseInt(d.bookingDetailId)), // Only keep existing friends in the list
+            notIn: groupBookingDetails
+              .filter((d) => parseInt(d.groupBookingDetailId))
+              .map((d) => parseInt(d.groupBookingDetailId)), // Only keep existing friends in the list
           },
         },
       });
 
       // Now, proceed to update the client and upsert familyFriends
-      const updatedBooking = await tx.booking.update({
+      const updatedGroupBooking = await tx.groupBooking.update({
         where: { id: parseInt(id, 10) },
         data: {
-          bookingDate: parseDate(bookingDate),
+          groupBookingDate: parseDate(groupBookingDate),
           journeyDate: parseDate(journeyDate),
-          departureDate: parseDate(departureDate),
-          budgetField: budgetField || null,
           bookingType: bookingType ? bookingType : null,
-          clientId: parseInt(clientId, 10),
-          numberOfAdults: numberOfAdults ? parseInt(numberOfAdults, 10) : null, // Parse as integer
-          numberOfChildren5To11: numberOfChildren5To11
-            ? parseInt(numberOfChildren5To11, 10)
-            : null, // Parse as integer
-          numberOfChildrenUnder5: numberOfChildrenUnder5
-            ? parseInt(numberOfChildrenUnder5, 10)
-            : null, // Parse as integer
           branchId: parseInt(branchId),
           tourId: tourId ? parseInt(tourId, 10) : null,
           bookingDetail: bookingDetail || null,
           isJourney: !!isJourney, // Convert to boolean
           isHotel: !!isHotel, // Convert to boolean
           isVehicle: !!isVehicle, // Convert to boolean
-          isPackage: !!isPackage, // Convert to boolean
-          bookingDetails: {
-            upsert: bookingDetails
-              .filter((detail) => !!parseInt(detail.bookingDetailId)) // Only existing friends
+          groupBookingDetails: {
+            upsert: groupBookingDetails
+              .filter((detail) => !!parseInt(detail.groupBookingDetailId)) // Only existing friends
               .map((detail) => ({
-                where: { id: parseInt(detail.bookingDetailId) },
+                where: { id: parseInt(detail.groupBookingDetailId) },
                 update: {
                   day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
                   description: detail.description,
@@ -503,8 +483,8 @@ const updateBooking = async (req, res, next) => {
                   cityId: detail.cityId ? parseInt(detail.cityId, 10) : null,
                 },
               })),
-            create: bookingDetails
-              .filter((detail) => !parseInt(detail.bookingDetailId)) // Only new friends
+            create: groupBookingDetails
+              .filter((detail) => !parseInt(detail.groupBookingDetailId)) // Only new friends
               .map((detail) => ({
                 day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
                 description: detail.description,
@@ -516,18 +496,20 @@ const updateBooking = async (req, res, next) => {
       });
 
       return {
-        updatedBooking: updatedBooking,
+        updatedGroupBooking: updatedGroupBooking,
       };
     });
 
     res.status(200).json(result);
   } catch (error) {
     if (error.code === "P2025") {
-      return res.status(404).json({ errors: { message: "Booking not found" } });
+      return res
+        .status(404)
+        .json({ errors: { message: "group Booking not found" } });
     }
     return res.status(500).json({
       errors: {
-        message: "Failed to update booking",
+        message: "Failed to update group booking",
         details: error.message,
       },
     });
@@ -535,11 +517,11 @@ const updateBooking = async (req, res, next) => {
 };
 //tour booking number generate.
 // Delete a booking
-const deleteBooking = async (req, res, next) => {
+const deleteGroupBooking = async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    await prisma.booking.delete({
+    await prisma.groupBooking.delete({
       where: { id: parseInt(id, 10) },
     });
 
@@ -552,16 +534,18 @@ const deleteBooking = async (req, res, next) => {
       return res.status(409).json({
         errors: {
           message:
-            "Cannot delete this Booking because it is referenced in related data (e.g. hotel booking,vehicle booking, etc). Please remove those first.",
+            "Cannot delete this Group Booking because it is referenced in related data. Please remove those first.",
         },
       });
     }
     if (error.code === "P2025") {
-      return res.status(404).json({ errors: { message: "Booking not found" } });
+      return res
+        .status(404)
+        .json({ errors: { message: "Group Booking not found" } });
     }
     res.status(500).json({
       errors: {
-        message: "Failed to delete booking",
+        message: "Failed to delete Group booking",
         details: error.message,
       },
     });
@@ -569,10 +553,10 @@ const deleteBooking = async (req, res, next) => {
 };
 
 module.exports = {
-  getBookings,
-  createBooking,
-  getBookingById,
-  deleteBooking,
-  updateBooking,
-  getTourEnquiries,
+  getGroupBookings,
+  createGroupBooking,
+  getGroupBookingById,
+  deleteGroupBooking,
+  updateGroupBooking,
+  getGroupBookingEnquiries,
 };

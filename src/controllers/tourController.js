@@ -231,8 +231,6 @@ const createTour = async (req, res, next) => {
   }
 };
 
-
-
 // Get a tour by ID
 const getTourById = async (req, res, next) => {
   const { id } = req.params;
@@ -888,7 +886,11 @@ const getAllTours = async (req, res, next) => {
 
     const tours = await prisma.tour.findMany({
       where: {
-        AND: [{ agencyId: req.user.agencyId }, { status: STATUS_OPEN }],
+        AND: [
+          { agencyId: req.user.agencyId },
+          { status: STATUS_OPEN },
+          { isGroupTour: false },
+        ],
       },
       include: {
         itineraries: true,
@@ -901,6 +903,34 @@ const getAllTours = async (req, res, next) => {
   }
 };
 
+const getAllGroupTours = async (req, res, next) => {
+  try {
+    // Step 1: Get agencyId of the current user
+    if (!req.user.agencyId) {
+      return res
+        .status(404)
+        .json({ message: "User does not belongs to any Agency" });
+    }
+
+    const groupTours = await prisma.tour.findMany({
+      where: {
+        AND: [
+          { agencyId: req.user.agencyId },
+          { status: STATUS_OPEN },
+          { isGroupTour: true },
+        ],
+      },
+      include: {
+        itineraries: true,
+      },
+    });
+
+    res.status(200).json(groupTours);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTours,
   createTour,
@@ -908,4 +938,5 @@ module.exports = {
   updateTour,
   deleteTour,
   getAllTours,
+  getAllGroupTours,
 };
