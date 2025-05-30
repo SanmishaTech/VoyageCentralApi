@@ -130,4 +130,44 @@ module.exports = {
     "user",
   ],
   "groupClientBookings.read": ["super_admin", "admin", "branch_admin", "user"],
+
+  //groupClientJourneyBookings
+  "groupClientJourneyBookings.write": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientJourneyBookings.delete": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientJourneyBookings.read": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+
+  //groupClientBookingReceipts
+  "groupClientBookingReceipts.write": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientBookingReceipts.delete": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientBookingReceipts.read": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
 };

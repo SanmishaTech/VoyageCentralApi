@@ -19,7 +19,7 @@ const acl = require("../middleware/acl");
 
 /**
  * @swagger
- * /group-client-bookings/{groupBookingId}:
+ * /group-client-bookings/all/{groupBookingId}:
  *   get:
  *     summary: Get all group client bookings with pagination
  *     tags: [GroupClientBookings]
@@ -100,7 +100,7 @@ const acl = require("../middleware/acl");
  *         description: Failed to fetch group client bookings
  */
 router.get(
-  "/:groupBookingId",
+  "/all/:groupBookingId",
   auth,
   acl("groupClientBookings.read"),
   getGroupClientByGroupBookingId
@@ -183,7 +183,7 @@ router.get(
  *         description: Failed to create group client booking
  */
 router.post(
-  "/:groupClientId",
+  "/:groupBookingId",
   auth,
   acl("groupClientBookings.write"),
   createGroupClientBooking

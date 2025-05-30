@@ -39,6 +39,9 @@ const dashboardRoutes = require("./routes/dashboard");
 // booking routes
 const groupBookingRoutes = require("./routes/groupBooking");
 const groupClientBookingRoutes = require("./routes/groupClientBooking");
+const groupClientJourneyBookingRoutes = require("./routes/groupClientJourneyBooking");
+const groupClientBookingReceiptRoutes = require("./routes/groupClientBookingReceipt");
+
 // booking routes end
 const swaggerRouter = require("./swagger");
 const path = require("path");
@@ -96,6 +99,9 @@ app.use("/booking-receipts", bookingReceiptRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/group-bookings", groupBookingRoutes);
 app.use("/group-client-bookings", groupClientBookingRoutes);
+app.use("/group-client-journey-bookings", groupClientJourneyBookingRoutes);
+app.use("/group-client-booking-receipts", groupClientBookingReceiptRoutes);
+
 app.use(swaggerRouter); // Add this line to include Swagger documentation
 
 app.use((req, res, next) => {
