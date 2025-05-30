@@ -262,6 +262,7 @@ model Airline {
   agency   Agency   @relation(fields:[agencyId],references:[id],onDelete:Restrict)
   airlineName String
   journeyBookings  JourneyBooking[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -529,8 +530,11 @@ model FollowUp {
 
 model JourneyBooking {
   id                Int       @id @default(autoincrement())
-  bookingId         Int       // Foreign key to the Booking table
-  booking           Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  bookingId         Int?       // Foreign key to the Booking table
+  booking           Booking?   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  groupClientId   Int?       // Foreign key to the TourEnquiry table
+  groupClient     GroupClient? @relation(fields: [groupClientId], references: [id], onDelete: Restrict)
+  isGroupTourClientJourney   Boolean   @default(false) // Indicates if extra bed is required 
   mode              String    // Mode of transport (e.g., Train, Bus, Flight)
   fromPlace         String    // Starting place
   toPlace           String    // Destination place
@@ -742,8 +746,11 @@ model VehicleHotelBooking {
 
 model TravelDocument {
   id             Int      @id @default(autoincrement())
-  bookingId      Int
-  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  bookingId      Int?
+  booking        Booking?  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  groupClientId   Int?       // Foreign key to the TourEnquiry table
+  groupClient     GroupClient? @relation(fields: [groupClientId], references: [id], onDelete: Restrict)
+  isGroupTourClientDocument   Boolean   @default(false) // Indicates if extra bed is required 
   description    String?   @db.Text // Up to 2000 characters
   isPrivate      Boolean  @default(false)
   uploadUUID     String?  // Stores the UUID directory name (optional)
@@ -777,8 +784,11 @@ model BookingReceipt {
   id             Int      @id @default(autoincrement())
   agencyId       Int
   agency         Agency   @relation(fields: [agencyId], references: [id], onDelete: Restrict)
-  bookingId      Int
-  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  bookingId      Int?
+  booking        Booking?  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  groupClientId   Int?       // Foreign key to the TourEnquiry table
+  groupClient     GroupClient? @relation(fields: [groupClientId], references: [id], onDelete: Restrict)
+  isGroupTourClientReceipt   Boolean   @default(false) // Indicates if extra bed is required 
   receiptNumber  String   // Receipt number
   receiptDate    DateTime // Receipt date
   paymentMode    String   // Payment mode (e.g., Cash, Cheque, UPI, Net Banking)
@@ -871,6 +881,9 @@ model GroupClient {
   isHotel                 Boolean   @default(false) // Indicates if a hotel is included
   isVehicle               Boolean   @default(false) // Indicates if a vehicle is included
   groupClientMembers       GroupClientMember[]
+  journeyBookings           JourneyBooking[]
+  travelDocuments           TravelDocument[]
+  bookingReceipts           BookingReceipt[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -894,6 +907,6 @@ model GroupClientMember {
   panNumber       String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
-
   @@map("group_client_members")
 }
+

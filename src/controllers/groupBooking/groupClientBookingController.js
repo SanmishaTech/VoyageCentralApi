@@ -30,7 +30,7 @@ const getGroupClientByGroupBookingId = async (req, res) => {
       orderBy: { id: "desc" },
       include: {
         client: true,
-        groupBooking: true,
+        // groupBooking: true,
         groupClientMembers: true,
       },
     });
@@ -60,24 +60,24 @@ const getGroupClientByGroupBookingId = async (req, res) => {
 const createGroupClientBooking = async (req, res) => {
   const schema = z.object({
     bookingDate: z.string().min("Booking date is required"),
-    isJourney: z
-      .string()
-      .refine((val) => val === "true" || val === "false", {
-        message: "isPrivate must be either 'true' or 'false' as a string.",
-      })
-      .transform((val) => val === "true"),
-    isHotel: z
-      .string()
-      .refine((val) => val === "true" || val === "false", {
-        message: "isPrivate must be either 'true' or 'false' as a string.",
-      })
-      .transform((val) => val === "true"),
-    isVehicle: z
-      .string()
-      .refine((val) => val === "true" || val === "false", {
-        message: "isPrivate must be either 'true' or 'false' as a string.",
-      })
-      .transform((val) => val === "true"),
+    // isJourney: z
+    //   .string()
+    //   .refine((val) => val === "true" || val === "false", {
+    //     message: "isPrivate must be either 'true' or 'false' as a string.",
+    //   })
+    //   .transform((val) => val === "true"),
+    // isHotel: z
+    //   .string()
+    //   .refine((val) => val === "true" || val === "false", {
+    //     message: "isPrivate must be either 'true' or 'false' as a string.",
+    //   })
+    //   .transform((val) => val === "true"),
+    // isVehicle: z
+    //   .string()
+    //   .refine((val) => val === "true" || val === "false", {
+    //     message: "isPrivate must be either 'true' or 'false' as a string.",
+    //   })
+    //   .transform((val) => val === "true"),
   });
   const { groupBookingId } = req.params;
   const validationResult = await validateRequest(schema, req.body, res);
@@ -96,14 +96,50 @@ const createGroupClientBooking = async (req, res) => {
       isVehicle,
       groupClientMembers = [],
     } = req.body;
-    const adults = numberOfAdults ? parseInt(numberOfAdults) : null;
+    // start
+    const adults = numberOfAdults ? parseInt(numberOfAdults) : 0;
     const children5To11 = numberOfChildren5To11
       ? parseInt(numberOfChildren5To11)
-      : null;
-    const childrenBelow5 = numberOfChildrenUnder5
+      : 0;
+    const childrenUnder5 = numberOfChildrenUnder5
       ? parseInt(numberOfChildrenUnder5)
-      : null;
-    const totalMember = adults + children5To11 + childrenBelow5;
+      : 0;
+
+    const totalMember = adults + children5To11 + childrenUnder5;
+
+    // 1. Get GroupBooking and Tour
+    const groupBooking = await prisma.groupBooking.findUnique({
+      where: { id: parseInt(groupBookingId) },
+      include: {
+        tour: true,
+        groupClients: {
+          include: { groupClientMembers: true },
+        },
+      },
+    });
+
+    if (!groupBooking) {
+      return res.status(404).json({ error: "Group booking not found." });
+    }
+
+    const maxTravelers = groupBooking.tour?.numberOfTravelers ?? 0;
+
+    const existingTotalMembers = groupBooking.groupClients.reduce(
+      (acc, client) => acc + (client.totalMember || 0),
+      0
+    );
+
+    const overallCount = existingTotalMembers + totalMember;
+
+    if (overallCount > maxTravelers) {
+      return res.status(500).json({
+        errors: {
+          message: `Cannot add this booking. Maximum allowed travelers (${maxTravelers}) exceeded. Current count: ${overallCount}`,
+        },
+      });
+    }
+
+    // end
 
     const newGroupClient = await prisma.groupClient.create({
       data: {
@@ -120,9 +156,9 @@ const createGroupClientBooking = async (req, res) => {
         totalMember: parseInt(totalMember),
         tourCost: tourCost ? new Prisma.Decimal(tourCost) : null,
         notes,
-        isJourney: isJourney,
-        isHotel: isHotel,
-        isVehicle: isVehicle,
+        isJourney: !!isJourney,
+        isHotel: !!isHotel,
+        isVehicle: !!isVehicle,
         groupClientMembers: {
           create: (groupClientMembers || []).map((member) => ({
             name: member.name || null,
@@ -164,7 +200,7 @@ const getGroupClientBookingById = async (req, res) => {
       where: { id: parseInt(groupClientId, 10) },
       include: {
         client: true,
-        groupBooking: true,
+        // groupBooking: true,
         groupClientMembers: true,
       },
     });
@@ -188,24 +224,24 @@ const getGroupClientBookingById = async (req, res) => {
 const updateGroupClientBooking = async (req, res) => {
   const schema = z.object({
     bookingDate: z.string().min("Booking date is required"),
-    isJourney: z
-      .string()
-      .refine((val) => val === "true" || val === "false", {
-        message: "isPrivate must be either 'true' or 'false' as a string.",
-      })
-      .transform((val) => val === "true"),
-    isHotel: z
-      .string()
-      .refine((val) => val === "true" || val === "false", {
-        message: "isPrivate must be either 'true' or 'false' as a string.",
-      })
-      .transform((val) => val === "true"),
-    isVehicle: z
-      .string()
-      .refine((val) => val === "true" || val === "false", {
-        message: "isPrivate must be either 'true' or 'false' as a string.",
-      })
-      .transform((val) => val === "true"),
+    // isJourney: z
+    //   .string()
+    //   .refine((val) => val === "true" || val === "false", {
+    //     message: "isPrivate must be either 'true' or 'false' as a string.",
+    //   })
+    //   .transform((val) => val === "true"),
+    // isHotel: z
+    //   .string()
+    //   .refine((val) => val === "true" || val === "false", {
+    //     message: "isPrivate must be either 'true' or 'false' as a string.",
+    //   })
+    //   .transform((val) => val === "true"),
+    // isVehicle: z
+    //   .string()
+    //   .refine((val) => val === "true" || val === "false", {
+    //     message: "isPrivate must be either 'true' or 'false' as a string.",
+    //   })
+    //   .transform((val) => val === "true"),
   });
 
   const validationResult = await validateRequest(schema, req.body, res);
@@ -226,14 +262,53 @@ const updateGroupClientBooking = async (req, res) => {
       groupClientMembers = [],
     } = req.body;
 
-    const adults = numberOfAdults ? parseInt(numberOfAdults) : null;
+    // start
+    const adults = numberOfAdults ? parseInt(numberOfAdults) : 0;
     const children5To11 = numberOfChildren5To11
       ? parseInt(numberOfChildren5To11)
-      : null;
+      : 0;
     const childrenBelow5 = numberOfChildrenUnder5
       ? parseInt(numberOfChildrenUnder5)
-      : null;
+      : 0;
     const totalMember = adults + children5To11 + childrenBelow5;
+
+    // 1. Lookup related groupBooking and tour
+    const existingGroupClient = await prisma.groupClient.findUnique({
+      where: { id: parseInt(groupClientId) },
+      include: {
+        groupBooking: {
+          include: {
+            tour: true,
+            groupClients: {
+              where: { NOT: { id: parseInt(groupClientId) } }, // exclude current client
+            },
+          },
+        },
+      },
+    });
+
+    if (!existingGroupClient) {
+      return res.status(404).json({ error: "Group client booking not found." });
+    }
+
+    const groupBooking = existingGroupClient.groupBooking;
+    const maxTravelers = groupBooking?.tour?.numberOfTravelers ?? 0;
+
+    const existingTotalMembersFromOthers = groupBooking.groupClients.reduce(
+      (acc, client) => acc + (client.totalMember || 0),
+      0
+    );
+
+    const overallCount = existingTotalMembersFromOthers + totalMember;
+
+    if (overallCount > maxTravelers) {
+      return res.status(500).json({
+        errors: {
+          message: `Cannot update booking. Total travelers (${overallCount}) exceed allowed limit (${maxTravelers}).`,
+        },
+      });
+    }
+    // end
 
     const result = await prisma.$transaction(async (tx) => {
       // First, delete familymembers that are not in the new familyFriends array
@@ -264,9 +339,9 @@ const updateGroupClientBooking = async (req, res) => {
           totalMember: parseInt(totalMember),
           tourCost: tourCost ? new Prisma.Decimal(tourCost) : null,
           notes,
-          isJourney: isJourney,
-          isHotel: isHotel,
-          isVehicle: isVehicle,
+          isJourney: !!isJourney,
+          isHotel: !!isHotel,
+          isVehicle: !!isVehicle,
           groupClientMembers: {
             upsert: groupClientMembers
               .filter((member) => !!parseInt(member.groupClientMemberId)) // Only existing members
@@ -322,7 +397,7 @@ const updateGroupClientBooking = async (req, res) => {
       };
     });
 
-    res.status(200).json(updatedGroupClient);
+    res.status(200).json(result.updatedGroupClient);
   } catch (error) {
     res.status(500).json({
       errors: {
