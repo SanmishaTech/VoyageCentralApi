@@ -170,4 +170,23 @@ module.exports = {
     "branch_admin",
     "user",
   ],
+  //groupClientTravelDocuments
+  "groupClientTravelDocuments.write": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientTravelDocuments.delete": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientTravelDocuments.read": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
 };

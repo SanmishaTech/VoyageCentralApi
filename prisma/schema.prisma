@@ -515,8 +515,10 @@ model BookingDetail {
 
 model FollowUp {
   id               Int       @id @default(autoincrement())
-  bookingId        Int       // Foreign key to the Booking table
-  booking          Booking   @relation(fields: [bookingId], references: [id],onDelete: Restrict)
+  bookingId        Int?       // Foreign key to the Booking table
+  booking          Booking?   @relation(fields: [bookingId], references: [id],onDelete: Restrict)
+  groupBookingId   Int?       // Foreign key to the TourEnquiry table
+  groupBooking    GroupBooking? @relation(fields: [groupBookingId], references: [id], onDelete: Restrict)
   userId           Int       // Foreign key to the User table
   user             User      @relation(fields: [userId], references: [id], onDelete: Restrict)
   followUpDate     DateTime  // Date of the follow-up
@@ -844,6 +846,7 @@ model GroupBooking {
   totalCost          Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type       
   groupBookingDetails   GroupBookingDetail[]
   groupClients          GroupClient[]
+  followUps             FollowUp[]
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
   @@map("group_bookings") // Map the table name to "tour_enquiries"

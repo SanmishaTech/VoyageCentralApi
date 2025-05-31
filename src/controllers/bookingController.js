@@ -403,6 +403,7 @@ const getBookingById = async (req, res, next) => {
         },
         tour: {
           select: {
+            id: true,
             tourTitle: true,
           },
         },

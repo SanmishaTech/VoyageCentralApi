@@ -25,6 +25,9 @@ const getUpcomingFollowUps = async (req, res, next) => {
         booking: {
           agencyId: req.user.agencyId,
         },
+        groupBooking: {
+          agencyId: req.user.agencyId,
+        },
       },
     });
 
@@ -35,9 +38,10 @@ const getUpcomingFollowUps = async (req, res, next) => {
           gte: today,
           lte: nextWeek,
         },
-        booking: {
-          agencyId: req.user.agencyId,
-        },
+        OR: [
+          { booking: { agencyId: req.user.agencyId } },
+          { groupBooking: { agencyId: req.user.agencyId } },
+        ],
       },
       include: {
         user: {
@@ -50,6 +54,11 @@ const getUpcomingFollowUps = async (req, res, next) => {
             bookingNumber: true,
           },
         },
+        groupBooking: {
+          select: {
+            groupBookingNumber: true,
+          },
+        },
       },
       orderBy: {
         nextFollowUpDate: "asc",
@@ -60,10 +69,11 @@ const getUpcomingFollowUps = async (req, res, next) => {
 
     // Format response
     const formattedFollowUps = followUps.map((fu) => ({
-      bookingNumber: fu.booking.bookingNumber,
+      bookingNumber: fu.booking?.bookingNumber ?? null,
+      groupBookingNumber: fu.groupBooking?.groupBookingNumber ?? null, // ✅ Safe access
       nextFollowUpDate: dayjs(fu.nextFollowUpDate).format("YYYY-MM-DD"),
       remarks: fu.remarks,
-      userName: fu.user.name,
+      userName: fu.user?.name ?? null,
     }));
 
     const totalPages = Math.ceil(totalFollowUps / limit);
@@ -88,3 +98,4 @@ const getUpcomingFollowUps = async (req, res, next) => {
 module.exports = {
   getUpcomingFollowUps,
 };
+// follow ups not working properly.

@@ -60,24 +60,6 @@ const getGroupClientByGroupBookingId = async (req, res) => {
 const createGroupClientBooking = async (req, res) => {
   const schema = z.object({
     bookingDate: z.string().min("Booking date is required"),
-    // isJourney: z
-    //   .string()
-    //   .refine((val) => val === "true" || val === "false", {
-    //     message: "isPrivate must be either 'true' or 'false' as a string.",
-    //   })
-    //   .transform((val) => val === "true"),
-    // isHotel: z
-    //   .string()
-    //   .refine((val) => val === "true" || val === "false", {
-    //     message: "isPrivate must be either 'true' or 'false' as a string.",
-    //   })
-    //   .transform((val) => val === "true"),
-    // isVehicle: z
-    //   .string()
-    //   .refine((val) => val === "true" || val === "false", {
-    //     message: "isPrivate must be either 'true' or 'false' as a string.",
-    //   })
-    //   .transform((val) => val === "true"),
   });
   const { groupBookingId } = req.params;
   const validationResult = await validateRequest(schema, req.body, res);
@@ -96,7 +78,8 @@ const createGroupClientBooking = async (req, res) => {
       isVehicle,
       groupClientMembers = [],
     } = req.body;
-    // start
+    // total Member Allowed validation start
+
     const adults = numberOfAdults ? parseInt(numberOfAdults) : 0;
     const children5To11 = numberOfChildren5To11
       ? parseInt(numberOfChildren5To11)
@@ -139,49 +122,103 @@ const createGroupClientBooking = async (req, res) => {
       });
     }
 
-    // end
+    // total Member Allowed validation end
 
-    const newGroupClient = await prisma.groupClient.create({
-      data: {
-        groupBookingId: parseInt(groupBookingId),
-        clientId: parseInt(clientId),
-        bookingDate: bookingDate ? parseDate(bookingDate) : null,
-        numberOfAdults: numberOfAdults ? parseInt(numberOfAdults) : null,
-        numberOfChildren5To11: numberOfChildren5To11
-          ? parseInt(numberOfChildren5To11)
-          : null,
-        numberOfChildrenUnder5: numberOfChildrenUnder5
-          ? parseInt(numberOfChildrenUnder5)
-          : null,
-        totalMember: parseInt(totalMember),
-        tourCost: tourCost ? new Prisma.Decimal(tourCost) : null,
-        notes,
-        isJourney: !!isJourney,
-        isHotel: !!isHotel,
-        isVehicle: !!isVehicle,
-        groupClientMembers: {
-          create: (groupClientMembers || []).map((member) => ({
-            name: member.name || null,
-            gender: member.gender || null,
-            aadharNo: member.aadharNo || null,
-            relation: member.relation || null,
-            dateOfBirth: member.dateOfBirth
-              ? parseDate(member.dateOfBirth)
-              : null,
-            anniversaryDate: member.anniversaryDate
-              ? parseDate(member.anniversaryDate)
-              : null,
-            foodType: member.foodType || null,
-            mobile: member.mobile || null,
-            email: member.email || null,
-            passportNumber: member.passportNumber || null,
-            panNumber: member.panNumber || null,
-          })),
+    const result = await prisma.$transaction(async (tx) => {
+      const newGroupClient = await tx.groupClient.create({
+        data: {
+          groupBookingId: parseInt(groupBookingId),
+          clientId: parseInt(clientId),
+          bookingDate: bookingDate ? parseDate(bookingDate) : null,
+          numberOfAdults: numberOfAdults ? parseInt(numberOfAdults) : null,
+          numberOfChildren5To11: numberOfChildren5To11
+            ? parseInt(numberOfChildren5To11)
+            : null,
+          numberOfChildrenUnder5: numberOfChildrenUnder5
+            ? parseInt(numberOfChildrenUnder5)
+            : null,
+          totalMember: parseInt(totalMember),
+          tourCost: tourCost ? new Prisma.Decimal(tourCost) : null,
+          notes,
+          isJourney: !!isJourney,
+          isHotel: !!isHotel,
+          isVehicle: !!isVehicle,
+          groupClientMembers: {
+            create: (groupClientMembers || []).map((member) => ({
+              name: member.name || null,
+              gender: member.gender || null,
+              aadharNo: member.aadharNo || null,
+              relation: member.relation || null,
+              dateOfBirth: member.dateOfBirth
+                ? parseDate(member.dateOfBirth)
+                : null,
+              anniversaryDate: member.anniversaryDate
+                ? parseDate(member.anniversaryDate)
+                : null,
+              foodType: member.foodType || null,
+              mobile: member.mobile || null,
+              email: member.email || null,
+              passportNumber: member.passportNumber || null,
+              panNumber: member.panNumber || null,
+            })),
+          },
         },
-      },
+      });
+
+      // calculate total cost,aultes,childrens
+      const updatedGroupBooking = await tx.groupBooking.update({
+        where: { id: parseInt(groupBookingId) },
+        data: {
+          totalCost: await tx.groupClient
+            .aggregate({
+              _sum: { tourCost: true },
+              where: { groupBookingId: parseInt(groupBookingId) },
+            })
+            .then((result) => result._sum.tourCost || new Prisma.Decimal(0)),
+
+          totalNumberOfAdults: await tx.groupClient
+            .aggregate({
+              _sum: { numberOfAdults: true },
+              where: { groupBookingId: parseInt(groupBookingId) },
+            })
+            .then((result) => result._sum.numberOfAdults || 0),
+
+          totalNumberOfChildren5To11: await tx.groupClient
+            .aggregate({
+              _sum: { numberOfChildren5To11: true },
+              where: { groupBookingId: parseInt(groupBookingId) },
+            })
+            .then((result) => result._sum.numberOfChildren5To11 || 0),
+
+          totalNumberOfChildrenUnder5: await tx.groupClient
+            .aggregate({
+              _sum: { numberOfChildrenUnder5: true },
+              where: { groupBookingId: parseInt(groupBookingId) },
+            })
+            .then((result) => result._sum.numberOfChildrenUnder5 || 0),
+
+          totalGroupTravelers: await tx.groupClient
+            .aggregate({
+              _sum: {
+                numberOfAdults: true,
+                numberOfChildren5To11: true,
+                numberOfChildrenUnder5: true,
+              },
+              where: { groupBookingId: parseInt(groupBookingId) },
+            })
+            .then(
+              (result) =>
+                (result._sum.numberOfAdults || 0) +
+                (result._sum.numberOfChildren5To11 || 0) +
+                (result._sum.numberOfChildrenUnder5 || 0)
+            ),
+        },
+      });
+
+      return { newGroupClient: newGroupClient };
     });
 
-    res.status(201).json(newGroupClient);
+    res.status(201).json(result.newGroupClient);
   } catch (error) {
     res.status(500).json({
       errors: {
@@ -224,24 +261,6 @@ const getGroupClientBookingById = async (req, res) => {
 const updateGroupClientBooking = async (req, res) => {
   const schema = z.object({
     bookingDate: z.string().min("Booking date is required"),
-    // isJourney: z
-    //   .string()
-    //   .refine((val) => val === "true" || val === "false", {
-    //     message: "isPrivate must be either 'true' or 'false' as a string.",
-    //   })
-    //   .transform((val) => val === "true"),
-    // isHotel: z
-    //   .string()
-    //   .refine((val) => val === "true" || val === "false", {
-    //     message: "isPrivate must be either 'true' or 'false' as a string.",
-    //   })
-    //   .transform((val) => val === "true"),
-    // isVehicle: z
-    //   .string()
-    //   .refine((val) => val === "true" || val === "false", {
-    //     message: "isPrivate must be either 'true' or 'false' as a string.",
-    //   })
-    //   .transform((val) => val === "true"),
   });
 
   const validationResult = await validateRequest(schema, req.body, res);
@@ -262,7 +281,7 @@ const updateGroupClientBooking = async (req, res) => {
       groupClientMembers = [],
     } = req.body;
 
-    // start
+    // total Member Allowed validation start
     const adults = numberOfAdults ? parseInt(numberOfAdults) : 0;
     const children5To11 = numberOfChildren5To11
       ? parseInt(numberOfChildren5To11)
@@ -308,7 +327,7 @@ const updateGroupClientBooking = async (req, res) => {
         },
       });
     }
-    // end
+    // total Member Allowed validation end
 
     const result = await prisma.$transaction(async (tx) => {
       // First, delete familymembers that are not in the new familyFriends array
@@ -392,6 +411,57 @@ const updateGroupClientBooking = async (req, res) => {
           },
         },
       });
+
+      // ✅ Recalculate and update totalCost for the GroupBooking
+      await tx.groupBooking.update({
+        where: { id: groupBooking.id },
+        data: {
+          totalCost: await tx.groupClient
+            .aggregate({
+              _sum: { tourCost: true },
+              where: { groupBookingId: groupBooking.id },
+            })
+            .then((res) => res._sum.tourCost || new Prisma.Decimal(0)),
+
+          totalNumberOfAdults: await tx.groupClient
+            .aggregate({
+              _sum: { numberOfAdults: true },
+              where: { groupBookingId: groupBooking.id },
+            })
+            .then((res) => res._sum.numberOfAdults || 0),
+
+          totalNumberOfChildren5To11: await tx.groupClient
+            .aggregate({
+              _sum: { numberOfChildren5To11: true },
+              where: { groupBookingId: groupBooking.id },
+            })
+            .then((res) => res._sum.numberOfChildren5To11 || 0),
+
+          totalNumberOfChildrenUnder5: await tx.groupClient
+            .aggregate({
+              _sum: { numberOfChildrenUnder5: true },
+              where: { groupBookingId: groupBooking.id },
+            })
+            .then((res) => res._sum.numberOfChildrenUnder5 || 0),
+
+          totalGroupTravelers: await tx.groupClient
+            .aggregate({
+              _sum: {
+                numberOfAdults: true,
+                numberOfChildren5To11: true,
+                numberOfChildrenUnder5: true,
+              },
+              where: { groupBookingId: groupBooking.id },
+            })
+            .then(
+              (res) =>
+                (res._sum.numberOfAdults || 0) +
+                (res._sum.numberOfChildren5To11 || 0) +
+                (res._sum.numberOfChildrenUnder5 || 0)
+            ),
+        },
+      });
+
       return {
         updatedGroupClient: updatedGroupClient,
       };

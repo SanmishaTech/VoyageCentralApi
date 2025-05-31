@@ -172,152 +172,48 @@ const createGroupClientBookingReceipt = async (req, res) => {
   }
 };
 
-// Get a booking receipt by ID
-const getGroupClientBookingReceiptById = async (req, res) => {
+const deleteGroupClientBookingReceipt = async (req, res) => {
   const { bookingReceiptId } = req.params;
+
   try {
+    // Step 1: Get receipt including invoicePath before deletion
     const receipt = await prisma.bookingReceipt.findUnique({
       where: { id: parseInt(bookingReceiptId, 10) },
+      select: { invoicePath: true },
     });
+
     if (!receipt) {
       return res
         .status(404)
         .json({ errors: { message: "Booking receipt not found" } });
     }
-    res.status(200).json(receipt);
-  } catch (error) {
-    res.status(500).json({
-      errors: {
-        message: "Failed to fetch booking receipt",
-        details: error.message,
-      },
-    });
-  }
-};
 
-// Update a booking receipt
-const updateGroupClientBookingReceipt = async (req, res) => {
-  const schema = z.object({
-    receiptDate: z.string().min(1, "Receipt date is required"),
-    paymentMode: z.string().min(1, "Payment mode is required"),
-    amount: z
-      .union([z.string(), z.number()])
-      .transform((val) => parseFloat(val)),
-    // amount details
-    cgstPercent: z
-      .union([z.string(), z.number()])
-      .transform(parseFloat)
-      .refine((val) => !isNaN(val) && val >= 0 && val <= 100, {
-        message: "Invalid CGST percent",
-      })
-      .optional(),
+    const invoicePath = receipt.invoicePath;
 
-    cgstAmount: z
-      .union([z.string(), z.number()])
-      .transform(parseFloat)
-      .refine((val) => !isNaN(val) && val >= 0, {
-        message: "Invalid CGST amount",
-      })
-      .optional(),
-
-    sgstPercent: z
-      .union([z.string(), z.number()])
-      .transform(parseFloat)
-      .refine((val) => !isNaN(val) && val >= 0 && val <= 100, {
-        message: "Invalid SGST percent",
-      })
-      .optional(),
-
-    sgstAmount: z
-      .union([z.string(), z.number()])
-      .transform(parseFloat)
-      .refine((val) => !isNaN(val) && val >= 0, {
-        message: "Invalid SGST amount",
-      })
-      .optional(),
-
-    igstPercent: z
-      .union([z.string(), z.number()])
-      .transform(parseFloat)
-      .refine((val) => !isNaN(val) && val >= 0 && val <= 100, {
-        message: "Invalid IGST percent",
-      })
-      .optional(),
-
-    igstAmount: z
-      .union([z.string(), z.number()])
-      .transform(parseFloat)
-      .refine((val) => !isNaN(val) && val >= 0, {
-        message: "Invalid IGST amount",
-      })
-      .optional(),
-
-    totalAmount: z
-      .union([z.string(), z.number()])
-      .transform(parseFloat)
-      .refine((val) => !isNaN(val) && val >= 0, {
-        message: "Total amount must be a positive number",
-      }),
-  });
-
-  if (!req.user.agencyId) {
-    return res
-      .status(404)
-      .json({ message: "User does not belong to any Agency" });
-  }
-
-  const validationResult = await validateRequest(schema, req.body, res);
-  const { bookingReceiptId } = req.params;
-
-  const {
-    receiptDate,
-    paymentMode,
-    amount,
-    bankId,
-    chequeDate,
-    chequeNumber,
-    utrNumber,
-    neftImpfNumber,
-  } = req.body;
-
-  try {
-    const updatedReceipt = await prisma.bookingReceipt.update({
-      where: { id: parseInt(bookingReceiptId, 10) },
-      data: {
-        receiptDate: parseDate(receiptDate),
-        paymentMode,
-        amount: parseFloat(amount),
-        bankId: bankId ? parseInt(bankId) : null,
-        chequeDate: chequeDate ? parseDate(chequeDate) : null,
-        chequeNumber,
-        utrNumber,
-        neftImpfNumber,
-      },
-    });
-    res.status(200).json(updatedReceipt);
-  } catch (error) {
-    if (error.code === "P2025") {
-      return res
-        .status(404)
-        .json({ errors: { message: "Booking receipt not found" } });
-    }
-    res.status(500).json({
-      errors: {
-        message: "Failed to update booking receipt",
-        details: error.message,
-      },
-    });
-  }
-};
-
-// Delete a booking receipt
-const deleteGroupClientBookingReceipt = async (req, res) => {
-  const { bookingReceiptId } = req.params;
-  try {
+    // Step 2: Delete the booking receipt record
     await prisma.bookingReceipt.delete({
       where: { id: parseInt(bookingReceiptId, 10) },
     });
-    res.status(204).send();
+
+    // Step 3: Delete the invoice file if it exists
+    if (invoicePath && fs.existsSync(invoicePath)) {
+      try {
+        fs.unlinkSync(invoicePath);
+        console.log("Invoice file deleted:", invoicePath);
+
+        const folderToDelete = path.dirname(invoicePath);
+        const isEmpty = fs.readdirSync(folderToDelete).length === 0;
+
+        if (isEmpty) {
+          fs.rmdirSync(folderToDelete);
+          console.log("Empty folder deleted:", folderToDelete);
+        }
+      } catch (err) {
+        console.error("Error deleting invoice or folder:", err);
+      }
+    }
+
+    res.status(204).send(); // No Content
   } catch (error) {
     if (error.code === "P2025") {
       return res
@@ -395,7 +291,7 @@ const generateGroupClientInvoice = async (req, res) => {
     const receipt = await prisma.bookingReceipt.findUnique({
       where: { id: parseInt(bookingReceiptId, 10) },
       include: {
-        booking: {
+        groupClient: {
           include: {
             client: {
               include: {
@@ -419,14 +315,14 @@ const generateGroupClientInvoice = async (req, res) => {
       invoiceNumber: receipt.invoiceNumber,
       invoiceDate: receipt.invoiceDate,
       client: {
-        clientName: receipt.booking?.client?.clientName,
+        clientName: receipt.groupClient?.client?.clientName,
         addressLines: [
-          receipt.booking?.client?.address1 || "",
-          receipt.booking?.client?.address2 || "",
+          receipt.groupClient?.client?.address1 || "",
+          receipt.groupClient?.client?.address2 || "",
         ].filter(Boolean),
-        city: receipt.booking?.client?.city?.cityName || "",
-        pincode: receipt.booking?.client?.pincode || "",
-        gstinUin: receipt.booking?.client?.gstin || "",
+        city: receipt.groupClient?.client?.city?.cityName || "",
+        pincode: receipt.groupClient?.client?.pincode || "",
+        gstinUin: receipt.groupClient?.client?.gstin || "",
       },
       agencyDetails: {
         name: receipt.agency.businessName,
@@ -471,6 +367,7 @@ const generateGroupClientInvoice = async (req, res) => {
     const uuidFolder = uuidv4();
     const invoiceDir = path.join(
       __dirname,
+      "..",
       "..",
       "..",
       "invoices",
@@ -535,8 +432,6 @@ const generateGroupClientInvoice = async (req, res) => {
 
 module.exports = {
   createGroupClientBookingReceipt,
-  getGroupClientBookingReceiptById,
-  updateGroupClientBookingReceipt,
   deleteGroupClientBookingReceipt,
   getAllBookingReceiptsByGroupClientBookingId,
   generateGroupClientInvoice,

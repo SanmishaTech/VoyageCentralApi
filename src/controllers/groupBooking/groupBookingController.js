@@ -350,6 +350,7 @@ const getGroupBookingById = async (req, res, next) => {
         }, // Include tourBookingDetails in the response
         tour: {
           select: {
+            id: true,
             tourTitle: true,
           },
         },
