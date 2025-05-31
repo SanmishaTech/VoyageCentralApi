@@ -2,8 +2,6 @@ const express = require("express");
 const router = express.Router();
 const {
   createGroupClientBookingReceipt,
-  getGroupClientBookingReceiptById,
-  updateGroupClientBookingReceipt,
   deleteGroupClientBookingReceipt,
   getAllBookingReceiptsByGroupClientBookingId,
   generateGroupClientInvoice,
@@ -40,40 +38,10 @@ const acl = require("../middleware/acl");
  *         description: Failed to fetch receipts
  */
 router.get(
-  "/:groupClientBookingId",
+  "/all/:groupClientBookingId",
   auth,
   acl("groupClientBookingReceipts.read"),
   getAllBookingReceiptsByGroupClientBookingId
-);
-
-/**
- * @swagger
- * /group-client-booking-receipts/{id}:
- *   get:
- *     summary: Get a group client booking receipt by ID
- *     tags: [GroupClientBookingReceipts]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Receipt ID
- *     responses:
- *       200:
- *         description: Receipt details
- *       404:
- *         description: Receipt not found
- *       500:
- *         description: Failed to fetch receipt
- */
-router.get(
-  "/:bookingReceiptId",
-  auth,
-  acl("groupClientBookingReceipts.read"),
-  getGroupClientBookingReceiptById
 );
 
 /**
@@ -149,81 +117,6 @@ router.post(
   auth,
   acl("groupClientBookingReceipts.write"),
   createGroupClientBookingReceipt
-);
-
-/**
- * @swagger
- * /group-client-booking-receipts/{id}:
- *   put:
- *     summary: Update a group client booking receipt by ID
- *     tags: [GroupClientBookingReceipts]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Receipt ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               receiptDate:
- *                 type: string
- *                 format: date-time
- *               paymentMode:
- *                 type: string
- *               amount:
- *                 type: number
- *                 format: float
- *               bankId:
- *                 type: integer
- *               chequeDate:
- *                 type: string
- *                 format: date-time
- *               chequeNumber:
- *                 type: string
- *               utrNumber:
- *                 type: string
- *               neftImpfNumber:
- *                 type: string
- *               cgstPercent:
- *                 type: number
- *               cgstAmount:
- *                 type: number
- *               sgstPercent:
- *                 type: number
- *               sgstAmount:
- *                 type: number
- *               igstPercent:
- *                 type: number
- *               igstAmount:
- *                 type: number
- *               totalAmount:
- *                 type: number
- *               paymentDate:
- *                 type: string
- *                 format: date-time
- *               description:
- *                 type: string
- *     responses:
- *       200:
- *         description: Receipt updated
- *       404:
- *         description: Receipt not found
- *       500:
- *         description: Failed to update receipt
- */
-router.put(
-  "/:bookingReceiptId",
-  auth,
-  acl("groupClientBookingReceipts.write"),
-  updateGroupClientBookingReceipt
 );
 
 /**

@@ -2,8 +2,6 @@ const express = require("express");
 const router = express.Router();
 const {
   createBookingReceipt,
-  getBookingReceiptById,
-  updateBookingReceipt,
   deleteBookingReceipt,
   getAllBookingReceiptsByBookingId,
   generateInvoice,
@@ -81,7 +79,7 @@ router.get(
  *         description: Server error while generating invoice
  */
 
-router.get("/invoice/:id", auth, acl("bookingReceipts.read"), generateInvoice);
+router.get("/:id/invoice", auth, acl("bookingReceipts.read"), generateInvoice);
 
 /**
  * @swagger
@@ -139,62 +137,6 @@ router.get("/invoice/:id", auth, acl("bookingReceipts.read"), generateInvoice);
  *         description: Failed to create booking receipt
  */
 router.post("/:id", auth, acl("bookingReceipts.write"), createBookingReceipt);
-
-/**
- * @swagger
- * /booking-receipts/{id}:
- *   get:
- *     summary: Get a booking receipt by ID
- *     tags: [BookingReceipts]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Booking receipt ID
- *     responses:
- *       200:
- *         description: Booking receipt details
- *       404:
- *         description: Booking receipt not found
- *       500:
- *         description: Failed to fetch booking receipt
- */
-router.get("/:id", auth, acl("bookingReceipts.read"), getBookingReceiptById);
-
-/**
- * @swagger
- * /booking-receipts/{id}:
- *   put:
- *     summary: Update a booking receipt
- *     tags: [BookingReceipts]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Booking receipt ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/BookingReceipt'
- *     responses:
- *       200:
- *         description: Booking receipt updated
- *       404:
- *         description: Booking receipt not found
- *       500:
- *         description: Failed to update booking receipt
- */
-router.put("/:id", auth, acl("bookingReceipts.write"), updateBookingReceipt);
 
 /**
  * @swagger
