@@ -3,7 +3,6 @@ const prisma = new PrismaClient();
 const dayjs = require("dayjs");
 const { z } = require("zod");
 const validateRequest = require("../../utils/validateRequest");
-const { groupBookingDetail } = require("../../config/db");
 
 // Helper to parse date
 const parseDate = (value) => {
@@ -90,13 +89,6 @@ const createGroupClientBooking = async (req, res) => {
       : 0;
 
     const totalMember = adults + children5To11 + childrenUnder5;
-
-    if (totalMember !== groupClientMembers.length + 1) {
-      //include client
-      return res.status(500).json({
-        error: `You can only add ${totalMember} Members`,
-      });
-    }
 
     // 1. Get GroupBooking and Tour
     const groupBooking = await prisma.groupBooking.findUnique({
@@ -245,14 +237,8 @@ const getGroupClientBookingById = async (req, res) => {
       where: { id: parseInt(groupClientId, 10) },
       include: {
         client: true,
-        hotelBookings: true,
+        // groupBooking: true,
         groupClientMembers: true,
-        groupBooking: {
-          // ✅ Correct casing
-          include: {
-            groupBookingDetails: true,
-          },
-        },
       },
     });
     if (!groupClient) {
@@ -304,13 +290,6 @@ const updateGroupClientBooking = async (req, res) => {
       ? parseInt(numberOfChildrenUnder5)
       : 0;
     const totalMember = adults + children5To11 + childrenBelow5;
-
-    if (totalMember !== groupClientMembers.length + 1) {
-      //include client
-      return res.status(500).json({
-        error: `You can only add ${totalMember} Members`,
-      });
-    }
 
     // 1. Lookup related groupBooking and tour
     const existingGroupClient = await prisma.groupClient.findUnique({

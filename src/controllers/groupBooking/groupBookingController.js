@@ -338,6 +338,11 @@ const getGroupBookingById = async (req, res, next) => {
         ],
       },
       include: {
+        groupClients: {
+          include: {
+            hotelBookings: true,
+          },
+        },
         branch: true,
         groupBookingDetails: {
           include: {

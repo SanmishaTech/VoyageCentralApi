@@ -144,6 +144,7 @@ const createGroupClientBookingReceipt = async (req, res) => {
           chequeDate: chequeDate ? parseDate(chequeDate) : null,
           chequeNumber,
           utrNumber,
+          isGroupTourClientReceipt: true,
           neftImpfNumber,
           cgstPercent: cgstPercent ? parseFloat(cgstPercent) : null,
           cgstAmount: cgstAmount ? parseFloat(cgstAmount) : null,

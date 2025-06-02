@@ -318,6 +318,11 @@ const createBooking = async (req, res, next) => {
       branchId = req.user.branchId;
     }
 
+    const totalTravelers =
+      (numberOfAdults ? parseInt(numberOfAdults) : 0) +
+      (numberOfChildren5To11 ? parseInt(numberOfChildren5To11) : 0) +
+      (numberOfChildrenUnder5 ? parseInt(numberOfChildrenUnder5) : 0);
+
     const result = await prisma.$transaction(async (tx) => {
       const bookingNumber = await generateBookingNumber(tx, req.user.agencyId);
       const newBooking = await tx.booking.create({
@@ -337,6 +342,7 @@ const createBooking = async (req, res, next) => {
           numberOfChildrenUnder5: numberOfChildrenUnder5
             ? parseInt(numberOfChildrenUnder5, 10)
             : null, // Parse as integer
+          totalTravelers: parseInt(totalTravelers),
           branchId: parseInt(branchId, 10),
           tourId: tourId ? parseInt(tourId, 10) : null,
           bookingDetail: bookingDetail || null,
@@ -495,6 +501,29 @@ const updateBooking = async (req, res, next) => {
       branchId = req.user.branchId;
     }
 
+    const totalTravelers =
+      (numberOfAdults ? parseInt(numberOfAdults) : 0) +
+      (numberOfChildren5To11 ? parseInt(numberOfChildren5To11) : 0) +
+      (numberOfChildrenUnder5 ? parseInt(numberOfChildrenUnder5) : 0);
+
+    const bookingData = await prisma.booking.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        tourMembers: true,
+      },
+    });
+
+    if (bookingData.tourMembers.length + 1 > totalTravelers) {
+      //include client
+      return res.status(500).json({
+        errors: {
+          message: `Number of tour members (${
+            bookingData.tourMembers.length + 1
+          }) exceeds total travelers (${totalTravelers}). Please remove extra tour members.`,
+        },
+      });
+    }
+
     const parseDate = (value) => {
       if (typeof value !== "string" || value.trim() === "") return undefined;
       return dayjs(value).isValid() ? new Date(value) : undefined;
@@ -530,6 +559,7 @@ const updateBooking = async (req, res, next) => {
           numberOfChildrenUnder5: numberOfChildrenUnder5
             ? parseInt(numberOfChildrenUnder5, 10)
             : null, // Parse as integer
+          totalTravelers: parseInt(totalTravelers),
           branchId: parseInt(branchId),
           tourId: tourId ? parseInt(tourId, 10) : null,
           bookingDetail: bookingDetail || null,
