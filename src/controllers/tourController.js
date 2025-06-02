@@ -574,6 +574,28 @@ const updateTour = async (req, res, next) => {
         .json({ message: "User does not belong to any Agency" });
     }
 
+    const tour = await prisma.tour.findUnique({
+      where: { id: parseInt(tourId) },
+      include: {
+        bookings: true,
+        groupBookings: true,
+      },
+    });
+
+    const incomingTravelerCount = parseInt(numberOfTravelers);
+
+    // Check if the tour is used elsewhere and we are reducing the traveler count
+    if (
+      incomingTravelerCount < (tour.numberOfTravelers || 0) &&
+      (tour.bookings.length > 0 || tour.groupBookings.length > 0)
+    ) {
+      res.status(500).json({
+        errors: {
+          message: `Cannot reduce number of travelers from ${tour.numberOfTravelers} to ${incomingTravelerCount} because this tour is already in use.`,
+        },
+      });
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       // First, delete itineraries that are not in the new itineraries array
       await tx.itinerary.deleteMany({

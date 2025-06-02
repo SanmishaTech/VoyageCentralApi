@@ -65,6 +65,7 @@ const createGroupClientTravelDocument = async (req, res, next) => {
         groupClientId: parseInt(groupClientBookingId, 10),
         description: description,
         isPrivate: isPrivate,
+        isGroupTourClientDocument: true,
         attachment: attachmentFilename || null,
         uploadUUID: uploadUUID || null,
       },

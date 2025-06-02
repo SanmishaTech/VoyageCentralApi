@@ -189,4 +189,42 @@ module.exports = {
     "branch_admin",
     "user",
   ],
+  //groupClientHotelBookings
+  "groupClientHotelBookings.write": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientHotelBookings.delete": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientHotelBookings.read": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  //groupClientVehicleBookings
+  "groupClientVehicleBookings.write": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientVehicleBookings.delete": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientVehicleBookings.read": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
 };

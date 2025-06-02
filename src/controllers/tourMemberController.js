@@ -13,6 +13,29 @@ const createTourMember = async (req, res) => {
   const { id: bookingId } = req.params;
   const { tourMembers } = req.body;
 
+  const booking = await prisma.booking.findUnique({
+    where: { id: parseInt(bookingId, 10) },
+    include: { tourMembers: true },
+  });
+
+  if (!booking) {
+    return res.status(404).json({ message: "Booking not found" });
+  }
+
+  const totalTravelers = booking.totalTravelers || 0;
+  const existingTourMembersCount = booking.tourMembers.length + 1; //include client
+
+  const newTourMembersCount = tourMembers.length;
+
+  // 5. Check if total exceeds allowed travelers
+  if (existingTourMembersCount + newTourMembersCount > totalTravelers) {
+    return res.status(400).json({
+      errors: {
+        message: `Maximum ${totalTravelers - 1} Tour Members are Allowed`,
+      },
+    });
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       const newTourMembers = await tx.tourMember.createMany({

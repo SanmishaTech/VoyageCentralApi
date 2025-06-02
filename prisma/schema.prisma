@@ -567,8 +567,11 @@ model HotelBooking {
   id                  Int       @id @default(autoincrement())
   agencyId                Int       // Foreign key to the Agency table
   agency                  Agency    @relation(fields: [agencyId], references: [id], onDelete:Restrict)
-  bookingId           Int       // Foreign key to the Booking table
-  booking             Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  bookingId           Int?       // Foreign key to the Booking table
+  booking             Booking?   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  groupClientId   Int?       // Foreign key to the TourEnquiry table
+  groupClient     GroupClient? @relation(fields: [groupClientId], references: [id], onDelete: Restrict)
+  isGroupTourClientHotel   Boolean   @default(false) // Indicates if extra bed is required 
   hrvNumber           String       // HRV number
   partyComingFrom     String    // Party coming from
   checkInDate         DateTime  // Check-in date
@@ -603,10 +606,13 @@ model HotelBooking {
 
 model ServiceBooking {
   id                  Int       @id @default(autoincrement())
-  bookingId           Int       // Foreign key to the Booking table
-  booking             Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  bookingId           Int?       // Foreign key to the Booking table
+  booking             Booking?   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
   agentId                Int?       // Foreign key to the Agency table
   agent                  Agent?    @relation(fields: [agentId], references: [id], onDelete:Restrict)
+   groupClientId   Int?       // Foreign key to the TourEnquiry table
+  groupClient     GroupClient? @relation(fields: [groupClientId], references: [id], onDelete: Restrict)
+  isGroupTourClientService   Boolean   @default(false) // Indicates if extra bed is required
   serviceId                Int?       // Foreign key to the Agency table
   service                  Service?    @relation(fields: [serviceId], references: [id], onDelete:Restrict)
   description         String      @db.Text
@@ -679,10 +685,13 @@ model Agent {
 
 model VehicleBooking {
   id                  Int       @id @default(autoincrement())
-  bookingId           Int
-  booking             Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
-  agencyId            Int
+   agencyId            Int
   agency              Agency    @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  bookingId           Int?
+  booking             Booking?   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+   groupClientId   Int?       // Foreign key to the TourEnquiry table
+  groupClient     GroupClient? @relation(fields: [groupClientId], references: [id], onDelete: Restrict)
+  isGroupTourClientVehicle   Boolean   @default(false) // Indicates if extra bed is required
   vehicleHrvNumber    String    // HRV number for vehicle booking
   vehicleBookingDate  DateTime
   vehicleId           Int       // Assuming vehicleId refers to an existing Vehicle
@@ -887,6 +896,9 @@ model GroupClient {
   journeyBookings           JourneyBooking[]
   travelDocuments           TravelDocument[]
   bookingReceipts           BookingReceipt[]
+  hotelBookings             HotelBooking[]
+  vehicleBookings            VehicleBooking[]
+  serviceBookings            ServiceBooking[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -899,7 +911,7 @@ model GroupClientMember {
   groupClient     GroupClient @relation(fields: [groupClientId], references: [id], onDelete: Restrict)
   name             String?    // Name of the tour member
   gender           String?    // Gender
-  aadharNo        String?  // AADHAR number (optional)
+  aadharNo         String?  // AADHAR number (optional)
   relation         String?    // Relation to the booking/client
   dateOfBirth      DateTime? // Date of birth (optional)
   anniversaryDate  DateTime? // Anniversary date (optional)
