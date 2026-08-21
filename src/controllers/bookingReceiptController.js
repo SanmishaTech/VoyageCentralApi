@@ -430,17 +430,11 @@ const generateInvoice = async (req, res) => {
     });
 
     res.setHeader("Content-Type", "application/pdf");
-
-    // ✅ Step 5: Send file to client
-    res.download(filePath, (err) => {
-      if (err) {
-        console.error("Download error:", err);
-        res.status(500).send("Failed to download invoice");
-      } else {
-        // Optionally delete file after download
-        // fs.unlink(filePath, () => {});
-      }
-    });
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="Receipt-${id}.pdf"`
+    );
+    return res.sendFile(path.resolve(filePath));
   } catch (error) {
     console.error(error);
     res.status(500).json({

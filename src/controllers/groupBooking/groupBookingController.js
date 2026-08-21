@@ -266,9 +266,7 @@ const createGroupBooking = async (req, res, next) => {
       journeyDate,
       tourId,
       bookingDetail,
-      isJourney,
-      isHotel,
-      isVehicle,
+      isAssistantsAvailable,
       groupBookingDetails,
       bookingType,
     } = req.body;
@@ -295,9 +293,7 @@ const createGroupBooking = async (req, res, next) => {
           branchId: parseInt(branchId, 10),
           tourId: tourId ? parseInt(tourId, 10) : null,
           bookingDetail: bookingDetail || null,
-          isJourney: !!isJourney, // Convert to boolean
-          isHotel: !!isHotel, // Convert to boolean
-          isVehicle: !!isVehicle, // Convert to boolean
+          isAssistantsAvailable: !!isAssistantsAvailable, // Convert to boolean
           groupBookingDetails: {
             create: (groupBookingDetails || []).map((detail) => ({
               day: detail.day ? parseInt(detail.day, 10) : null, // Parse as integer
@@ -357,6 +353,7 @@ const getGroupBookingById = async (req, res, next) => {
           select: {
             id: true,
             tourTitle: true,
+            numberOfTravelers: true,
           },
         },
       },
@@ -419,9 +416,7 @@ const updateGroupBooking = async (req, res, next) => {
     journeyDate,
     tourId,
     bookingDetail,
-    isJourney,
-    isHotel,
-    isVehicle,
+    isAssistantsAvailable,
     groupBookingDetails = [],
     bookingType,
   } = req.body;
@@ -468,9 +463,7 @@ const updateGroupBooking = async (req, res, next) => {
           branchId: parseInt(branchId),
           tourId: tourId ? parseInt(tourId, 10) : null,
           bookingDetail: bookingDetail || null,
-          isJourney: !!isJourney, // Convert to boolean
-          isHotel: !!isHotel, // Convert to boolean
-          isVehicle: !!isVehicle, // Convert to boolean
+          isAssistantsAvailable: !!isAssistantsAvailable, // Convert to boolean
           groupBookingDetails: {
             upsert: groupBookingDetails
               .filter((detail) => !!parseInt(detail.groupBookingDetailId)) // Only existing friends

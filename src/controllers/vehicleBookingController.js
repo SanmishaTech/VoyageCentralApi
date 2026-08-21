@@ -1,9 +1,15 @@
+const path = require("path");
+const fs = require("fs");
 const { PrismaClient, Prisma } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
 const dayjs = require("dayjs");
 const generateVehicleHRVNumber = require("../utils/generateVehicleHRVNumber");
+const { buildStandardLineCostData } = require("../utils/lineCostingPersist");
+const { regenerateBookingDocuments } = require("../utils/bookingDocumentService");
+const { buildAgencyDetails } = require("../utils/Invoice/agencyClientDetails");
+const generateVehicleVoucher = require("../utils/Invoice/generateVehicleVoucher");
 // Helper function to parse date strings into Date objects
 const parseDate = (value) => {
   if (typeof value !== "string" || value.trim() === "") return undefined;
@@ -67,6 +73,7 @@ const createVehicleBooking = async (req, res) => {
           summaryNote: summaryNote || null,
           billDescription: billDescription || null,
           amount: amount ? new Prisma.Decimal(amount) : null,
+          ...buildStandardLineCostData(req.body, amount),
           vehicleItineraries: {
             create: (vehicleItineraries || []).map((itinerary) => ({
               day: parseInt(itinerary.day),
@@ -88,6 +95,13 @@ const createVehicleBooking = async (req, res) => {
           },
         },
       });
+      if (req.user?.agencyId) {
+        await regenerateBookingDocuments(
+          tx,
+          parseInt(id, 10),
+          parseInt(req.user.agencyId, 10)
+        );
+      }
       return { newVehicleBooking };
     });
 
@@ -214,6 +228,7 @@ const updateVehicleBooking = async (req, res) => {
           summaryNote: summaryNote || null,
           billDescription: billDescription || null,
           amount: amount ? new Prisma.Decimal(amount) : null,
+          ...buildStandardLineCostData(req.body, amount),
 
           vehicleItineraries: {
             upsert: vehicleItineraries
@@ -280,6 +295,14 @@ const updateVehicleBooking = async (req, res) => {
           },
         },
       });
+
+      if (req.user?.agencyId && updatedVehicleBooking.bookingId) {
+        await regenerateBookingDocuments(
+          tx,
+          updatedVehicleBooking.bookingId,
+          parseInt(req.user.agencyId, 10)
+        );
+      }
 
       return {
         updatedVehicleBooking: updatedVehicleBooking,
@@ -359,10 +382,106 @@ const getAllVehicleBookingsByBookingId = async (req, res) => {
   }
 };
 
+const downloadVehicleVoucher = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const agencyId = parseInt(req.user.agencyId, 10);
+
+    const vehicleBooking = await prisma.vehicleBooking.findFirst({
+      where: { id, agencyId },
+      include: {
+        vehicle: true,
+        city: true,
+        agent: true,
+        agency: true,
+        booking: {
+          include: { client: true },
+        },
+      },
+    });
+
+    if (!vehicleBooking) {
+      return res
+        .status(404)
+        .json({ errors: { message: "Vehicle booking not found" } });
+    }
+
+    const booking = vehicleBooking.booking || {};
+    const client = booking.client || {};
+    const agent = vehicleBooking.agent || {};
+    const guestContact = [client.mobile1, client.mobile2]
+      .filter(Boolean)
+      .join(" / ");
+    const agentContact = [agent.mobile1, agent.mobile2]
+      .filter(Boolean)
+      .join(" / ");
+
+    const folder = path.join(
+      __dirname,
+      "..",
+      "..",
+      "invoices",
+      "booking",
+      "vehicleVoucher",
+      String(id)
+    );
+    if (!fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true });
+    const filePath = path.join(
+      folder,
+      `VRV-${vehicleBooking.vehicleHrvNumber || id}.pdf`
+    );
+
+    await generateVehicleVoucher(
+      {
+        agencyDetails: buildAgencyDetails(vehicleBooking.agency),
+        bookingNumber: booking.bookingNumber || "",
+        vehicleBookingDate: vehicleBooking.vehicleBookingDate,
+        vehicleHrvNumber: vehicleBooking.vehicleHrvNumber || "",
+        guestName: client.clientName || "",
+        totalTravelers: booking.totalTravelers,
+        numberOfAdults: booking.numberOfAdults,
+        numberOfChildren5To11: booking.numberOfChildren5To11,
+        numberOfChildrenUnder5: booking.numberOfChildrenUnder5,
+        guestContact,
+        agentName: agent.agentName || "",
+        agentContact,
+        numberOfVehicles: vehicleBooking.numberOfVehicles,
+        vehicleName: vehicleBooking.vehicle?.vehicleName || "",
+        vehicleNote: vehicleBooking.vehicleNote || "",
+        fromDate: vehicleBooking.fromDate,
+        toDate: vehicleBooking.toDate,
+        days: vehicleBooking.days,
+        pickupPlace: vehicleBooking.pickupPlace || "",
+        cityName: vehicleBooking.city?.cityName || "",
+        summaryNote: vehicleBooking.summaryNote || "",
+        terms: vehicleBooking.terms || "",
+        specialRequest: vehicleBooking.specialRequest || "",
+        specialNote: vehicleBooking.specialNote || "",
+      },
+      filePath
+    );
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="VehicleVoucher-${vehicleBooking.vehicleHrvNumber || id}.pdf"`
+    );
+    return res.sendFile(path.resolve(filePath));
+  } catch (error) {
+    res.status(500).json({
+      errors: {
+        message: "Failed to open vehicle voucher",
+        details: error.message,
+      },
+    });
+  }
+};
+
 module.exports = {
   createVehicleBooking,
   getVehicleBookingById,
   updateVehicleBooking,
   deleteVehicleBooking,
   getAllVehicleBookingsByBookingId,
+  downloadVehicleVoucher,
 };
