@@ -61,11 +61,25 @@ const getBookingCosting = async (req, res) => {
     // Auto-fill service charges from line bookings (ignore saved SC overrides on read)
     const totals = buildTourProTotals(booking, {
       ...(costing || {}),
+      paidAmount: costing?.paidAmount,
       hotelServiceCharge: undefined,
       vehicleServiceCharge: undefined,
       otherServicesServiceCharge: undefined,
       journeyServiceCharge: undefined,
     });
+
+    const receiptAgg = await prisma.bookingReceipt.aggregate({
+      where: {
+        bookingId,
+        agencyId: parseInt(req.user.agencyId, 10),
+      },
+      _sum: { totalAmount: true },
+    });
+    const clientPaidAmount = Number(receiptAgg._sum.totalAmount || 0);
+    const clientOutstanding = Math.max(
+      0,
+      Number(totals.payableAmount || 0) - clientPaidAmount
+    );
 
     res.status(200).json({
       bookingId,
@@ -78,6 +92,8 @@ const getBookingCosting = async (req, res) => {
       estimatePath: booking.estimatePath,
       costing: costing || null,
       totals,
+      clientPaidAmount,
+      clientOutstanding,
     });
   } catch (error) {
     res.status(500).json({

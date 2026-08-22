@@ -996,7 +996,8 @@ model GroupClient {
   numberOfChildren5To11   Int?       // Number of children between age 5-11
   numberOfChildrenUnder5  Int?       // Number of children under age 5
   totalMember              Int?
-  tourCost          Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type       
+  tourCost          Decimal?   @db.Decimal(10, 2) // Package tour cost (manual)
+  paidAmount        Decimal?   @db.Decimal(10, 2) @default(0) // Sum of receipts (TourPro GroupMember.paid_amount)
   notes             String?    @db.Text
   isJourney               Boolean   @default(false) // Indicates if it's a journey
   isHotel                 Boolean   @default(false) // Indicates if a hotel is included

@@ -130,6 +130,16 @@ const buildTourProTotals = (booking, costingInput = {}) => {
   const journeyPart = isJourney ? packageJourney : 0;
   const payableAmount = round2(journeyPart + totalPackageCost);
 
+  // Agent payable = hotel + vehicle input costs + extra package cost only
+  // (excludes service charges, other services, journey, discount)
+  const agentPayableTotal = round2(
+    hotelTotal + vehicleTotal + (isPackage ? serviceChargeOnCost : 0)
+  );
+  const agentPaidAmount = toNumber(costingInput.paidAmount);
+  const agentOutstanding = round2(
+    Math.max(0, agentPayableTotal - agentPaidAmount)
+  );
+
   return {
     journeyBookingAmount: journeyCost,
     journeyServiceChargeFromLines: round2(journeyCommFromLines),
@@ -172,6 +182,10 @@ const buildTourProTotals = (booking, costingInput = {}) => {
     totalPayableAmount: payableAmount,
     inputCommission: 0,
     commissionAmount: 0,
+
+    agentPayableTotal,
+    agentPaidAmount,
+    agentOutstanding,
 
     isPackage,
     isJourney,

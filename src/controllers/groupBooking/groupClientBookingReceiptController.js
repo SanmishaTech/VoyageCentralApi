@@ -17,6 +17,24 @@ const parseDate = (value) => {
 const { numberToWords } = require("../../utils/numberToWords");
 const generateBookingReceiptNumber = require("../../utils/generateBookingReceiptNumber");
 const generateBookingReceiptInvoiceNumber = require("../../utils/generateBookingReceiptInvoiceNumber");
+
+/**
+ * TourPro GroupMember.paid_amount: sum of receipt totals for this group client.
+ */
+const recalcGroupClientPaidAmount = async (tx, groupClientId) => {
+  const id = parseInt(groupClientId, 10);
+  const agg = await tx.bookingReceipt.aggregate({
+    where: { groupClientId: id },
+    _sum: { totalAmount: true },
+  });
+  const paid = agg._sum.totalAmount || new Prisma.Decimal(0);
+  await tx.groupClient.update({
+    where: { id },
+    data: { paidAmount: paid },
+  });
+  return paid;
+};
+
 // Create a new booking receipt
 const createGroupClientBookingReceipt = async (req, res) => {
   const schema = z.object({
@@ -154,9 +172,10 @@ const createGroupClientBookingReceipt = async (req, res) => {
           igstAmount: igstAmount ? parseFloat(igstAmount) : null,
           totalAmount: new Prisma.Decimal(totalAmount),
           paymentDate: paymentDate ? parseDate(paymentDate) : null,
-          paymentDate: paymentDate ? parseDate(paymentDate) : null,
         },
       });
+
+      await recalcGroupClientPaidAmount(tx, groupClientBookingId);
 
       return {
         newReceipt: newReceipt,
@@ -180,7 +199,7 @@ const deleteGroupClientBookingReceipt = async (req, res) => {
     // Step 1: Get receipt including invoicePath before deletion
     const receipt = await prisma.bookingReceipt.findUnique({
       where: { id: parseInt(bookingReceiptId, 10) },
-      select: { invoicePath: true },
+      select: { invoicePath: true, groupClientId: true },
     });
 
     if (!receipt) {
@@ -190,10 +209,16 @@ const deleteGroupClientBookingReceipt = async (req, res) => {
     }
 
     const invoicePath = receipt.invoicePath;
+    const groupClientId = receipt.groupClientId;
 
-    // Step 2: Delete the booking receipt record
-    await prisma.bookingReceipt.delete({
-      where: { id: parseInt(bookingReceiptId, 10) },
+    // Step 2: Delete the booking receipt record and recalc paid amount
+    await prisma.$transaction(async (tx) => {
+      await tx.bookingReceipt.delete({
+        where: { id: parseInt(bookingReceiptId, 10) },
+      });
+      if (groupClientId) {
+        await recalcGroupClientPaidAmount(tx, groupClientId);
+      }
     });
 
     // Step 3: Delete the invoice file if it exists

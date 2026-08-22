@@ -934,14 +934,14 @@ const getAllGroupTours = async (req, res, next) => {
         .json({ message: "User does not belongs to any Agency" });
     }
 
+    // Old TourPro Group Tour enquiry uses Tour->lst() (all tours, no isGroupTour filter).
+    // List open tours for this agency so any tour master can be picked on group enquiry.
     const groupTours = await prisma.tour.findMany({
       where: {
-        AND: [
-          { agencyId: req.user.agencyId },
-          { status: STATUS_OPEN },
-          { isGroupTour: true },
-        ],
+        agencyId: req.user.agencyId,
+        OR: [{ status: STATUS_OPEN }, { status: null }],
       },
+      orderBy: { tourTitle: "asc" },
       include: {
         itineraries: true,
       },
