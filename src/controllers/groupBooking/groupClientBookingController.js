@@ -36,13 +36,34 @@ const getGroupClientByGroupBookingId = async (req, res) => {
       },
     });
 
+    // Ensure paidAmount matches receipt totals (TourPro outstanding ledger)
+    const groupClientsWithPaid = await Promise.all(
+      groupClients.map(async (client) => {
+        const agg = await prisma.bookingReceipt.aggregate({
+          where: { groupClientId: client.id },
+          _sum: { totalAmount: true },
+        });
+        const paid = agg._sum.totalAmount || new Prisma.Decimal(0);
+        if (
+          client.paidAmount == null ||
+          Number(client.paidAmount) !== Number(paid)
+        ) {
+          await prisma.groupClient.update({
+            where: { id: client.id },
+            data: { paidAmount: paid },
+          });
+        }
+        return { ...client, paidAmount: paid };
+      })
+    );
+
     const totalGroupClients = await prisma.groupClient.count({
       where: whereClause,
     });
     const totalPages = Math.ceil(totalGroupClients / limit);
 
     res.json({
-      groupClients,
+      groupClients: groupClientsWithPaid,
       page,
       totalPages,
       totalGroupClients,
@@ -91,10 +112,18 @@ const createGroupClientBooking = async (req, res) => {
 
     const totalMember = adults + children5To11 + childrenUnder5;
 
-    if (totalMember !== groupClientMembers.length + 1) {
-      //include client
-      return res.status(500).json({
-        error: `You can only add ${totalMember} Members`,
+    if (totalMember < 1) {
+      return res.status(400).json({
+        errors: { message: "Enter at least one traveler (adults/children)." },
+      });
+    }
+
+    // Old TourPro does not require relative rows to exactly match pax count.
+    if (groupClientMembers.length > Math.max(0, totalMember - 1)) {
+      return res.status(400).json({
+        errors: {
+          message: `Too many tour member rows (${groupClientMembers.length}). Pax count is ${totalMember} (client counts as 1).`,
+        },
       });
     }
 
@@ -113,7 +142,7 @@ const createGroupClientBooking = async (req, res) => {
       return res.status(404).json({ error: "Group booking not found." });
     }
 
-    const maxTravelers = groupBooking.tour?.numberOfTravelers ?? 0;
+    const maxTravelers = groupBooking.tour?.numberOfTravelers;
 
     const existingTotalMembers = groupBooking.groupClients.reduce(
       (acc, client) => acc + (client.totalMember || 0),
@@ -122,8 +151,13 @@ const createGroupClientBooking = async (req, res) => {
 
     const overallCount = existingTotalMembers + totalMember;
 
-    if (overallCount > maxTravelers) {
-      return res.status(500).json({
+    // Only cap when tour master has numberOfTravelers set (> 0). Old TourPro has no such gate.
+    if (
+      maxTravelers != null &&
+      maxTravelers > 0 &&
+      overallCount > maxTravelers
+    ) {
+      return res.status(400).json({
         errors: {
           message: `Cannot add this booking. Maximum allowed travelers (${maxTravelers}) exceeded. Current count: ${overallCount}`,
         },
@@ -147,6 +181,7 @@ const createGroupClientBooking = async (req, res) => {
             : null,
           totalMember: parseInt(totalMember),
           tourCost: tourCost ? new Prisma.Decimal(tourCost) : null,
+          paidAmount: new Prisma.Decimal(0),
           notes,
           isJourney: !!isJourney,
           isHotel: !!isHotel,
@@ -305,10 +340,17 @@ const updateGroupClientBooking = async (req, res) => {
       : 0;
     const totalMember = adults + children5To11 + childrenBelow5;
 
-    if (totalMember !== groupClientMembers.length + 1) {
-      //include client
-      return res.status(500).json({
-        error: `You can only add ${totalMember} Members`,
+    if (totalMember < 1) {
+      return res.status(400).json({
+        errors: { message: "Enter at least one traveler (adults/children)." },
+      });
+    }
+
+    if (groupClientMembers.length > Math.max(0, totalMember - 1)) {
+      return res.status(400).json({
+        errors: {
+          message: `Too many tour member rows (${groupClientMembers.length}). Pax count is ${totalMember} (client counts as 1).`,
+        },
       });
     }
 
@@ -332,7 +374,7 @@ const updateGroupClientBooking = async (req, res) => {
     }
 
     const groupBooking = existingGroupClient.groupBooking;
-    const maxTravelers = groupBooking?.tour?.numberOfTravelers ?? 0;
+    const maxTravelers = groupBooking?.tour?.numberOfTravelers;
 
     const existingTotalMembersFromOthers = groupBooking.groupClients.reduce(
       (acc, client) => acc + (client.totalMember || 0),
@@ -341,8 +383,12 @@ const updateGroupClientBooking = async (req, res) => {
 
     const overallCount = existingTotalMembersFromOthers + totalMember;
 
-    if (overallCount > maxTravelers) {
-      return res.status(500).json({
+    if (
+      maxTravelers != null &&
+      maxTravelers > 0 &&
+      overallCount > maxTravelers
+    ) {
+      return res.status(400).json({
         errors: {
           message: `Cannot update booking. Total travelers (${overallCount}) exceed allowed limit (${maxTravelers}).`,
         },

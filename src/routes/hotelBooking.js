@@ -6,6 +6,7 @@ const {
   updateHotelBooking,
   deleteHotelBooking,
   getAllHotelBookingsByBookingId,
+  downloadHotelVoucher,
 } = require("../controllers/hotelBookingController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
@@ -127,6 +128,36 @@ router.get(
  *         description: Failed to create hotel booking
  */
 router.post("/:id", auth, acl("hotelBookings.write"), createHotelBooking);
+
+/**
+ * @swagger
+ * /hotel-bookings/{id}/voucher:
+ *   get:
+ *     summary: Download hotel reservation voucher PDF
+ *     tags: [HotelBookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Hotel booking ID
+ *     responses:
+ *       200:
+ *         description: Hotel voucher PDF
+ *       404:
+ *         description: Hotel booking not found
+ *       500:
+ *         description: Failed to generate hotel voucher
+ */
+router.get(
+  "/:id/voucher",
+  auth,
+  acl("hotelBookings.read"),
+  downloadHotelVoucher
+);
 
 /**
  * @swagger

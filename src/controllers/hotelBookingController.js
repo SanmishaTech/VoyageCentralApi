@@ -1,9 +1,15 @@
+const path = require("path");
+const fs = require("fs");
 const { PrismaClient, Prisma } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { z } = require("zod");
 const validateRequest = require("../utils/validateRequest");
 const dayjs = require("dayjs");
 const generateHRVNumber = require("../utils/generateHRVNumber");
+const { buildStandardLineCostData } = require("../utils/lineCostingPersist");
+const { regenerateBookingDocuments } = require("../utils/bookingDocumentService");
+const { buildAgencyDetails } = require("../utils/Invoice/agencyClientDetails");
+const generateHotelVoucher = require("../utils/Invoice/generateHotelVoucher");
 
 const parseDate = (value) => {
   if (typeof value !== "string" || value.trim() === "") return undefined;
@@ -81,8 +87,17 @@ const createHotelBooking = async (req, res) => {
           billDescription: billDescription || null,
           amount: amount ? new Prisma.Decimal(amount) : null,
           totalAmount: totalAmount ? new Prisma.Decimal(totalAmount) : null,
+          ...buildStandardLineCostData(req.body, totalAmount ?? amount),
         },
       });
+
+      if (req.user?.agencyId) {
+        await regenerateBookingDocuments(
+          tx,
+          parseInt(id, 10),
+          parseInt(req.user.agencyId, 10)
+        );
+      }
 
       return {
         newHotelBooking: newHotelBooking,
@@ -190,8 +205,19 @@ const updateHotelBooking = async (req, res) => {
         billDescription: billDescription || null,
         amount: amount ? new Prisma.Decimal(amount) : null,
         totalAmount: totalAmount ? new Prisma.Decimal(totalAmount) : null,
+        ...buildStandardLineCostData(req.body, totalAmount ?? amount),
       },
     });
+
+    if (req.user?.agencyId && updatedHotelBooking.bookingId) {
+      await prisma.$transaction(async (tx) => {
+        await regenerateBookingDocuments(
+          tx,
+          updatedHotelBooking.bookingId,
+          parseInt(req.user.agencyId, 10)
+        );
+      });
+    }
 
     res.status(200).json(updatedHotelBooking);
   } catch (error) {
@@ -270,10 +296,108 @@ const getAllHotelBookingsByBookingId = async (req, res) => {
   }
 };
 
+const downloadHotelVoucher = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const agencyId = parseInt(req.user.agencyId, 10);
+
+    const hotelBooking = await prisma.hotelBooking.findFirst({
+      where: { id, agencyId },
+      include: {
+        hotel: true,
+        city: true,
+        accommodation: true,
+        agency: true,
+        booking: {
+          include: { client: true },
+        },
+      },
+    });
+
+    if (!hotelBooking) {
+      return res
+        .status(404)
+        .json({ errors: { message: "Hotel booking not found" } });
+    }
+
+    const hotel = hotelBooking.hotel || {};
+    const booking = hotelBooking.booking || {};
+    const client = booking.client || {};
+    const hotelAddress = [
+      hotel.hotelAddressLine1,
+      hotel.hotelAddressLine2,
+      hotel.hotelAddressLine3,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const hotelPhone = [hotel.hotelContactNo1, hotel.hotelContactNo2]
+      .filter(Boolean)
+      .join(" / ");
+
+    const folder = path.join(
+      __dirname,
+      "..",
+      "..",
+      "invoices",
+      "booking",
+      "hotelVoucher",
+      String(id)
+    );
+    if (!fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true });
+    const filePath = path.join(folder, `HRV-${hotelBooking.hrvNumber || id}.pdf`);
+
+    await generateHotelVoucher(
+      {
+        agencyDetails: buildAgencyDetails(hotelBooking.agency),
+        hotelName: hotel.hotelName || "",
+        hotelAddress,
+        hotelPhone,
+        bookingNumber: booking.bookingNumber || "",
+        hotelBookingDate: hotelBooking.hotelBookingDate,
+        hrvNumber: hotelBooking.hrvNumber || "",
+        guestName: client.clientName || "",
+        numberOfAdults: booking.numberOfAdults,
+        numberOfChildren5To11: booking.numberOfChildren5To11,
+        numberOfChildrenUnder5: booking.numberOfChildrenUnder5,
+        totalTravelers: booking.totalTravelers,
+        rooms: hotelBooking.rooms,
+        accommodationName: hotelBooking.accommodation?.accommodationName || "",
+        accommodationNote: hotelBooking.accommodationNote || "",
+        checkInDate: hotelBooking.checkInDate,
+        checkOutDate: hotelBooking.checkOutDate,
+        nights: hotelBooking.nights,
+        plan: hotelBooking.plan || "",
+        cityName: hotelBooking.city?.cityName || "",
+        bookingConfirmedBy: hotelBooking.bookingConfirmedBy || "",
+        confirmationNumber: hotelBooking.confirmationNumber || "",
+        notes: hotelBooking.notes || "",
+        specialRequirement: hotelBooking.specialRequirement || "",
+        billingInstructions: hotelBooking.billingInstructions || "",
+      },
+      filePath
+    );
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="HotelVoucher-${hotelBooking.hrvNumber || id}.pdf"`
+    );
+    return res.sendFile(path.resolve(filePath));
+  } catch (error) {
+    res.status(500).json({
+      errors: {
+        message: "Failed to open hotel voucher",
+        details: error.message,
+      },
+    });
+  }
+};
+
 module.exports = {
   createHotelBooking,
   getHotelBookingById,
   updateHotelBooking,
   deleteHotelBooking,
   getAllHotelBookingsByBookingId,
+  downloadHotelVoucher,
 };

@@ -1,22 +1,20 @@
 const { PrismaClient, Prisma } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { z } = require("zod");
-const validateRequest = require("../utils/validateRequest");
+const validateRequest = require("../../utils/validateRequest");
 const createError = require("http-errors");
 const dayjs = require("dayjs");
 const parseDate = (value) => {
   if (typeof value !== "string" || value.trim() === "") return undefined;
   return dayjs(value).isValid() ? new Date(value) : undefined;
 };
-const { buildStandardLineCostData } = require("../utils/lineCostingPersist");
-const { regenerateBookingDocuments } = require("../utils/bookingDocumentService");
 // Create Service Booking
-const createServiceBooking = async (req, res, next) => {
+const createGroupClientServiceBooking = async (req, res, next) => {
   const schema = z.object({
     description: z.string().min(1, "Description is required."),
   });
 
-  const { id: bookingId } = req.params;
+  const { groupClientBookingId } = req.params;
   const validationErrors = await validateRequest(schema, req.body, res);
 
   try {
@@ -38,10 +36,10 @@ const createServiceBooking = async (req, res, next) => {
 
     const newServiceBooking = await prisma.serviceBooking.create({
       data: {
-        bookingId: parseInt(bookingId),
+        groupClientId: parseInt(groupClientBookingId),
         description,
         cost: cost ? new Prisma.Decimal(cost) : null,
-        ...buildStandardLineCostData(req.body, cost),
+        isGroupTourClientService: true,
         isPaid,
         agentId: agentId ? parseInt(agentId) : null,
         paymentMode: paymentMode || null,
@@ -56,16 +54,6 @@ const createServiceBooking = async (req, res, next) => {
       },
     });
 
-    if (req.user?.agencyId) {
-      await prisma.$transaction(async (tx) => {
-        await regenerateBookingDocuments(
-          tx,
-          parseInt(bookingId, 10),
-          parseInt(req.user.agencyId, 10)
-        );
-      });
-    }
-
     res.status(201).json(newServiceBooking);
   } catch (error) {
     res.status(500).json({
@@ -78,12 +66,12 @@ const createServiceBooking = async (req, res, next) => {
 };
 
 // Get Service Booking by ID
-const getServiceBookingById = async (req, res) => {
-  const { id } = req.params;
+const getGroupClientServiceBookingById = async (req, res) => {
+  const { serviceBookingId } = req.params;
 
   try {
     const serviceBooking = await prisma.serviceBooking.findUnique({
-      where: { id: parseInt(id, 10) },
+      where: { id: parseInt(serviceBookingId, 10) },
     });
 
     if (!serviceBooking) {
@@ -104,14 +92,14 @@ const getServiceBookingById = async (req, res) => {
 };
 
 // Update Service Booking
-const updateServiceBooking = async (req, res) => {
+const updateGroupClientServiceBooking = async (req, res) => {
   const schema = z.object({
     description: z.string().min(1, "Description is required."),
   });
 
   const validationErrors = await validateRequest(schema, req.body, res);
 
-  const { id } = req.params;
+  const { serviceBookingId } = req.params;
 
   try {
     const {
@@ -131,11 +119,10 @@ const updateServiceBooking = async (req, res) => {
     } = req.body;
 
     const updatedServiceBooking = await prisma.serviceBooking.update({
-      where: { id: parseInt(id, 10) },
+      where: { id: parseInt(serviceBookingId, 10) },
       data: {
         description,
         cost: cost ? new Prisma.Decimal(cost) : null,
-        ...buildStandardLineCostData(req.body, cost),
         isPaid,
         agentId: agentId ? parseInt(agentId) : null,
         paymentMode: paymentMode || null,
@@ -149,16 +136,6 @@ const updateServiceBooking = async (req, res) => {
         neftImpfNumber: neftImpfNumber || null,
       },
     });
-
-    if (req.user?.agencyId && updatedServiceBooking.bookingId) {
-      await prisma.$transaction(async (tx) => {
-        await regenerateBookingDocuments(
-          tx,
-          updatedServiceBooking.bookingId,
-          parseInt(req.user.agencyId, 10)
-        );
-      });
-    }
 
     res.status(200).json(updatedServiceBooking);
   } catch (error) {
@@ -177,12 +154,12 @@ const updateServiceBooking = async (req, res) => {
 };
 
 // Delete Service Booking
-const deleteServiceBooking = async (req, res) => {
-  const { id } = req.params;
+const deleteGroupClientServiceBooking = async (req, res) => {
+  const { serviceBookingId } = req.params;
 
   try {
     await prisma.serviceBooking.delete({
-      where: { id: parseInt(id, 10) },
+      where: { id: parseInt(serviceBookingId, 10) },
     });
 
     res.status(204).send();
@@ -213,12 +190,12 @@ const deleteServiceBooking = async (req, res) => {
 };
 
 // Get All Service Bookings by Booking ID
-const getAllServiceBookingsByBookingId = async (req, res) => {
-  const { id: bookingId } = req.params;
+const getAllServiceBookingsByGroupClientBookingId = async (req, res) => {
+  const { groupClientBookingId } = req.params;
 
   try {
     const serviceBookings = await prisma.serviceBooking.findMany({
-      where: { bookingId: parseInt(bookingId) },
+      where: { groupClientId: parseInt(groupClientBookingId) },
     });
 
     res.status(200).json({ serviceBookings });
@@ -233,9 +210,9 @@ const getAllServiceBookingsByBookingId = async (req, res) => {
 };
 
 module.exports = {
-  createServiceBooking,
-  getServiceBookingById,
-  updateServiceBooking,
-  deleteServiceBooking,
-  getAllServiceBookingsByBookingId,
+  createGroupClientServiceBooking,
+  getGroupClientServiceBookingById,
+  updateGroupClientServiceBooking,
+  deleteGroupClientServiceBooking,
+  getAllServiceBookingsByGroupClientBookingId,
 };

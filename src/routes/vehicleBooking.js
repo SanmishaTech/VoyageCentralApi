@@ -6,6 +6,7 @@ const {
   updateVehicleBooking,
   deleteVehicleBooking,
   getAllVehicleBookingsByBookingId,
+  downloadVehicleVoucher,
 } = require("../controllers/vehicleBookingController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
@@ -131,6 +132,36 @@ router.get(
  *         description: Failed to create vehicle booking
  */
 router.post("/:id", auth, acl("vehicleBookings.write"), createVehicleBooking);
+
+/**
+ * @swagger
+ * /vehicle-bookings/{id}/voucher:
+ *   get:
+ *     summary: Download vehicle reservation voucher PDF
+ *     tags: [VehicleBookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Vehicle booking ID
+ *     responses:
+ *       200:
+ *         description: Vehicle voucher PDF
+ *       404:
+ *         description: Vehicle booking not found
+ *       500:
+ *         description: Failed to generate vehicle voucher
+ */
+router.get(
+  "/:id/voucher",
+  auth,
+  acl("vehicleBookings.read"),
+  downloadVehicleVoucher
+);
 
 /**
  * @swagger

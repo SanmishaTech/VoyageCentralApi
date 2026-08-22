@@ -227,4 +227,23 @@ module.exports = {
     "branch_admin",
     "user",
   ],
+  //groupClientServiceBookings
+  "groupClientServiceBookings.write": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientServiceBookings.delete": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
+  "groupClientServiceBookings.read": [
+    "super_admin",
+    "admin",
+    "branch_admin",
+    "user",
+  ],
 };

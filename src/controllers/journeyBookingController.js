@@ -5,6 +5,8 @@ const validateRequest = require("../utils/validateRequest");
 const createError = require("http-errors"); // For consistent error handling
 const dayjs = require("dayjs");
 const parseDate = require("../utils/parseDate");
+const { buildJourneyLineCostData } = require("../utils/lineCostingPersist");
+const { regenerateBookingDocuments } = require("../utils/bookingDocumentService");
 
 const createJourneyBooking = async (req, res, next) => {
   const schema = z
@@ -179,8 +181,19 @@ const createJourneyBooking = async (req, res, next) => {
         airlineId: airlineId ? parseInt(airlineId) : null,
         vehicleId: vehicleId ? parseInt(vehicleId) : null,
         amount: amount ? new Prisma.Decimal(amount) : null,
+        ...buildJourneyLineCostData(req.body, amount),
       },
     });
+
+    if (req.user?.agencyId) {
+      await prisma.$transaction(async (tx) => {
+        await regenerateBookingDocuments(
+          tx,
+          parseInt(req.params.id, 10),
+          parseInt(req.user.agencyId, 10)
+        );
+      });
+    }
 
     res.status(201).json(newJourneyBooking);
   } catch (error) {
@@ -397,8 +410,19 @@ const updateJourneyBooking = async (req, res, next) => {
         airlineId: airlineId ? parseInt(airlineId) : null,
         vehicleId: vehicleId ? parseInt(vehicleId) : null,
         amount: amount ? new Prisma.Decimal(amount) : null,
+        ...buildJourneyLineCostData(req.body, amount),
       },
     });
+
+    if (req.user?.agencyId && updatedJourneyBooking.bookingId) {
+      await prisma.$transaction(async (tx) => {
+        await regenerateBookingDocuments(
+          tx,
+          updatedJourneyBooking.bookingId,
+          parseInt(req.user.agencyId, 10)
+        );
+      });
+    }
 
     res.status(200).json(updatedJourneyBooking);
   } catch (error) {

@@ -395,6 +395,8 @@ model Bank {
   agents2  Agent[]  @relation("Bank2_Agent")
   bookingReceipts   BookingReceipt[]
   serviceBookings  ServiceBooking[]
+  bookingCostingTransfers BookingCosting[] @relation("BookingCostingTransferBank")
+  bookingCostingOfBanks   BookingCosting[] @relation("BookingCostingOfBank")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -493,9 +495,86 @@ model Booking {
   travelDocuments TravelDocument[]
   tourMembers      TourMember[] // One-to-many relationship with TourMember
   bookingReceipts   BookingReceipt[]
+  bookingCosting    BookingCosting?
+  enquiryCostings   EnquiryCosting[]
+  costingNote             String?   @db.Text
+  estimatePath            String?
+  quotationPath           String?
+  packageSummaryPath      String?
+  taxInvoiceNumber        String?
+  taxInvoiceDate          DateTime?
+  taxInvoicePath          String?
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
   @@map("bookings") // Map the table name to "tour_enquiries"
+}
+
+// Enquiry-stage costing lines (TourPro Costing)
+model EnquiryCosting {
+  id          Int      @id @default(autoincrement())
+  bookingId   Int
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  fairName    String?
+  description String?  @db.Text
+  cost        Decimal? @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("enquiry_costings")
+}
+
+model BookingCosting {
+  id                         Int       @id @default(autoincrement())
+  bookingId                  Int       @unique
+  booking                    Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+
+  // Package Costing (payment to package agent)
+  agentId                    Int?
+  agent                      Agent?    @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  isPaid                     Boolean   @default(false)
+  paymentMode                String?
+  paidAmount                 Decimal?  @db.Decimal(12, 2)
+  transferBankId             Int?
+  transferBank               Bank?     @relation("BookingCostingTransferBank", fields: [transferBankId], references: [id], onDelete: Restrict)
+  accountNo                  String?
+  chequeNumber               String?
+  chequeDate                 DateTime?
+  ofBankId                   Int?
+  ofBank                     Bank?     @relation("BookingCostingOfBank", fields: [ofBankId], references: [id], onDelete: Restrict)
+  inFavourOf                 String?
+  billDescription            String?   @db.Text
+
+  // Total Costing — TourPro parity fields
+  inputCommission            Decimal?  @db.Decimal(12, 2) // TourPro input_commission (manual; not in payable math)
+  commissionAmount           Decimal?  @db.Decimal(12, 2) // legacy alias kept for compatibility
+  serviceAmt                 Decimal?  @db.Decimal(12, 2)
+  packageJourney             Decimal?  @db.Decimal(12, 2)
+  beforePackageCost          Decimal?  @db.Decimal(12, 2)
+  beforePackageServiceCharge Decimal?  @db.Decimal(12, 2)
+  beforePackageTotalCost     Decimal?  @db.Decimal(12, 2)
+  serviceChargeOnCost        Decimal?  @db.Decimal(12, 2)
+  serviceChargeOnPackage     Decimal?  @db.Decimal(12, 2)
+  totalServiceCharge         Decimal?  @db.Decimal(12, 2)
+  journeyServiceCharge       Decimal?  @db.Decimal(12, 2)
+  hotelServiceCharge         Decimal?  @db.Decimal(12, 2) // derived display/legacy
+  vehicleServiceCharge       Decimal?  @db.Decimal(12, 2)
+  otherServicesServiceCharge Decimal?  @db.Decimal(12, 2)
+  packageCost                Decimal?  @db.Decimal(12, 2)
+  packageServiceCharge       Decimal?  @db.Decimal(12, 2)
+  packageTotalCost           Decimal?  @db.Decimal(12, 2)
+  discount                   Decimal?  @db.Decimal(12, 2)
+  gstOn                      String?   // "Total Cost" | "Service Charge"
+  gstPercent                 Decimal?  @db.Decimal(8, 2)
+  gstAmount                  Decimal?  @db.Decimal(12, 2)
+  inclusiveServiceTax        Boolean   @default(false)
+  totalPackageCost           Decimal?  @db.Decimal(12, 2) // grand after GST/discount
+  payableAmount              Decimal?  @db.Decimal(12, 2) // TourPro payble_amount
+  amountInWords              String?   @db.Text
+
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  @@map("booking_costings")
 }
 
 model BookingDetail {
@@ -555,7 +634,17 @@ model JourneyBooking {
   airline           Airline?  @relation(fields: [airlineId], references: [id], onDelete: Restrict)
   vehicleId         Int?      // Foreign key to the Airline table
   vehicle           Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
-  amount           Decimal?  @db.Decimal(10, 2) // Amount for the journey booking
+  amount           Decimal?  @db.Decimal(10, 2) // Base cost (TourPro cost)
+  // Line costing (TourPro TicketBooking)
+  inputGstPercentage      Decimal?  @db.Decimal(8, 2)
+  inputGstAmount          Decimal?  @db.Decimal(12, 2)
+  inputCost               Decimal?  @db.Decimal(12, 2)
+  serviceCharge           Decimal?  @db.Decimal(12, 2)
+  serviceChargeGst        Decimal?  @db.Decimal(8, 2)
+  serviceChargeGstAmount  Decimal?  @db.Decimal(12, 2)
+  totalServiceCharge      Decimal?  @db.Decimal(12, 2)
+  totalCost               Decimal?  @db.Decimal(12, 2)
+  inputCommission         Decimal?  @db.Decimal(12, 2)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -597,8 +686,15 @@ model HotelBooking {
   specialRequirement  String?   @db.Text
   notes               String?   @db.Text// Notes (optional)
   billDescription     String?   @db.Text// Bill description (optional)
-  amount           Decimal?  @db.Decimal(10, 2) // Amount for the journey booking
-  totalAmount           Decimal?  @db.Decimal(10, 2)
+  amount           Decimal?  @db.Decimal(10, 2) // Base cost (TourPro cost)
+  totalAmount           Decimal?  @db.Decimal(10, 2) // amount + extraBedCost (room subtotal)
+  // Line costing (TourPro HotelBooking)
+  inputGstPercentage  Decimal?  @db.Decimal(8, 2)
+  inputGstAmount      Decimal?  @db.Decimal(12, 2)
+  inputCost           Decimal?  @db.Decimal(12, 2)
+  serviceCharge       Decimal?  @db.Decimal(12, 2)
+  totalCost           Decimal?  @db.Decimal(12, 2)
+  inputCommission     Decimal?  @db.Decimal(12, 2)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   @@map("hotel_bookings") // Map the table name to "hotel_bookings"
@@ -616,7 +712,14 @@ model ServiceBooking {
   serviceId                Int?       // Foreign key to the Agency table
   service                  Service?    @relation(fields: [serviceId], references: [id], onDelete:Restrict)
   description         String      @db.Text
-  cost                Decimal?  @db.Decimal(10, 2)
+  cost                Decimal?  @db.Decimal(10, 2) // Base cost (TourPro cost)
+  // Line costing (TourPro TourService)
+  inputGstPercentage  Decimal?  @db.Decimal(8, 2)
+  inputGstAmount      Decimal?  @db.Decimal(12, 2)
+  inputCost           Decimal?  @db.Decimal(12, 2)
+  serviceCharge       Decimal?  @db.Decimal(12, 2)
+  totalCost           Decimal?  @db.Decimal(12, 2)
+  inputCommission     Decimal?  @db.Decimal(12, 2)
   isPaid             Boolean   @default(false) 
   paymentMode    String?   // Payment mode (e.g., Cash, Cheque, UPI)
   paymentDate    DateTime? // Payment date (optional)
@@ -676,6 +779,7 @@ model Agent {
   isTrain   Boolean @default(false)
   vehicleBookings    VehicleBooking[]
   serviceBookings  ServiceBooking[]
+  bookingCostings  BookingCosting[]
 
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -711,7 +815,14 @@ model VehicleBooking {
   specialNote         String?  @db.Text
   summaryNote         String?  @db.Text
   billDescription     String?  @db.Text
-  amount           Decimal?  @db.Decimal(10, 2) // Amount for the journey booking
+  amount           Decimal?  @db.Decimal(10, 2) // Base cost (TourPro cost)
+  // Line costing (TourPro VehicleBooking)
+  inputGstPercentage  Decimal?  @db.Decimal(8, 2)
+  inputGstAmount      Decimal?  @db.Decimal(12, 2)
+  inputCost           Decimal?  @db.Decimal(12, 2)
+  serviceCharge       Decimal?  @db.Decimal(12, 2)
+  totalCost           Decimal?  @db.Decimal(12, 2)
+  inputCommission     Decimal?  @db.Decimal(12, 2)
   vehicleItineraries VehicleItinerary[]
   vehicleHotelBookings VehicleHotelBooking[]
   createdAt           DateTime  @default(now())
@@ -841,9 +952,7 @@ model GroupBooking {
   tourId                  Int?      // Foreign key to the Tour table
   tour                    Tour?     @relation(fields: [tourId], references: [id], onDelete: Restrict)
   bookingDetail          String?    @db.Text
-  isJourney               Boolean   @default(false) // Indicates if it's a journey
-  isHotel                 Boolean   @default(false) // Indicates if a hotel is included
-  isVehicle               Boolean   @default(false) // Indicates if a vehicle is included
+  isAssistantsAvailable                 Boolean   @default(false) // Indicates if a hotel is included
   followUpDate     DateTime?  // Date of the follow-up
   remarks          String?   // Remarks for the follow-up
   enquiryStatus   String?   // Status of the enquiry (e.g., Open, Closed)
@@ -887,7 +996,8 @@ model GroupClient {
   numberOfChildren5To11   Int?       // Number of children between age 5-11
   numberOfChildrenUnder5  Int?       // Number of children under age 5
   totalMember              Int?
-  tourCost          Decimal?   @db.Decimal(10, 2) // Added cost field with Decimal type       
+  tourCost          Decimal?   @db.Decimal(10, 2) // Package tour cost (manual)
+  paidAmount        Decimal?   @db.Decimal(10, 2) @default(0) // Sum of receipts (TourPro GroupMember.paid_amount)
   notes             String?    @db.Text
   isJourney               Boolean   @default(false) // Indicates if it's a journey
   isHotel                 Boolean   @default(false) // Indicates if a hotel is included
